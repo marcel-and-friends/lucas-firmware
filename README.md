@@ -1,4 +1,4 @@
-# IMPORTANTE
+ok# IMPORTANTE
 # Mks-Robin-Nano-Marlin2.0-Firmware
 
 ## Features
@@ -54,7 +54,7 @@ The images should be added to gcode file when slicing, and MKS has developed the
 - Enter the `.pio\build\mks_robin_nano35` directory, copy the `assets` folder and `Robin_nano35.bin` to the sd card
 - Insert SD card to the motherboard, and you can see the update interface after power on.   
 
-
+## HEEEERE
 ## MKS Robin Nano V1.3 & Nano-S V1.3 build and update firmware
 
 1. Build config:
