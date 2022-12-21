@@ -39,7 +39,7 @@ extern "C" {
 #endif // __cplusplus
 
 /*----------------------------------------------------------------------------
- *        Pins
+ *        Pins ROBIN NANO v3.1f
  *----------------------------------------------------------------------------*/
 #if defined(ARDUINO_BLACK_F407VE) || defined(ARDUINO_BLACK_F407VG)
 // Right Side

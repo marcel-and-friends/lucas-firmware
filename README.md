@@ -1,3 +1,4 @@
+# IMPORTANTE
 # Mks-Robin-Nano-Marlin2.0-Firmware
 
 ## Features
@@ -103,6 +104,7 @@ The images should be added to gcode file when slicing, and MKS has developed the
 - Insert SD card is to the motherboard, and you can see the update interface after power on.   
 
 ## MKS Robin Nano V3.x build and update firmware
+## BUILD INFO Chosen
 
 1. Build config:
 
