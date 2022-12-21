@@ -28,9 +28,13 @@
 #define LOGO_TIME_DELAY TERN(USE_MKS_GREEN_UI, 8000, 1500)
 
 #if ENABLED(DGUS_MKS_RUNOUT_SENSOR)
-  #define MT_DET_1_PIN     1
-  #define MT_DET_2_PIN     2
-  #define MT_DET_PIN_STATE LOW
+  // #define MT_DET_1_PIN     1
+  #define BT_MT_DET_1_PIN     1
+  // #define MT_DET_2_PIN     2
+  #define BT_MT_DET_2_PIN     2
+
+  // #define MT_DET_PIN_STATE LOW
+  #define BT_MT_DET_PIN_STATE LOW
 #endif
 
 #define MKS_FINSH
