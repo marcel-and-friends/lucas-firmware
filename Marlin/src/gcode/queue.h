@@ -134,6 +134,8 @@ public:
    */
   static inline void inject(char * const gcode) {
     strncpy(injected_commands, gcode, sizeof(injected_commands) - 1);
+    SERIAL_ECHOPGM("injected_commands: ", injected_commands, "\n");
+    SERIAL_ECHOPGM("gcode: ", gcode, "\n");
   }
 
   /**

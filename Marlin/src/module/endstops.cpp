@@ -354,8 +354,8 @@ void Endstops::init() {
 
 // Called at ~1KHz from Temperature ISR: Poll endstop state if required
 void Endstops::poll() {
-
-  TERN_(PINS_DEBUGGING, run_monitor()); // Report changes in endstop status
+  
+    TERN_(PINS_DEBUGGING, run_monitor()); // Report changes in endstop status
 
   #if DISABLED(ENDSTOP_INTERRUPTS_FEATURE)
     update();
@@ -416,6 +416,23 @@ void Endstops::resync() {
 #endif
 
 void Endstops::event_handler() {
+
+  //queue.enqueue_one_P(PSTR("G91"));
+  //queue.enqueue_one_P(PSTR("G0 X10"));
+
+  if (READ(Z_MAX_PIN) == true){
+    //queue.enqueue_one_P(PSTR("G0 Z50"));
+    SERIAL_ECHOPGM("Z_MAX_PIN é true\n");
+    //delay(500);
+  }
+  else
+  {
+    //queue.enqueue_one_P(PSTR("G0 Y50"));
+    SERIAL_ECHOPGM("Z_MAX_PIN é false\n");
+    CardReader::openAndPrintFile("G0 F10000X65");
+    delay(20000);
+  }
+
   static endstop_mask_t prev_hit_state; // = 0
   if (hit_state == prev_hit_state) return;
   prev_hit_state = hit_state;

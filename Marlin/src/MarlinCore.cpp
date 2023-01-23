@@ -1610,8 +1610,11 @@ void setup() {
  *    card, host, or by direct injection. The queue will continue to fill
  *    as long as idle() or manage_inactivity() are being called.
  */
+
+/*main loop do STM32F4*/
 void loop() {
-  do {
+  //do 
+  {
     idle();
 
     #if ENABLED(SDSUPPORT)
@@ -1621,9 +1624,10 @@ void loop() {
 
     queue.advance();
 
+    //endstops.report_states();
     endstops.event_handler();
 
     TERN_(HAS_TFT_LVGL_UI, printer_state_polling());
 
-  } while (ENABLED(__AVR__)); // Loop forever on slower (AVR) boards
+  } //while (ENABLED(__AVR__)); // Loop forever on slower (AVR) boards
 }
