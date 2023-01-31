@@ -415,22 +415,23 @@ void Endstops::resync() {
   }
 #endif
 
+// essa variavel é pra interpretarmos o "evento" uma vez só, já que Z_MAX_PIN
+// fica sem carga por diversos "ticks", mesmo se apertarmos por pouquinho tempo
+static bool apertado = false;
+
 void Endstops::event_handler() {
+  if (READ(Z_MAX_PIN) == false && !apertado) {
+	SERIAL_ECHOPGM("z max pin apertado\n");
 
-  //queue.enqueue_one_P(PSTR("G91"));
-  //queue.enqueue_one_P(PSTR("G0 X10"));
-
-  if (READ(Z_MAX_PIN) == true){
-    //queue.enqueue_one_P(PSTR("G0 Z50"));
-    SERIAL_ECHOPGM("Z_MAX_PIN é true\n");
-    //delay(500);
-  }
-  else
-  {
-    //queue.enqueue_one_P(PSTR("G0 Y50"));
-    SERIAL_ECHOPGM("Z_MAX_PIN é false\n");
-    CardReader::openAndPrintFile("G0 F10000X65");
-    delay(20000);
+	// eu não sei direito onde que é pra colocar o bloco abaixo desse (o do "z max pin desapertado\n")
+	// pois se você injeta um 'M0' por tempo indeterminado (sem o 'S1')
+	// essa função que a gente está (event_handler) não é chamada
+	queue.enqueue_one_now("M0 S1");
+	apertado = true;
+  } else if (READ(Z_MAX_PIN) && apertado) {
+	queue.enqueue_one_now("M108");
+	SERIAL_ECHOPGM("z max pin desapertado\n");
+	apertado = false;
   }
 
   static endstop_mask_t prev_hit_state; // = 0
