@@ -415,25 +415,7 @@ void Endstops::resync() {
   }
 #endif
 
-extern bool pausado;
-bool pausado = false;
-extern bool apertado;
-bool apertado = false;
-
 void Endstops::event_handler() {
-  if (READ(Z_MAX_PIN) == false) {
-	if (!apertado) {
-		apertado = pausado = true;
-		SERIAL_ECHOPGM("pausando\n");
-		queue.enqueue_one_now("M0");
-	}
-  } else {
-	if (apertado) {
-		SERIAL_ECHOPGM("desapertando após despausar\n");
-		apertado = false;
-	}
-  }
-
   static endstop_mask_t prev_hit_state; // = 0
   if (hit_state == prev_hit_state) return;
   prev_hit_state = hit_state;

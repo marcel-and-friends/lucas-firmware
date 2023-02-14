@@ -843,18 +843,9 @@ void idle(bool no_stepper_sleep/*=false*/) {
   // Update the LVGL interface
   TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-  extern bool apertado;
-  extern bool pausado;
-
-  if (READ(Z_MAX_PIN) && apertado && pausado) {
-	apertado = false;
-	SERIAL_ECHOPGM("desapertando após pausa\n");
-  } else {
-	if (READ(Z_MAX_PIN) == false && !apertado && pausado) {
-		wait_for_user = pausado = false;
-		apertado = true;
-		SERIAL_ECHOPGM("despausando\n");
-	}
+  if (READ(PC4) == false && wait_for_user) {
+	wait_for_user = false;
+	SERIAL_ECHOPGM("despausando\n");
   }
 
   IDLE_DONE:
