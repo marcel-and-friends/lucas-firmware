@@ -28,15 +28,15 @@ void Boca::set_boca_ativa(Boca* boca) {
 }
 
 std::string_view Boca::proxima_instrucao() const {
-    auto proxima_instrucao = std::string_view{ m_receita.data() + m_progresso_receita };
+    auto proxima_instrucao = m_receita.data() + m_progresso_receita;
     // como uma sequência de gcodes é separada pelo caractere de nova linha basta procurar um desse para encontrar o fim
-    auto fim_do_proximo_gcode = proxima_instrucao.find('\n');
-    if (fim_do_proximo_gcode == std::string_view::npos) {
+    auto fim_do_proximo_gcode = strchr(proxima_instrucao, 'n');
+    if (!fim_do_proximo_gcode) {
         // se a nova linha não existe então estamos no último
         return proxima_instrucao;
     }
 
-    return std::string_view{ proxima_instrucao.data(), fim_do_proximo_gcode };
+    return std::string_view{ proxima_instrucao, static_cast<size_t>(fim_do_proximo_gcode - proxima_instrucao)};
 }
 
 void Boca::progredir_receita() {
