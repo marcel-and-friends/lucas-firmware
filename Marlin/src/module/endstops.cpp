@@ -415,7 +415,11 @@ void Endstops::resync() {
   }
 #endif
 
+#include <kofy/kofy.h>
+
 void Endstops::event_handler() {
+  kofy::event_handler();
+
   static endstop_mask_t prev_hit_state; // = 0
   if (hit_state == prev_hit_state) return;
   prev_hit_state = hit_state;

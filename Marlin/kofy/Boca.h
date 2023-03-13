@@ -2,8 +2,8 @@
 
 #include <array>
 #include <string>
-#include "kofy.h"
 #include <string_view>
+#include "kofy.h"
 
 namespace kofy {
 
@@ -12,6 +12,7 @@ public:
 
     static constexpr size_t NUM_BOCAS = 5;
     using Lista = std::array<Boca, NUM_BOCAS>;
+
 
     static void procurar_nova_boca_ativa();
 

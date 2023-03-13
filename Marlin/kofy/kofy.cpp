@@ -4,39 +4,17 @@
 
 namespace kofy {
 
-void setup() {
-    static constexpr auto GCODE_CAFE = 
-R"(M302 P0 S0
-G0 F8000 X620 Y35; LEVA O BICO NA POSIÇÃO
-G4 P1000; TEMPO 
-G1 F800; AVANÇO MENOR
-G3 I0 J5; RAIO PEQUENO
-G1 F800 Y25
-G3 I0 J10;RAIO MEDIO1
-G1 F800 Y30
-G3 I0 J15;RAIO MEDIO2
-G1 F800 Y35
-G3 I0 J20;RAIO MEDIO3
-G1 F800 Y5
-G3 I0 J25;RAIO MEDIO3
-G1 F800 Y35
-G0 F8000 X0 Y0;
-M0
-G0 F8000 X620 Y35; LEVA O BICO NA POSIÇÃO
-G4 P1000; TEMPO 
-G1 F800; AVANÇO MENOR
-G3 I0 J5; RAIO PEQUENO
-G1 F800 Y25
-G3 I0 J10;RAIO MEDIO1
-G1 F800 Y30
-G3 I0 J15;RAIO MEDIO2
-G1 F800 Y35
-G3 I0 J20;RAIO MEDIO3
-G1 F800 Y5
-G3 I0 J25;RAIO MEDIO3
-G1 F800 Y35
-G0 F8000 X0 Y0;)";
+static constexpr auto GCODE_CAFE = 
+R"(M302 S0
+K0
+G1 F150 X5)";
 
+// Aqui se coloca todos os gcode necessário para o funcionamento ideal da máquina
+static constexpr auto ROTINA_INICIAL =
+R"(M302 S0
+G28 X Y)";
+
+void setup() {
     struct InfoBoca {
         const char* gcode;
         int pino_botao;
@@ -60,6 +38,9 @@ G0 F8000 X0 Y0;)";
         boca.set_led(info.pino_led);
     }
 
+    marlin::injetar_gcode(ROTINA_INICIAL);
+    g_inicializando = true;
+
     DBG("bocas inicializadas (", Boca::NUM_BOCAS, ").");
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita.");
 }
@@ -76,12 +57,13 @@ void idle() {
             if (tick % timer == 0 && ultimo_tick != tick) {
                 TOGGLE(boca.led());
             }
-
+            
             if (marlin::apertado(boca.botao())) {
                 boca.disponibilizar_para_uso();
                 if (!Boca::boca_ativa())
                     Boca::set_boca_ativa(&boca);
             }
+            
         } else {
             WRITE(boca.led(), Boca::boca_ativa() == &boca);
         }
@@ -91,15 +73,30 @@ void idle() {
 }
 
 void event_handler()  {
+    if (g_inicializando) {
+        if (!queue.injected_commands_P) {
+            g_inicializando = false;
+            DBG("inicialização terminada!");
+        }
+
+        return;
+    }
+
+    if (g_mudando_boca_ativa) {
+        if (!queue.injected_commands_P) {
+            g_mudando_boca_ativa = false;
+            DBG("bico chegou na posição nova");
+        }
+            
+        return;
+    }
+
     auto boca_ativa = Boca::boca_ativa();
     if (!boca_ativa)
         return;
 
-    // na nossa máquina o 'M0' serve apenas como um sinalizador de que
-    // o usuário tem que apertar o botão da boca para prosseguir com a receita.
-    // ele nunca é inserido na fila de gcode do marlin.
-    if (boca_ativa->proxima_instrucao() == "M0") {
-        DBG("pulando 'M0' da boca #", boca_ativa->numero(), " - pressione o botão para disponibilizar a boca.");
+    if (boca_ativa->proxima_instrucao() == "K0") {
+        DBG("executando 'K0' na boca #", boca_ativa->numero(), " - pressione o botão para disponibilizar a boca.");
 
         boca_ativa->pular_proxima_instrucao();
         boca_ativa->aguardar_botao();

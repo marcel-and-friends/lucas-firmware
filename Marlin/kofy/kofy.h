@@ -1,10 +1,15 @@
 #pragma once
 
 #include <src/gcode/queue.h>
+#include "opcoes.h"
 
 namespace kofy {
     
 #define DBG SERIAL_ECHO_MSG
+
+inline bool g_mudando_boca_ativa = false;
+inline std::string g_gcode = "";
+inline bool g_inicializando = false;
 
 void setup();
 
