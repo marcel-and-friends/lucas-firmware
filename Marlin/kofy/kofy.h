@@ -31,6 +31,8 @@ inline void injetar_gcode(std::string_view gcode) {
     queue.injected_commands_P = gcode.data();
 }
 
+void conectar_wifi(std::string_view nome_rede, std::string_view senha_rede);
+
 }
 
 }
