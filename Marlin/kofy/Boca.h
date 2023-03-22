@@ -13,7 +13,6 @@ public:
     static constexpr size_t NUM_BOCAS = 5;
     using Lista = std::array<Boca, NUM_BOCAS>;
 
-
     static void procurar_nova_boca_ativa();
 
     static Lista& lista() { return s_lista; }

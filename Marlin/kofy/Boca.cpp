@@ -1,25 +1,50 @@
 #include "boca.h"
 #include <memory>
+#include <src/module/temperature.h>
 
 namespace kofy {
 
 Boca::Lista Boca::s_lista = {};
 
 static void boca_ativa_mudou() {
-    static constexpr auto parte_1 = 
+
+    static constexpr auto TEMP_IDEAL = 90;
+    static constexpr auto MARGEM_ERRO = 10;
+
+    static constexpr auto DISTANCIA_ENTRE_BOCAS = 160;
+    static constexpr auto DISTANCIA_PRIMEIRA_BOCA = 80;
+
+    static constexpr auto RETORNA_HOME_E_ESPERA_TEMP = 
+R"(M302 S0
+G90
+G0 F50000 Y60 X720
+G4 P3000
+G0 F1000 E100
+M109 T0 R)";
+
+    static constexpr auto MOVE_ATE_BOCA_CORRETA = 
 R"(M302 S0
 G90
 G0 F50000 Y60 X)";
-    static constexpr auto parte_2 = "\nG92";
 
-    auto posicao_x = 80 + Boca::boca_ativa()->numero() * 160;
+    static constexpr auto ATIVA_POSICAO_RELATIVA = "\nG91";
 
-    g_gcode.clear();
-    g_gcode.append(parte_1);
-    g_gcode.append(std::to_string(posicao_x));
-    g_gcode.append(parte_2);
+    // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente pros gcodes serem executados
+    static std::string gcode = "";
+    // e significa que tem que ser limpa toda vez que essa função é chamada
+    gcode.clear();
 
-    marlin::injetar_gcode(g_gcode);
+    if (abs(thermalManager.wholeDegHotend(0) - TEMP_IDEAL) >= MARGEM_ERRO) {
+        gcode.append(RETORNA_HOME_E_ESPERA_TEMP).append(std::to_string(TEMP_IDEAL)).append("\n");
+    }
+
+    auto posicao_boca = DISTANCIA_PRIMEIRA_BOCA + Boca::boca_ativa()->numero() * DISTANCIA_ENTRE_BOCAS;
+
+    gcode.append(MOVE_ATE_BOCA_CORRETA)
+    .append(std::to_string(posicao_boca))
+    .append(ATIVA_POSICAO_RELATIVA);
+
+    marlin::injetar_gcode(gcode);
 
     g_mudando_boca_ativa = true;
 }
@@ -37,12 +62,14 @@ void Boca::procurar_nova_boca_ativa() {
         }
     }
 
-
-    DBG("nenhuma boca está disponível. :("); 
-	s_boca_ativa = nullptr;
+    DBG("nenhuma boca está disponível. :(");
+    s_boca_ativa = nullptr;
 }
 
-void Boca::set_boca_ativa(Boca* boca) {    
+void Boca::set_boca_ativa(Boca* boca) {
+    if (boca == s_boca_ativa)
+        return;
+
     s_boca_ativa = boca;
     
     if (boca) {

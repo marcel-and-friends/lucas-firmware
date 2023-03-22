@@ -6,9 +6,10 @@
 namespace kofy {
     
 #define DBG SERIAL_ECHO_MSG
+#define INFO(tipo, valor) DBG("kofy_info:", #tipo,":",valor);
 
 inline bool g_mudando_boca_ativa = false;
-inline std::string g_gcode = "";
+inline bool g_conectando_wifi = false;
 inline bool g_inicializando = false;
 
 void setup();
@@ -32,6 +33,8 @@ inline void injetar_gcode(std::string_view gcode) {
 }
 
 void conectar_wifi(std::string_view nome_rede, std::string_view senha_rede);
+
+bool conectado_a_wifi();
 
 }
 

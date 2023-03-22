@@ -38,16 +38,16 @@
 
 #define IP_DHCP_FLAG          1
 
-#define WIFI_AP_NAME          "TP-LINK_MKS"
-#define WIFI_KEY_CODE         "makerbase"
+#define WIFI_AP_NAME          ""
+#define WIFI_KEY_CODE         ""
 
-#define IP_ADDR               "192.168.3.100"
+#define IP_ADDR               "0.0.0.0"
 #define IP_MASK               "255.255.255.0"
 #define IP_GATE               "192.168.3.1"
 #define IP_DNS                "192.168.3.1"
 
 #define AP_IP_DHCP_FLAG       1
-#define AP_IP_ADDR            "192.168.3.100"
+#define AP_IP_ADDR            "0.0.0.0"
 #define AP_IP_MASK            "255.255.255.0"
 #define AP_IP_GATE            "192.168.3.1"
 #define AP_IP_DNS             "192.168.3.1"
