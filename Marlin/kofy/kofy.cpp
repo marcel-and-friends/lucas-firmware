@@ -9,8 +9,7 @@ namespace kofy {
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
 static constexpr auto GCODE_CAFE = 
-R"(M302 S0
-G4 P5000
+R"(G4 P5000
 G0 F2000 X10
 G0 F2000 X-10
 G0 F2000 X0
@@ -22,8 +21,7 @@ G0 F1000 E0)";
 
 // Gcode necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =
-R"(M302 S0
-G28 X Y
+R"(G28 X Y
 M190 R83)"; // MUDAR PARA R93, aqui é a temperatura ideal, a máquina não fará nada até chegar nesse ponto
 
 void setup() {
@@ -87,12 +85,13 @@ void idle() {
                 boca.disponibilizar_para_uso();
                 if (!Boca::boca_ativa())
                     Boca::set_boca_ativa(&boca);
-            
         }
     }
 }
 
 void event_handler()  {
+	marlin::injetar_gcode("G0 F1000 E100");
+
     if (g_conectando_wifi)   {
         if (marlin::conectado_a_wifi()) {
             g_conectando_wifi = false;

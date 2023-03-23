@@ -11,20 +11,18 @@ static void boca_ativa_mudou() {
     static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
     static constexpr auto margem_erro_temp = 10;
 
-    static constexpr auto distancia_entre_bocas = 160;
     static constexpr auto distancia_primeira_boca = 80;
+    static constexpr auto distancia_entre_bocas = 160;
 
     // a segunda linha desse gcode indica a posição que será feita o descarte da água
     static constexpr auto descartar_agua_e_aguardar_temp_ideal = 
-R"(M302 S0
-G0 F50000 Y60 X10
+R"(G0 F50000 Y60 X10
 G4 P3000
 G0 F1000 E100
 M109 T0 R)";
 
     static constexpr auto mover_ate_boca_correta = 
-R"(M302 S0
-G0 F50000 Y60 X)";
+R"(G0 F50000 Y60 X)";
 
     static constexpr auto usar_movimento_absoluto = "G90\n";
     static constexpr auto usar_movimento_relativo = "\nG91";
@@ -38,9 +36,8 @@ G0 F50000 Y60 X)";
     rotina_troca_de_boca_ativa.append(usar_movimento_absoluto);
 
     // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp) {
+    if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp) 
        rotina_troca_de_boca_ativa.append(descartar_agua_e_aguardar_temp_ideal).append(temp_ideal_str);
-    }
 
     auto posicao_absoluta_boca_ativa = distancia_primeira_boca + Boca::boca_ativa()->numero() * distancia_entre_bocas;
 
@@ -126,7 +123,7 @@ void Boca::finalizar_receita() {
     DBG("finalizando a receita da boca #", numero(), ".");
 
     executar_instrucao(proxima_instrucao());
-    reiniciar_receita();
+    reiniciar_progresso();
     aguardar_botao();
     marlin::parar_fila_de_gcode();
     procurar_nova_boca_ativa();

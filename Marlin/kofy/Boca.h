@@ -69,7 +69,7 @@ private:
 
     void executar_instrucao(std::string_view instrucao);
 
-    void reiniciar_receita() { m_progresso_receita = 0; }
+    void reiniciar_progresso() { m_progresso_receita = 0; }
 
 private:
     // a receita inteira, contém todos os gcodes que vamos executar
