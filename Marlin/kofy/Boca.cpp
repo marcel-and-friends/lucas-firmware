@@ -7,44 +7,56 @@ namespace kofy {
 Boca::Lista Boca::s_lista = {};
 
 static void boca_ativa_mudou() {
+    static constexpr auto temp_ideal = 90;
+    static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
+    static constexpr auto margem_erro_temp = 10;
 
-    static constexpr auto TEMP_IDEAL = 90;
-    static constexpr auto MARGEM_ERRO = 10;
+    static constexpr auto distancia_entre_bocas = 160;
+    static constexpr auto distancia_primeira_boca = 80;
 
-    static constexpr auto DISTANCIA_ENTRE_BOCAS = 160;
-    static constexpr auto DISTANCIA_PRIMEIRA_BOCA = 80;
-
-    static constexpr auto RETORNA_HOME_E_ESPERA_TEMP = 
+    // a segunda linha desse gcode indica a posição que será feita o descarte da água
+    static constexpr auto descartar_agua_e_aguardar_temp_ideal = 
 R"(M302 S0
-G90
-G0 F50000 Y60 X720
+G0 F50000 Y60 X10
 G4 P3000
 G0 F1000 E100
 M109 T0 R)";
 
-    static constexpr auto MOVE_ATE_BOCA_CORRETA = 
+    static constexpr auto mover_ate_boca_correta = 
 R"(M302 S0
-G90
 G0 F50000 Y60 X)";
 
-    static constexpr auto ATIVA_POSICAO_RELATIVA = "\nG91";
+    static constexpr auto usar_movimento_absoluto = "G90\n";
+    static constexpr auto usar_movimento_relativo = "\nG91";
 
-    // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente pros gcodes serem executados
-    static std::string gcode = "";
+    // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente para os gcodes serem executados
+    static std::string rotina_troca_de_boca_ativa = "";
     // e significa que tem que ser limpa toda vez que essa função é chamada
-    gcode.clear();
+    rotina_troca_de_boca_ativa.clear();
 
-    if (abs(thermalManager.wholeDegHotend(0) - TEMP_IDEAL) >= MARGEM_ERRO) {
-        gcode.append(RETORNA_HOME_E_ESPERA_TEMP).append(std::to_string(TEMP_IDEAL)).append("\n");
+    // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
+    rotina_troca_de_boca_ativa.append(usar_movimento_absoluto);
+
+    // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
+    if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp) {
+       rotina_troca_de_boca_ativa.append(descartar_agua_e_aguardar_temp_ideal).append(temp_ideal_str);
     }
 
-    auto posicao_boca = DISTANCIA_PRIMEIRA_BOCA + Boca::boca_ativa()->numero() * DISTANCIA_ENTRE_BOCAS;
+    auto posicao_absoluta_boca_ativa = distancia_primeira_boca + Boca::boca_ativa()->numero() * distancia_entre_bocas;
 
-    gcode.append(MOVE_ATE_BOCA_CORRETA)
-    .append(std::to_string(posicao_boca))
-    .append(ATIVA_POSICAO_RELATIVA);
+    // posiciona o bico na boca correta
+    rotina_troca_de_boca_ativa.append(mover_ate_boca_correta).append(std::to_string(posicao_absoluta_boca_ativa));
+    
+    // volta para movimentação relativa
+    rotina_troca_de_boca_ativa.append(usar_movimento_relativo);
 
-    marlin::injetar_gcode(gcode);
+    marlin::injetar_gcode(rotina_troca_de_boca_ativa);
+
+    DBG("executando rotina da troca de bocas");
+
+    #if DEBUG_GCODES
+    DBG("---- gcode -----\n", rotina_troca_de_boca_ativa.c_str());
+    #endif
 
     g_mudando_boca_ativa = true;
 }
@@ -116,9 +128,8 @@ void Boca::finalizar_receita() {
     executar_instrucao(proxima_instrucao());
     reiniciar_receita();
     aguardar_botao();
-    procurar_nova_boca_ativa();
-
     marlin::parar_fila_de_gcode();
+    procurar_nova_boca_ativa();
 }
 
 void Boca::executar_instrucao(std::string_view instrucao) {
