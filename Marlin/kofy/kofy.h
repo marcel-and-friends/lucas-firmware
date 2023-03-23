@@ -1,6 +1,7 @@
 #pragma once
 
 #include <src/gcode/queue.h>
+#include "wifi.h"
 #include "opcoes.h"
 
 namespace kofy {
@@ -31,10 +32,6 @@ inline void parar_fila_de_gcode() {
 inline void injetar_gcode(std::string_view gcode) {
     queue.injected_commands_P = gcode.data();
 }
-
-void conectar_wifi(std::string_view nome_rede, std::string_view senha_rede);
-
-bool conectado_a_wifi();
 
 }
 

@@ -2,7 +2,6 @@
 #include "Boca.h"
 #include <src/MarlinCore.h>
 #include <src/module/temperature.h>
-#include <src/lcd/extui/mks_ui/draw_ui.h>
 
 namespace kofy {
 
@@ -52,9 +51,8 @@ void setup() {
     DBG("bocas inicializadas (", Boca::NUM_BOCAS, ").");
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita.");
 
-	constexpr std::string_view nome = "Cafe2_4";
-	constexpr std::string_view senha = "Lobobobo";
-	marlin::conectar_wifi(nome, senha);
+	marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4");
+
     g_conectando_wifi = true;
 }
 
@@ -90,10 +88,8 @@ void idle() {
 }
 
 void event_handler()  {
-	marlin::injetar_gcode("G0 F1000 E100");
-
     if (g_conectando_wifi)   {
-        if (marlin::conectado_a_wifi()) {
+        if (marlin::wifi::conectado()) {
             g_conectando_wifi = false;
             DBG("conectado - começando rotina inicial...");
 
@@ -135,32 +131,6 @@ void event_handler()  {
     } else {
         boca_ativa->progredir_receita();
     }
-}
-
-namespace marlin {
-
-void conectar_wifi(std::string_view nome_rede, std::string_view senha_rede) {
-    memcpy(ipPara.ip_addr, "0.0.0.0", sizeof("0.0.0.0"));
-
-	ZERO(uiCfg.wifi_name);
-	memcpy(uiCfg.wifi_name, nome_rede.data(), nome_rede.length() + 1);
-
-	ZERO(uiCfg.wifi_key);
-	memcpy(uiCfg.wifi_key, senha_rede.data(), senha_rede.length() + 1);
-
-	gCfgItems.wifi_mode_sel = STA_MODEL;
-	package_to_wifi(WIFI_PARA_SET, nullptr, 0);
-
-	std::array<uint8_t, 6> magica = { 0xA5, 0x09, 0x01, 0x00, 0x01, 0xFC };
-    raw_send_to_wifi(magica.data(), magica.size());
-
-	DBG("conectando wifi...");
-}
-
-bool conectado_a_wifi() {
-    return strstr(ipPara.ip_addr, "0.0.0.0") == nullptr;
-}
-
 }
 
 }
