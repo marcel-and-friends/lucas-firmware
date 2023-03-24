@@ -79,10 +79,16 @@ void idle() {
         return;
 
     for (auto& boca : Boca::lista()) {          
-            if (marlin::apertado(boca.botao()) && boca.aguardando_botao()) {
-                boca.disponibilizar_para_uso();
-                if (!Boca::boca_ativa())
-                    Boca::set_boca_ativa(&boca);
+		if (!boca.aguardando_botao())
+			continue;
+		
+		if (Boca::boca_ativa() && Boca::boca_ativa() == &boca)
+			continue;
+
+		if (marlin::apertado(boca.botao())) {
+			boca.disponibilizar_para_uso();
+			if (!Boca::boca_ativa()) 
+				Boca::set_boca_ativa(&boca);
         }
     }
 }
@@ -91,10 +97,15 @@ void event_handler()  {
     if (g_conectando_wifi)   {
         if (marlin::wifi::conectado()) {
             g_conectando_wifi = false;
-            DBG("conectado - começando rotina inicial...");
+            DBG("conectado\nip = ", marlin::wifi::ip().data(),
+			" \nnome = ", marlin::wifi::nome_rede().data(),
+			" \nsenha = ", marlin::wifi::senha_rede().data());
 
+			#if KOFY_CUIDAR_TEMP
+			DBG("iniciando rotina inicial");
             marlin::injetar_gcode(ROTINA_INICIAL);
             g_inicializando = true;
+			#endif
         }
         return;
     }
@@ -104,7 +115,6 @@ void event_handler()  {
             g_inicializando = false;
             DBG("rotina inicial terminada.");
         }
-
         return;
     }
 
@@ -113,21 +123,25 @@ void event_handler()  {
             g_mudando_boca_ativa = false;
             DBG("bico chegou na posição nova");
         }
-            
         return;
     }
 
     auto boca_ativa = Boca::boca_ativa();
-    if (!boca_ativa)
+    if (!boca_ativa) {
         return;
+	}
+
+	if (boca_ativa->aguardando_botao()) {
+		Boca::procurar_nova_boca_ativa();
+		return;
+	}
 
     if (boca_ativa->proxima_instrucao() == "K0") {
         DBG("executando 'K0' na boca #", boca_ativa->numero(), " - pressione o botão para finalizar a receita.");
 
         boca_ativa->pular_proxima_instrucao();
         boca_ativa->aguardar_botao();
-        marlin::parar_fila_de_gcode();
-        Boca::procurar_nova_boca_ativa();
+		Boca::procurar_nova_boca_ativa();
     } else {
         boca_ativa->progredir_receita();
     }

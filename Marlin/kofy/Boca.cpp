@@ -35,9 +35,11 @@ R"(G0 F50000 Y60 X)";
     // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
     rotina_troca_de_boca_ativa.append(usar_movimento_absoluto);
 
+	#if KOFY_CUIDAR_TEMP
     // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
     if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp) 
        rotina_troca_de_boca_ativa.append(descartar_agua_e_aguardar_temp_ideal).append(temp_ideal_str);
+	#endif
 
     auto posicao_absoluta_boca_ativa = distancia_primeira_boca + Boca::boca_ativa()->numero() * distancia_entre_bocas;
 
@@ -51,7 +53,7 @@ R"(G0 F50000 Y60 X)";
 
     DBG("executando rotina da troca de bocas");
 
-    #if DEBUG_GCODES
+    #if KOFY_DEBUG_GCODE
     DBG("---- gcode -----\n", rotina_troca_de_boca_ativa.c_str());
     #endif
 
@@ -72,7 +74,9 @@ void Boca::procurar_nova_boca_ativa() {
     }
 
     DBG("nenhuma boca está disponível. :(");
+
     s_boca_ativa = nullptr;
+	marlin::parar_fila_de_gcode();
 }
 
 void Boca::set_boca_ativa(Boca* boca) {
@@ -125,12 +129,10 @@ void Boca::finalizar_receita() {
     executar_instrucao(proxima_instrucao());
     reiniciar_progresso();
     aguardar_botao();
-    marlin::parar_fila_de_gcode();
-    procurar_nova_boca_ativa();
 }
 
 void Boca::executar_instrucao(std::string_view instrucao) {
-    #if DEBUG_GCODES
+    #if KOFY_DEBUG_GCODE
         std::string str(instrucao);
         DBG("executando gcode: ", str.data());
     #endif

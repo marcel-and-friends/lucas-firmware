@@ -16,8 +16,9 @@ enum class Mensagem : byte {
 	* | Nome da rede             | Tamanho do nome da rede  | Nome da rede                                       |
 	* | Tamanho da senha da rede | 1 (uint8_t)              | Tamanho da senha da rede - máximo de 64 caracteres |
 	* | Senha da rede            | Tamanho da senha da rede | Senha da rede                                      |
-	* +--------------------------+--------------------------+----------------------------------------------------+ */  
-	Config = 0x1,
+	* +--------------------------+--------------------------+----------------------------------------------------+ 
+	*/  
+	Config = 0x0,
 	/*
 	* +----------+-----------------+-----------------------------------+
 	* | Segmento | Tamanho (bytes) | Significado                       |
@@ -32,12 +33,12 @@ enum class Mensagem : byte {
 
 enum class ModoConexao : byte {
 	AP = 0x1,
-	Client = 0x2
+	Cliente = 0x2
 };
 
-enum class OperacaoConectar : byte {
+enum class Operacao : byte {
 	Conectar = 0x1,
-	Desconcetar = 0x2,
+	Desconectar = 0x2,
 	Esquecer = 0x3
 };
 
@@ -49,7 +50,7 @@ concept Iterator = requires(It it) {
 };
 
 template<Iterator It>
-static void enviar_protocolo(Mensagem tipo, It it) {
+static void enviar_protocolo(Mensagem tipo, It&& it) {
 	/*
 	* - Comunicação com o módulo WiFi da MakerBase -
 	* 
@@ -65,11 +66,11 @@ static void enviar_protocolo(Mensagem tipo, It it) {
 	* | Fim      | 1 (uint8_t)     | Fim do protocolo - sempre 0xFC                                     |
 	* +----------+-----------------+--------------------------------------------------------------------+
 	* 
-	* Cada mensagem possui uma estrutura interna, documentadas no enum 'Tipo'
+	* Cada mensagem possui uma estrutura interna, documentadas no enum 'Mensagem'
 	*/
 	constexpr byte INICIO = 0xA5;
 	constexpr byte FIM = 0xFC;
-	constexpr size_t BYTES_RESERVADOS = 5;
+	constexpr auto BYTES_RESERVADOS = 5;
 
 	uint16_t tamanho_msg = std::distance(it.begin(), it.end());
 
@@ -93,7 +94,7 @@ static void enviar_protocolo(Mensagem tipo, It it) {
 template<typename... Bytes>
 static void enviar_protocolo(Mensagem tipo, Bytes... bytes) {
 	std::array<byte, sizeof...(Bytes)> msg = { static_cast<byte>(bytes)... };
-	enviar(tipo, msg);
+	enviar_protocolo(tipo, msg);
 }
 
 void conectar(std::string_view nome_rede, std::string_view senha_rede) {
@@ -103,7 +104,7 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
 	std::vector<byte> msg;
 	msg.reserve(tamanho_msg);
 	// Modo
-	msg.push_back(static_cast<byte>(ModoConexao::AP));
+	msg.push_back(static_cast<byte>(ModoConexao::Cliente));
 	// Tamanho do nome da rede
 	msg.push_back(nome_rede.size());
 	// Nome da rede
@@ -114,13 +115,25 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
 	msg.insert(msg.end(), senha_rede.begin(), senha_rede.end());
 
 	enviar_protocolo(Mensagem::Config, std::move(msg));
-	enviar_protocolo(Mensagem::Conectar, OperacaoConectar::Conectar);
+	enviar_protocolo(Mensagem::Conectar, Operacao::Conectar);
 
 	DBG("conectando wifi...");
 }
 
 bool conectado() {
-    return strstr(ipPara.ip_addr, "0.0.0.0") == nullptr;
+    return wifi_link_state == WIFI_CONNECTED;
+}
+
+std::string_view ip() {
+	return ipPara.ip_addr;
+}
+
+std::string_view nome_rede() {
+	return wifiPara.ap_name;
+}
+
+std::string_view senha_rede() {
+	return wifiPara.keyCode;
 }
 
 }

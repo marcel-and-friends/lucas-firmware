@@ -1,4 +1,4 @@
 #pragma once
 
-#define DEBUG_GCODES 1
-#define DEBUG_TEMP 0
+#define KOFY_DEBUG_GCODE 1
+#define KOFY_CUIDAR_TEMP 0
