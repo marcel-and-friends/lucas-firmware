@@ -7,6 +7,7 @@ namespace kofy {
 Boca::Lista Boca::s_lista = {};
 
 static void boca_ativa_mudou() {
+#if KOFY_ROTINA_TROCA
     static constexpr auto temp_ideal = 90;
     static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
     static constexpr auto margem_erro_temp = 10;
@@ -15,13 +16,13 @@ static void boca_ativa_mudou() {
     static constexpr auto distancia_entre_bocas = 160;
 
     // a segunda linha desse gcode indica a posição que será feita o descarte da água
-    static constexpr auto descartar_agua_e_aguardar_temp_ideal = 
+    static constexpr auto descartar_agua_e_aguardar_temp_ideal =
 R"(G0 F50000 Y60 X10
 G4 P3000
 G0 F1000 E100
 M109 T0 R)";
 
-    static constexpr auto mover_ate_boca_correta = 
+    static constexpr auto mover_ate_boca_correta =
 R"(G0 F50000 Y60 X)";
 
     static constexpr auto usar_movimento_absoluto = "G90\n";
@@ -37,7 +38,7 @@ R"(G0 F50000 Y60 X)";
 
 	#if KOFY_CUIDAR_TEMP
     // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp) 
+    if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp)
        rotina_troca_de_boca_ativa.append(descartar_agua_e_aguardar_temp_ideal).append(temp_ideal_str);
 	#endif
 
@@ -45,7 +46,7 @@ R"(G0 F50000 Y60 X)";
 
     // posiciona o bico na boca correta
     rotina_troca_de_boca_ativa.append(mover_ate_boca_correta).append(std::to_string(posicao_absoluta_boca_ativa));
-    
+
     // volta para movimentação relativa
     rotina_troca_de_boca_ativa.append(usar_movimento_relativo);
 
@@ -58,6 +59,8 @@ R"(G0 F50000 Y60 X)";
     #endif
 
     g_mudando_boca_ativa = true;
+
+#endif
 }
 
 // TODO: desenvolver um algoritmo legal pra isso...
@@ -84,7 +87,7 @@ void Boca::set_boca_ativa(Boca* boca) {
         return;
 
     s_boca_ativa = boca;
-    
+
     if (boca) {
         DBG("boca #", boca->numero(), " foi manualmente selecionada.");
         boca_ativa_mudou();
