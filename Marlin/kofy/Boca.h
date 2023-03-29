@@ -43,7 +43,14 @@ public:
         SET_OUTPUT(pino);
     }
 
+	void set_botao_apertado(bool b) {
+		m_botao_apertado = b;
+	}
+
+
     bool aguardando_botao() const { return m_aguardando_botao; }
+	
+	bool botao_apertado() const { return m_botao_apertado; }
 
     void aguardar_botao() { m_aguardando_botao = true; }
 
@@ -83,6 +90,8 @@ private:
     int m_pino_led = 0;
 
     bool m_aguardando_botao = true;
+
+	bool m_botao_apertado = false;
 };
 
 }

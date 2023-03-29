@@ -75,21 +75,24 @@ void idle() {
     }
 
     ultimo_tick = tick;
-    if (g_inicializando)
+    if (g_inicializando || g_conectando_wifi)
         return;
 
     for (auto& boca : Boca::lista()) {          
 		if (!boca.aguardando_botao())
 			continue;
 		
-		if (Boca::boca_ativa() && Boca::boca_ativa() == &boca)
-			continue;
+		if (!marlin::apertado(boca.botao()) && boca.botao_apertado()) {
+			if (Boca::boca_ativa() && Boca::boca_ativa() == &boca)
+				continue;
 
-		if (marlin::apertado(boca.botao())) {
 			boca.disponibilizar_para_uso();
+
 			if (!Boca::boca_ativa()) 
 				Boca::set_boca_ativa(&boca);
         }
+
+		boca.set_botao_apertado(marlin::apertado(boca.botao()));
     }
 }
 
