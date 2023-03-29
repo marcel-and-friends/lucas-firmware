@@ -877,7 +877,7 @@
 //#define J_DRIVER_TYPE  A4988
 //#define K_DRIVER_TYPE  A4988
 #define E0_DRIVER_TYPE TMC2208 //Wilson
-#define E1_DRIVER_TYPE TMC2209 //Wilson
+#define E1_DRIVER_TYPE TMC2208 //Wilson
 //#define E2_DRIVER_TYPE A4988
 //#define E3_DRIVER_TYPE A4988
 //#define E4_DRIVER_TYPE A4988
