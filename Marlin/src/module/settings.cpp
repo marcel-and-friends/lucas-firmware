@@ -1986,9 +1986,7 @@ void MarlinSettings::postprocess() {
 
         #if HAS_TRINAMIC_CONFIG
 
-          #define SET_CURR(Q) \
-		  	stepper##Q.rms_current(Q##_CURRENT); \
-			SERIAL_ECHOLNPGM("current para o eixo #", #Q, " = ", Q##_CURRENT);
+          #define SET_CURR(Q) stepper##Q.rms_current(currents.Q ? currents.Q : Q##_CURRENT);
           if (!validating) {
             #if AXIS_IS_TMC(X)
               SET_CURR(X);

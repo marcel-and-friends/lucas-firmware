@@ -52,8 +52,8 @@ void setup() {
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita.");
 
     g_conectando_wifi = true;
-	//marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4");
-	marlin::wifi::conectar("CLARO_2G97D2E8", "1297D2E8");
+	//marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
+	marlin::wifi::conectar("CLARO_2G97D2E8", "1297D2E8"); // vini
 
 }
 
@@ -156,14 +156,14 @@ bool pronto() {
     }
 
     if (g_inicializando) {
-        if (!gcode::comandos_pendentes()) {
+        if (!gcode::tem_comandos_pendentes()) {
             g_inicializando = false;
             DBG("rotina inicial terminada.");
         }
     }
 
     if (g_mudando_boca_ativa) {
-        if (!gcode::comandos_pendentes()) {
+        if (!gcode::tem_comandos_pendentes()) {
             g_mudando_boca_ativa = false;
             DBG("bico chegou na posição nova");
         }

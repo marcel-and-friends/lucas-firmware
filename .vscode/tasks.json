@@ -1,0 +1,40 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "build",
+			"command": "platformio",
+			"args": [
+				"run"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			},
+			"presentation": {
+				"echo": false,
+				"reveal": "always",
+				"focus": true,
+				"panel": "shared",
+				"showReuseMessage": false,
+				"clear": true
+			}
+		},
+		{
+			"label": "copy to sd card",
+			"type": "shell",
+			"command": "Copy-Item '.pio\\build\\mks_robin_nano_v3_usb_flash_drive\\Robin_nano_v3.bin' -Destination 'F:\\'",
+			"problemMatcher": []
+		},
+		{
+			"label": "build + copy",
+			"type": "shell",
+			"dependsOn": [
+				"build",
+				"copy to sd card"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": []
+		}
+	]
+}

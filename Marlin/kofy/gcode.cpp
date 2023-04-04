@@ -39,17 +39,18 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
 
 	switch (parser.codenum) {
 		case 0:
-			if (Boca::boca_ativa())
+			if (Boca::boca_ativa()) {
 				Boca::boca_ativa()->aguardar_botao();
-
-			parar_fila();
+				parar_fila();
+			}
 
 			break;
 		case 1:
 			Bico::ativar(millis(), parser.longval('T'), parser.longval('P'));
 			Bico::debug();
 
-			parar_fila();
+			if (Boca::boca_ativa())
+				parar_fila();
 
 			break;
 	}
@@ -60,7 +61,7 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
 
 }
 
-bool ultima_instrucao(std::string_view gcode) {
+bool e_ultima_instrucao(std::string_view gcode) {
 	return strchr(gcode.data(), '\n') == nullptr;
 }
 
@@ -68,7 +69,7 @@ void parar_fila() {
 	queue.injected_commands_P = nullptr;
 }
 
-bool comandos_pendentes() {
+bool tem_comandos_pendentes() {
 	return queue.injected_commands_P != nullptr;
 }
 
