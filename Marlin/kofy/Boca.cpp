@@ -21,8 +21,7 @@ G4 P3000
 G0 F1000 E100
 M109 T0 R)";
 
-    static constexpr auto mover_ate_boca_correta =
-R"(G0 F50000 Y60 X)";
+    static constexpr auto mover_ate_boca_correta = "G0 F50000 Y60 X";
 
     static constexpr auto usar_movimento_absoluto = "G90\n";
     static constexpr auto usar_movimento_relativo = "\nG91";
@@ -50,7 +49,8 @@ R"(G0 F50000 Y60 X)";
     	gcode::injetar(rotina_troca_de_boca_ativa);
     	DBG("executando rotina da troca de bocas");
     	#if KOFY_DEBUG_GCODE
-    		DBG("---- gcode -----\n", rotina_troca_de_boca_ativa.c_str());
+    		DBG("---- gcode da rotina ----\n", rotina_troca_de_boca_ativa.c_str());
+			DBG("-------------------------");
     	#endif
     	g_mudando_boca_ativa = true;
 	#endif
