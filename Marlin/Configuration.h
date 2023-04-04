@@ -36,6 +36,7 @@
  * Advanced settings can be found in Configuration_adv.h
  */
 #define CONFIGURATION_H_VERSION 02000902
+#define DEBUG_GCODE_PARSER
 
 //===========================================================================
 //============================= Getting Started =============================
@@ -103,7 +104,7 @@
  * :[-1, 0, 1, 2, 3, 4, 5, 6, 7]
  */
 // #define SERIAL_PORT 3 ex.:nano v1.2
-#define SERIAL_PORT -1 
+#define SERIAL_PORT -1
 
 /**
  * Serial Port Baud Rate
@@ -628,7 +629,7 @@
  */
 //#define PIDTEMPBED
 
-//#define BED_LIMIT_SWITCHING 
+//#define BED_LIMIT_SWITCHING
 
 /**
  * Max Bed Power
@@ -2846,7 +2847,7 @@
 // be used to mitigate the associated resolution loss. If enabled,
 // some of the PWM cycles are stretched so on average the desired
 // duty cycle is attained.
-//#define SOFT_PWM_DITHER
+#define SOFT_PWM_DITHER
 
 // Temperature status LEDs that display the hotend and bed temperature.
 // If all hotends, bed temperature, and target temperature are under 54C

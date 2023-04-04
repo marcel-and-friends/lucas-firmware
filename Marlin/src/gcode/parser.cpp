@@ -136,6 +136,7 @@ void GCodeParser::parse(char *p) {
 
   // Get the command letter, which must be G, M, or T
   const char letter = uppercase(*p++);
+  SERIAL_ECHOLNPGM("Got letter: ", letter);
 
   // Nullify asterisk and trailing whitespace
   char *starpos = strchr(p, '*');
@@ -173,7 +174,7 @@ void GCodeParser::parse(char *p) {
    * With Motion Modes enabled any axis letter can come first.
    */
   switch (letter) {
-    case 'G': case 'M': case 'T': TERN_(MARLIN_DEV_MODE, case 'D':) {
+    case 'G': case 'M': case 'T': case 'K': TERN_(MARLIN_DEV_MODE, case 'D':) {
       // Skip spaces to get the numeric part
       while (*p == ' ') p++;
 
@@ -190,6 +191,8 @@ void GCodeParser::parse(char *p) {
 
       // Bail if there's no command code number
       if (!TERN(SIGNED_CODENUM, NUMERIC_SIGNED(*p), NUMERIC(*p))) return;
+
+	  SERIAL_ECHOLNPGM("Setting command letter ", letter);
 
       // Save the command letter at this point
       // A '?' signifies an unknown command
@@ -277,7 +280,7 @@ void GCodeParser::parse(char *p) {
   }
 
   #if ENABLED(DEBUG_GCODE_PARSER)
-    const bool debug = codenum == 800;
+    const bool print_info = true;
   #endif
 
   /**
@@ -332,7 +335,7 @@ void GCodeParser::parse(char *p) {
       #endif
 
       #if ENABLED(DEBUG_GCODE_PARSER)
-        if (debug) {
+        if (print_info) {
           SERIAL_ECHOPGM("Got param ", AS_CHAR(param), " at index ", p - command_ptr - 1);
           if (has_val) SERIAL_ECHOPGM(" (has_val)");
         }
@@ -341,18 +344,18 @@ void GCodeParser::parse(char *p) {
       if (!has_val && !string_arg) {            // No value? First time, keep as string_arg
         string_arg = p - 1;
         #if ENABLED(DEBUG_GCODE_PARSER)
-          if (debug) SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
+          if (print_info) SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
         #endif
       }
 
-      if (TERN0(DEBUG_GCODE_PARSER, debug)) SERIAL_EOL();
+      if (TERN0(DEBUG_GCODE_PARSER, print_info)) SERIAL_EOL();
 
       TERN_(FASTER_GCODE_PARSER, set(param, valptr)); // Set parameter exists and pointer (nullptr for no value)
     }
     else if (!string_arg) {                     // Not A-Z? First time, keep as the string_arg
       string_arg = p - 1;
       #if ENABLED(DEBUG_GCODE_PARSER)
-        if (debug) SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
+        if (print_info) SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
       #endif
     }
 

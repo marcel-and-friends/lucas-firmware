@@ -23,7 +23,7 @@
 #pragma once
 
 //
-// MKS Robin Nano V3, MKS Eagle, MKS NANO6 pinmap, 
+// MKS Robin Nano V3, MKS Eagle, MKS NANO6 pinmap,
 //
 
 // #define MKS_TEST
@@ -94,7 +94,8 @@
 #define Z_DIR_PIN                           PB4
 
 #define E0_ENABLE_PIN                       PB3
-#define E0_STEP_PIN                         PD6
+//#define E0_STEP_PIN                         PD6
+#define E0_STEP_PIN                         PC14
 #define E0_DIR_PIN                          PD3
 
 #define E1_ENABLE_PIN                       PA3
@@ -139,7 +140,8 @@
 #define HEATER_1_PIN                        PB0   // HEATER2
 #define HEATER_BED_PIN                      PA0   // HOT BED
 
-#define FAN_PIN                             PC14  // FAN
+// #define FAN_PIN                             PC14  // FAN
+#define FAN_PIN                             PD6  // FAN
 #define FAN1_PIN                            PB1   // FAN1
 
 //
@@ -309,7 +311,7 @@
   #define TOUCH_MOSI_PIN             EXP2_05_PIN  // SPI1_MOSI
 
   #define LCD_READ_ID                       0xD3
-  
+
   #define LCD_USE_DMA_SPI
 
   #define TFT_BUFFER_SIZE                  14400

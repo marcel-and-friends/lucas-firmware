@@ -2,12 +2,13 @@
 #include "Boca.h"
 #include <src/MarlinCore.h>
 #include <src/module/temperature.h>
+#include <src/gcode/parser.h>
 
 namespace kofy {
 
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
-static constexpr auto GCODE_CAFE = 
+static constexpr auto GCODE_CAFE =
 R"(G4 P5000
 G0 F2000 X10
 G0 F2000 X-10
@@ -47,7 +48,7 @@ void setup() {
         boca.set_led(info.pino_led);
     }
 
-    
+
     DBG("bocas inicializadas (", Boca::NUM_BOCAS, ").");
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita.");
 
@@ -56,7 +57,7 @@ void setup() {
     g_conectando_wifi = true;
 }
 
-    
+
 void idle() {
     static uint64_t ultimo_tick = 0;
     auto tick = millis();
@@ -74,21 +75,36 @@ void idle() {
         }
     }
 
+
     ultimo_tick = tick;
     if (g_inicializando || g_conectando_wifi)
         return;
 
-    for (auto& boca : Boca::lista()) {          
+	if (g_bico.ativo) {
+		if (tick - g_bico.tick <= g_bico.tempo) {
+			WRITE(E0_STEP_PIN, g_bico.poder);
+		} else {
+			WRITE(E0_STEP_PIN, 0);
+			DBG("finalizando troço no tick: ", tick, " - diff: ", tick - g_bico.tick, " - ideal: ", g_bico.tempo);
+			g_bico = {};
+		}
+
+		return;
+	} else {
+		WRITE(E0_STEP_PIN, 0);
+	}
+
+    for (auto& boca : Boca::lista()) {
 		if (!boca.aguardando_botao())
 			continue;
-		
+
 		if (!marlin::apertado(boca.botao()) && boca.botao_apertado()) {
 			if (Boca::boca_ativa() && Boca::boca_ativa() == &boca)
 				continue;
 
 			boca.disponibilizar_para_uso();
 
-			if (!Boca::boca_ativa()) 
+			if (!Boca::boca_ativa())
 				Boca::set_boca_ativa(&boca);
         }
 
@@ -104,9 +120,9 @@ void event_handler()  {
 			" \nnome = ", marlin::wifi::nome_rede().data(),
 			" \nsenha = ", marlin::wifi::senha_rede().data());
 
-			#if KOFY_CUIDAR_TEMP
+			#if KOFY_ROTINA_INICIAL
 			DBG("iniciando rotina inicial");
-            marlin::injetar_gcode(ROTINA_INICIAL);
+            gcode::injetar(ROTINA_INICIAL);
             g_inicializando = true;
 			#endif
         }
@@ -129,6 +145,14 @@ void event_handler()  {
         return;
     }
 
+	if (g_bico.ativo)
+		return;
+
+	#ifdef KOFY_ROUBAR_FILA_GCODE
+	gcode::injetar(KOFY_ROUBAR_FILA_GCODE);
+	return;
+	#endif
+
     auto boca_ativa = Boca::boca_ativa();
     if (!boca_ativa) {
         return;
@@ -139,15 +163,7 @@ void event_handler()  {
 		return;
 	}
 
-    if (boca_ativa->proxima_instrucao() == "K0") {
-        DBG("executando 'K0' na boca #", boca_ativa->numero(), " - pressione o botão para finalizar a receita.");
-
-        boca_ativa->pular_proxima_instrucao();
-        boca_ativa->aguardar_botao();
-		Boca::procurar_nova_boca_ativa();
-    } else {
-        boca_ativa->progredir_receita();
-    }
+    boca_ativa->prosseguir_receita();
 }
 
 }

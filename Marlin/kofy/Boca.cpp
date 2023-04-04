@@ -7,7 +7,6 @@ namespace kofy {
 Boca::Lista Boca::s_lista = {};
 
 static void boca_ativa_mudou() {
-#if KOFY_ROTINA_TROCA
     static constexpr auto temp_ideal = 90;
     static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
     static constexpr auto margem_erro_temp = 10;
@@ -50,7 +49,8 @@ R"(G0 F50000 Y60 X)";
     // volta para movimentação relativa
     rotina_troca_de_boca_ativa.append(usar_movimento_relativo);
 
-    marlin::injetar_gcode(rotina_troca_de_boca_ativa);
+#if KOFY_ROTINA_TROCA
+    gcode::injetar(rotina_troca_de_boca_ativa);
 
     DBG("executando rotina da troca de bocas");
 
@@ -79,7 +79,6 @@ void Boca::procurar_nova_boca_ativa() {
     DBG("nenhuma boca está disponível. :(");
 
     s_boca_ativa = nullptr;
-	marlin::parar_fila_de_gcode();
 }
 
 void Boca::set_boca_ativa(Boca* boca) {
@@ -95,26 +94,18 @@ void Boca::set_boca_ativa(Boca* boca) {
 }
 
 std::string_view Boca::proxima_instrucao() const {
-    auto proxima_instrucao = m_receita.data() + m_progresso_receita;
-    // como uma sequência de gcodes é separada pelo caractere de nova linha basta procurar um desse para encontrar o fim
-    auto fim_do_proximo_gcode = strchr(proxima_instrucao, '\n');
-    if (!fim_do_proximo_gcode) {
-        // se a nova linha não existe então estamos no último
-        return proxima_instrucao;
-    }
-
-    return std::string_view{ proxima_instrucao, static_cast<size_t>(fim_do_proximo_gcode - proxima_instrucao)};
+	return gcode::proxima_instrucao(m_receita.data() + m_progresso_receita);
 }
 
-void Boca::progredir_receita() {
-    auto proxima_instrucao = this->proxima_instrucao();
-    // se não há uma nova linha após a próxima instrução então ela é a última
-    bool ultima_instrucao = !strchr(proxima_instrucao.data(), '\n');
-    ultima_instrucao ? finalizar_receita() : executar_instrucao(proxima_instrucao);
-}
-
-void Boca::pular_proxima_instrucao() {
-    m_progresso_receita += proxima_instrucao().size() + 1;
+void Boca::prosseguir_receita() {
+	auto instrucao_atual = m_receita.data() + m_progresso_receita;
+	gcode::injetar(instrucao_atual);
+	if (queue.injected_commands_P) {
+    	m_progresso_receita += queue.injected_commands_P - instrucao_atual;
+	} else {
+		m_progresso_receita = 0;
+		aguardar_botao();
+	}
 }
 
 void Boca::disponibilizar_para_uso() {
@@ -139,8 +130,8 @@ void Boca::executar_instrucao(std::string_view instrucao) {
         std::string str(instrucao);
         DBG("executando gcode: ", str.data());
     #endif
-    marlin::injetar_gcode(instrucao);
-    m_progresso_receita += instrucao.size() + 1;
+    gcode::injetar(instrucao);
+    m_progresso_receita += queue.injected_commands_P - (m_receita.data() + m_progresso_receita);
 }
 
 }

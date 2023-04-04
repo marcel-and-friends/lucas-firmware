@@ -24,9 +24,7 @@ public:
 public:
     std::string_view proxima_instrucao() const;
 
-    void progredir_receita();
-    
-    void pular_proxima_instrucao();
+    void prosseguir_receita();
 
 public:
     void set_receita(std::string receita) {
@@ -49,7 +47,7 @@ public:
 
 
     bool aguardando_botao() const { return m_aguardando_botao; }
-	
+
 	bool botao_apertado() const { return m_botao_apertado; }
 
     void aguardar_botao() { m_aguardando_botao = true; }
@@ -59,7 +57,7 @@ public:
     int led() const { return m_pino_led; }
 
     const std::string& receita() const { return m_receita; }
-    
+
     ptrdiff_t progresso_receita() const { return m_progresso_receita; }
 
     void disponibilizar_para_uso();
@@ -83,8 +81,8 @@ private:
     std::string m_receita;
 
     // a posição dentro da receita que estamos
-    ptrdiff_t m_progresso_receita = 0; 
-    
+    ptrdiff_t m_progresso_receita = 0;
+
     int m_pino_botao = 0;
 
     int m_pino_led = 0;
