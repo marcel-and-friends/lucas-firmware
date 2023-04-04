@@ -94,8 +94,7 @@
 #define Z_DIR_PIN                           PB4
 
 #define E0_ENABLE_PIN                       PB3
-//#define E0_STEP_PIN                         PD6
-#define E0_STEP_PIN                         PC14
+#define E0_STEP_PIN                         PD6
 #define E0_DIR_PIN                          PD3
 
 #define E1_ENABLE_PIN                       PA3
@@ -140,8 +139,7 @@
 #define HEATER_1_PIN                        PB0   // HEATER2
 #define HEATER_BED_PIN                      PA0   // HOT BED
 
-// #define FAN_PIN                             PC14  // FAN
-#define FAN_PIN                             PD6  // FAN
+#define FAN_PIN                             PC14  // FAN
 #define FAN1_PIN                            PB1   // FAN1
 
 //

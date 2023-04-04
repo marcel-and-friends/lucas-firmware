@@ -16,8 +16,8 @@ enum class Mensagem : byte {
 	* | Nome da rede             | Tamanho do nome da rede  | Nome da rede                                       |
 	* | Tamanho da senha da rede | 1 (uint8_t)              | Tamanho da senha da rede - máximo de 64 caracteres |
 	* | Senha da rede            | Tamanho da senha da rede | Senha da rede                                      |
-	* +--------------------------+--------------------------+----------------------------------------------------+ 
-	*/  
+	* +--------------------------+--------------------------+----------------------------------------------------+
+	*/
 	Config = 0x0,
 	/*
 	* +----------+-----------------+-----------------------------------+
@@ -53,9 +53,9 @@ template<Iterator It>
 static void enviar_protocolo(Mensagem tipo, It&& it) {
 	/*
 	* - Comunicação com o módulo WiFi da MakerBase -
-	* 
+	*
 	* Todos os protocolos enviados/recebidos do módulo WiFi tem a seguinte estrutura:
-	* 
+	*
 	* +----------+-----------------+--------------------------------------------------------------------+
 	* | Segmento | Tamanho (bytes) | Descrição                                                          |
 	* +----------+-----------------+--------------------------------------------------------------------+
@@ -65,7 +65,7 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
 	* | Mensagem | Tamanho         | Mensagem em sí                                                     |
 	* | Fim      | 1 (uint8_t)     | Fim do protocolo - sempre 0xFC                                     |
 	* +----------+-----------------+--------------------------------------------------------------------+
-	* 
+	*
 	* Cada mensagem possui uma estrutura interna, documentadas no enum 'Mensagem'
 	*/
 	constexpr byte INICIO = 0xA5;
@@ -81,7 +81,7 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
 	// Tipo
 	buffer.push_back(static_cast<byte>(tipo));
 	// Tamanho (16 bytes divididos em 2)
-	buffer.push_back(tamanho_msg & 0xFF); 
+	buffer.push_back(tamanho_msg & 0xFF);
 	buffer.push_back((tamanho_msg >> 8) & 0xFF);
 	// Mensagem
 	buffer.insert(buffer.end(), it.begin(), it.end());

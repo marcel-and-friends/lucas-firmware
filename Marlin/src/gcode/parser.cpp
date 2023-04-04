@@ -136,7 +136,6 @@ void GCodeParser::parse(char *p) {
 
   // Get the command letter, which must be G, M, or T
   const char letter = uppercase(*p++);
-  SERIAL_ECHOLNPGM("Got letter: ", letter);
 
   // Nullify asterisk and trailing whitespace
   char *starpos = strchr(p, '*');
@@ -191,8 +190,6 @@ void GCodeParser::parse(char *p) {
 
       // Bail if there's no command code number
       if (!TERN(SIGNED_CODENUM, NUMERIC_SIGNED(*p), NUMERIC(*p))) return;
-
-	  SERIAL_ECHOLNPGM("Setting command letter ", letter);
 
       // Save the command letter at this point
       // A '?' signifies an unknown command

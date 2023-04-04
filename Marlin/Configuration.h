@@ -36,7 +36,7 @@
  * Advanced settings can be found in Configuration_adv.h
  */
 #define CONFIGURATION_H_VERSION 02000902
-#define DEBUG_GCODE_PARSER
+//#define DEBUG_GCODE_PARSER
 
 //===========================================================================
 //============================= Getting Started =============================
