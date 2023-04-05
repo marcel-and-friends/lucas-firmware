@@ -38,21 +38,33 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
 		return false;
 
 	switch (parser.codenum) {
+		// K0: Interrompe a boca ativa até seu botão ser apertado
 		case 0:
-			if (Boca::boca_ativa()) {
-				Boca::boca_ativa()->aguardar_botao();
-				parar_fila();
-			}
+			if (!Boca::boca_ativa())
+				break;
+
+			Boca::boca_ativa()->aguardar_botao();
+			parar_fila();
 
 			break;
-		case 1:
-			Bico::ativar(millis(), parser.longval('T'), parser.longval('P'));
+		// K1: Controla o bico
+		// T - Tempo, em milisegundos, que o bico deve ficar ligado
+		// P - Potência, [0-100], controla a força que a água é despejada
+		case 1: {
+			auto tick = millis();
+			auto tempo = parser.longval('T');
+			// PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
+			// FIXME: fazer uma conta mais legal aqui pra trabalhar somente no range de tensão ideal
+			//		  algo entre 2-5V fica bom, o pino atual (FAN) produz 12V se passamos 100 para o K1.
+			auto potencia = parser.longval('P') * 2.5;
+			Bico::ativar(tick, tempo, potencia);
 			Bico::debug();
 
 			if (Boca::boca_ativa())
 				parar_fila();
 
 			break;
+		}
 	}
 
 	DBG("executando 'K", parser.codenum, "'");
