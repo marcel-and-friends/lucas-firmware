@@ -17,7 +17,7 @@ public:
 
     static Lista& lista() { return s_lista; }
 
-    static Boca* const boca_ativa() { return s_boca_ativa; }
+    static Boca* const ativa() { return s_boca_ativa; }
 
     static void set_boca_ativa(Boca* boca);
 
@@ -26,25 +26,26 @@ public:
 
     void prosseguir_receita();
 
+    void disponibilizar_para_uso();
+
+    size_t numero() const;
+
+	void cancelar_receita();
+
 public:
     void set_receita(std::string receita) {
         m_receita = std::move(receita);
         m_progresso_receita = 0;
     }
 
-    void set_botao(int pino) {
-        m_pino_botao = pino;
-    }
+    void set_botao(int pino) { m_pino_botao = pino; }
 
     void set_led(int pino) {
         m_pino_led = pino;
         SET_OUTPUT(pino);
     }
 
-	void set_botao_apertado(bool b) {
-		m_botao_apertado = b;
-	}
-
+	void set_botao_apertado(bool b) { m_botao_apertado = b; }
 
     bool aguardando_botao() const { return m_aguardando_botao; }
 
@@ -60,9 +61,11 @@ public:
 
     ptrdiff_t progresso_receita() const { return m_progresso_receita; }
 
-    void disponibilizar_para_uso();
+	void reiniciar_receita() { m_progresso_receita = 0; }
 
-    size_t numero() const;
+	millis_t tick_apertado_para_cancelar() const { return m_tick_apertado_para_cancelar; }
+
+	void set_tick_apertado_para_cancelar(millis_t t) { m_tick_apertado_para_cancelar = t; }
 
 private:
     static Lista s_lista;
@@ -83,13 +86,23 @@ private:
     // a posição dentro da receita que estamos
     ptrdiff_t m_progresso_receita = 0;
 
+	// o pino físico do nosso botão
     int m_pino_botao = 0;
 
+	// o pino físico da nossa led
     int m_pino_led = 0;
 
+	// estamos aguardando o botão ser apertado para prosseguirmos?
+	// OBS: todas as máquinas começam aguardando o botão
     bool m_aguardando_botao = true;
 
+	// estamos segurando o botão?
+	// usado como um debounce para ativar uma boca somente quando o botão é solto
 	bool m_botao_apertado = false;
+
+	// quanto tempo o botão está sendo segurado
+	// usado para cancelar uma receita
+	millis_t m_tick_apertado_para_cancelar = 0;
 };
 
 }

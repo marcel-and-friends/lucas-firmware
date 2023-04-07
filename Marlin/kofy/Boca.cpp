@@ -6,7 +6,7 @@ namespace kofy {
 
 Boca::Lista Boca::s_lista = {};
 
-static void boca_ativa_mudou() {
+namespace util {
     static constexpr auto temp_ideal = 90;
     static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
     static constexpr auto margem_erro_temp = 10;
@@ -25,29 +25,36 @@ M109 T0 R)";
 
     static constexpr auto usar_movimento_absoluto = "G90\n";
     static constexpr auto usar_movimento_relativo = "\nG91";
+}
 
+static void boca_ativa_mudou() {
+	#if KOFY_DEBUG_GCODE
+		auto gcode = Boca::ativa()->receita().c_str() + Boca::ativa()->progresso_receita();
+		DBG("-------- receita --------\n", gcode);
+		DBG("-------------------------");
+	#endif
     // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente para os gcodes serem executados
     static std::string rotina_troca_de_boca_ativa = "";
     // e significa que tem que ser limpa toda vez que essa função é chamada
     rotina_troca_de_boca_ativa.clear();
     // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
-    rotina_troca_de_boca_ativa.append(usar_movimento_absoluto);
+    rotina_troca_de_boca_ativa.append(util::usar_movimento_absoluto);
 
 	#if KOFY_CUIDAR_TEMP
     	// se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    	if (abs(thermalManager.wholeDegHotend(0) - temp_ideal) >= margem_erro_temp)
-    	   rotina_troca_de_boca_ativa.append(descartar_agua_e_aguardar_temp_ideal).append(temp_ideal_str);
+    	if (abs(thermalManager.wholeDegHotend(0) - util::temp_ideal) >= util::margem_erro_temp)
+    	   rotina_troca_de_boca_ativa.append(util::descartar_agua_e_aguardar_temp_ideal).append(util::temp_ideal_str);
 	#endif
 
-    auto posicao_absoluta_boca_ativa = distancia_primeira_boca + Boca::boca_ativa()->numero() * distancia_entre_bocas;
+    auto posicao_absoluta_boca_ativa = util::distancia_primeira_boca + Boca::ativa()->numero() * util::distancia_entre_bocas;
     // posiciona o bico na boca correta
-    rotina_troca_de_boca_ativa.append(mover_ate_boca_correta).append(std::to_string(posicao_absoluta_boca_ativa));
+    rotina_troca_de_boca_ativa.append(util::mover_ate_boca_correta).append(std::to_string(posicao_absoluta_boca_ativa));
     // volta para movimentação relativa
-    rotina_troca_de_boca_ativa.append(usar_movimento_relativo);
+    rotina_troca_de_boca_ativa.append(util::usar_movimento_relativo);
 
 	#if KOFY_ROTINA_TROCA
+    	DBG("executando rotina da troca de boca ativa");
     	gcode::injetar(rotina_troca_de_boca_ativa);
-    	DBG("executando rotina da troca de bocas");
     	#if KOFY_DEBUG_GCODE
     		DBG("---- gcode da rotina ----\n", rotina_troca_de_boca_ativa.c_str());
 			DBG("-------------------------");
@@ -62,14 +69,14 @@ void Boca::procurar_nova_boca_ativa() {
 
     for (auto& boca : s_lista) {
         if (!boca.aguardando_botao()) {
-            DBG("boca #", boca.numero(), " foi selecionada!");
+            DBG("boca #", boca.numero(), " - escolhida como nova boca ativa");
             s_boca_ativa = &boca;
             boca_ativa_mudou();
             return;
         }
     }
 
-    DBG("nenhuma boca está disponível. :(");
+    DBG("nenhuma boca está disponível :(");
 
     s_boca_ativa = nullptr;
 }
@@ -80,8 +87,8 @@ void Boca::set_boca_ativa(Boca* boca) {
 
     s_boca_ativa = boca;
 
-    if (boca) {
-        DBG("boca #", boca->numero(), " foi manualmente selecionada.");
+    if (s_boca_ativa) {
+        DBG("boca #", boca->numero(), " foi manualmente selecionada para ser a nova boca ativa");
         boca_ativa_mudou();
     }
 }
@@ -96,7 +103,7 @@ void Boca::prosseguir_receita() {
 }
 
 void Boca::disponibilizar_para_uso() {
-    DBG("disponibilizando boca #", numero(), " para uso.");
+    DBG("boca #", numero(), " - disponibilizada para uso");
     m_aguardando_botao = false;
 }
 
@@ -104,20 +111,30 @@ size_t Boca::numero() const {
     return ((uintptr_t)this - (uintptr_t)&s_lista) / sizeof(Boca);
 }
 
+void Boca::cancelar_receita() {
+	reiniciar_receita();
+	set_botao_apertado(false);
+	aguardar_botao();
+	if (Boca::ativa() == this) {
+		Boca::set_boca_ativa(nullptr);
+		gcode::parar_fila();
+	}
+}
+
 void Boca::executar_instrucao(std::string_view instrucao) {
     #if KOFY_DEBUG_GCODE
 		static char buf[256] = {};
 		memcpy(buf, instrucao.data(), instrucao.size());
 		buf[instrucao.size()] = '\0';
-        DBG("executando gcode: ", buf);
+        DBG("boca #", numero(), " - executando instrução '", buf, "'");
     #endif
     gcode::injetar(instrucao);
-
 	if (!gcode::e_ultima_instrucao(instrucao)) {
 		m_progresso_receita += instrucao.size() + 1;
 	} else {
-		m_progresso_receita = 0;
-		m_aguardando_botao = true;
+		// o proximo gcode é o último...
+		reiniciar_progresso();
+		aguardar_botao();
 	}
 }
 

@@ -116,8 +116,6 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
 
 	enviar_protocolo(Mensagem::Config, config_msg);
 	enviar_protocolo(Mensagem::Conectar, Operacao::Conectar);
-
-	DBG("conectando wifi...");
 }
 
 bool conectado() {

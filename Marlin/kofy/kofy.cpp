@@ -8,20 +8,14 @@ namespace kofy {
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
 static constexpr auto GCODE_CAFE =
-R"(G4 P5000
-G0 F2000 X10
-G0 F2000 X-10
-G0 F2000 X0
+R"(G3 F5000 I20 J20 P5
 K0
-G0 F1000 E50
-G4 P3000
-G0 F1000 E0)";
-// K0: Interrompe a boca até o botão ser apertado
+G3 F5000 I20 J20 P5)";
 
 // Gcode necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =
 R"(G28 X Y
-M190 R83)"; // MUDAR PARA R93, aqui é a temperatura ideal, a máquina não fará nada até chegar nesse ponto
+M190 R93)"; // MUDAR PARA R93, aqui é a temperatura ideal, a máquina não fará nada até chegar nesse ponto
 
 void setup() {
     struct InfoBoca {
@@ -48,31 +42,37 @@ void setup() {
     }
 
 
-    DBG("bocas inicializadas (", Boca::NUM_BOCAS, ").");
-    DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita.");
+    DBG("bocas inicializadas - ", Boca::NUM_BOCAS);
+    DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita");
 
     g_conectando_wifi = true;
-	//marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
-	marlin::wifi::conectar("CLARO_2G97D2E8", "1297D2E8"); // vini
+	DBG("conectando wifi");
+	// marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
+	// marlin::wifi::conectar("CLARO_2G97D2E8", "1297D2E8"); // vini
+	marlin::wifi::conectar("Kika-Amora", "Desconto5"); // marcel
 
 }
 
-void atualizar_leds(millis_t tick, millis_t ultimo_tick);
-void atualizar_botoes();
+void atualizar_leds(millis_t tick);
+void atualizar_botoes(millis_t tick);
 
 void idle() {
     if (g_inicializando || g_conectando_wifi)
         return;
 
-    static millis_t ultimo_tick = millis();
+	// a 'idle' pode ser chamada mais de uma vez em um milésimo, precisamos fitrar esses casos
+	// OBS: essa variável pode ser inicializada com 'millis()' também mas daí perderíamos o primeiro tick...
+    static millis_t ultimo_tick = 0;
     auto tick = millis();
+	if (ultimo_tick == tick)
+		return;
 
-	atualizar_leds(tick, ultimo_tick);
+	atualizar_leds(tick);
 
 	if (Bico::ativo())
 		Bico::agir(tick);
 
-	atualizar_botoes();
+	atualizar_botoes(tick);
 
     ultimo_tick = tick;
 }
@@ -83,6 +83,7 @@ void event_handler()  {
 	if (!pronto())
 		return;
 
+	// não prosseguimos com a receita se o bico está ativo
 	if (Bico::ativo())
 		return;
 
@@ -91,10 +92,9 @@ void event_handler()  {
 		return;
 	#endif
 
-    auto boca_ativa = Boca::boca_ativa();
-    if (!boca_ativa) {
-        return;
-	}
+    auto boca_ativa = Boca::ativa();
+	if (!boca_ativa)
+		return;
 
 	if (boca_ativa->aguardando_botao()) {
 		Boca::procurar_nova_boca_ativa();
@@ -104,38 +104,70 @@ void event_handler()  {
     boca_ativa->prosseguir_receita();
 }
 
-void atualizar_leds(millis_t tick, millis_t ultimo_tick) {
+void atualizar_leds(millis_t tick) {
+	constexpr auto TIMER_LED = 650; // 650ms
+	static bool ultimo = true;
+
 	for (auto& boca : Boca::lista()) {
         if (boca.aguardando_botao()) {
-            auto timer = boca.progresso_receita() ? 250 : 500;
-            // a variável "ultimo_tick" é necessária pois a 'idle()' do marlin
-            // é chamada mais de uma vez por tick
-            if (tick % timer == 0 && ultimo_tick != tick) {
-                TOGGLE(boca.led());
-            }
+			// bocas indisponíveis piscam em um intervalo constante
+			// FIXME: essa lógica tem que mudar quando chegar o aplicativo
+            if (tick % TIMER_LED == 0) {
+                WRITE(boca.led(), ultimo);
+			}
         } else {
-            WRITE(boca.led(), Boca::boca_ativa() == &boca);
+			// a boca está disponível...
+			// 		- se está ativa fica ligada estaticamente
+			// 		- se não está ativa fica apagada
+            WRITE(boca.led(), Boca::ativa() == &boca);
         }
     }
 
+    if (tick % TIMER_LED == 0)
+		ultimo = !ultimo;
 }
 
-void atualizar_botoes() {
-    for (auto& boca : Boca::lista()) {
-		if (!boca.aguardando_botao())
-			continue;
+void atualizar_botoes(millis_t tick) {
+	constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
+	static int botao_boca_cancelada = 0;
+	if (Boca::ativa()) {
+		auto& boca = *Boca::ativa();
+		if (marlin::apertado(boca.botao())) {
+			if (!boca.tick_apertado_para_cancelar())
+				boca.set_tick_apertado_para_cancelar(tick);
 
-		if (!marlin::apertado(boca.botao()) && boca.botao_apertado()) {
-			if (Boca::boca_ativa() && Boca::boca_ativa() == &boca)
+			if (tick - boca.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA)	 {
+				boca.cancelar_receita();
+				botao_boca_cancelada = boca.botao();
+				DBG("!!!! RECEITA CANCELADA !!!!");
+				return;
+			}
+		} else {
+			botao_boca_cancelada = 0;
+			boca.set_tick_apertado_para_cancelar(0);
+		}
+	}
+
+	if (botao_boca_cancelada && marlin::apertado(botao_boca_cancelada))
+		return;
+
+	botao_boca_cancelada = 0;
+
+    for (auto& boca : Boca::lista()) {
+		auto apertado = marlin::apertado(boca.botao());
+		if (!apertado && boca.botao_apertado() && boca.aguardando_botao()) {
+			// o botão acabou de ser solto
+			// se a boca já é a ativa não é necessário fazer nada
+			if (Boca::ativa() && Boca::ativa() == &boca)
 				continue;
 
 			boca.disponibilizar_para_uso();
-
-			if (!Boca::boca_ativa())
+			// se ainda não temos uma boca ativa setamos essa
+			if (!Boca::ativa())
 				Boca::set_boca_ativa(&boca);
         }
 
-		boca.set_botao_apertado(marlin::apertado(boca.botao()));
+		boca.set_botao_apertado(apertado);
     }
 }
 
@@ -143,13 +175,20 @@ bool pronto() {
 	if (g_conectando_wifi)   {
         if (marlin::wifi::conectado()) {
             g_conectando_wifi = false;
-            DBG("conectado\nip = ", marlin::wifi::ip().data(),
+            DBG("conectado!");
+			DBG("-- informações da rede --");
+			DBG("ip = ", marlin::wifi::ip().data(),
 			" \nnome = ", marlin::wifi::nome_rede().data(),
 			" \nsenha = ", marlin::wifi::senha_rede().data());
+			DBG("-------------------------");
 
 			#if KOFY_ROTINA_INICIAL
-				DBG("iniciando rotina inicial");
+				DBG("executando rotina inicial");
             	gcode::injetar(ROTINA_INICIAL);
+				#if KOFY_DEBUG_GCODE
+				    DBG("---- gcode da rotina ----\n", ROTINA_INICIAL);
+					DBG("-------------------------");
+				#endif
             	g_inicializando = true;
 			#endif
         }
@@ -165,7 +204,7 @@ bool pronto() {
     if (g_mudando_boca_ativa) {
         if (!gcode::tem_comandos_pendentes()) {
             g_mudando_boca_ativa = false;
-            DBG("bico chegou na posição nova");
+            DBG("troca de boca finalizada, bico está na nova posição");
         }
     }
 

@@ -29,9 +29,7 @@ void Bico::ativar(millis_t tick, millis_t tempo, int poder) {
 	s_tick = tick;
 	s_tempo = tempo;
 	s_poder = poder;
-}
 
-void Bico::debug() {
 	DBG("T: ", s_tempo, " - P: ", s_poder, " - tick: ", s_tick);
 }
 

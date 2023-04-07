@@ -23,8 +23,30 @@
 		{
 			"label": "copy to sd card",
 			"type": "shell",
-			"command": "Copy-Item '.pio\\build\\mks_robin_nano_v3_usb_flash_drive\\Robin_nano_v3.bin' -Destination 'F:\\'",
-			"problemMatcher": []
+			"command": "Copy-Item",
+			"args": [
+				"-Path",
+				".pio\\build\\mks_robin_nano_v3_usb_flash_drive\\Robin_nano_v3.bin",
+				"-Destination",
+				"F:\\"
+			],
+			"problemMatcher": {
+				"owner": "custom",
+				"fileLocation": ["absolute"],
+				"pattern": [{
+					"regexp": "At (.*\\.ps1):(\\d*) char:(\\d*)(.*)",
+					"file": 1,
+					"line": 2,
+					"column": 3
+				}, {
+					"regexp": "\\+.*"
+				},{
+					"regexp": "\\+.*"
+				},{
+					"regexp": "(.+)",
+					"message": 1
+				}]
+			}
 		},
 		{
 			"label": "build + copy",
