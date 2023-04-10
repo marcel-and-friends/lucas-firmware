@@ -139,6 +139,8 @@ vc-fileutils.settings
 # Visual Studio Code
 .vscode/.browse.c_cpp.db*
 .vscode/*.db
+.vscode/c_cpp_properties.json
+.vscode/launch.json
 
 #Simulation
 imgui.ini
