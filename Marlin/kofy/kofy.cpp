@@ -1,5 +1,6 @@
 #include "kofy.h"
 #include "Boca.h"
+#include <src/module/planner.h>
 #include <src/module/temperature.h>
 #include <src/gcode/parser.h>
 
@@ -8,14 +9,20 @@ namespace kofy {
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
 static constexpr auto GCODE_CAFE =
-R"(G3 F5000 I20 J20 P5
+R"(G3 F5000 I20 J20
+G3 F5000 I15 J15
+G3 F5000 I10 J10
+G3 F5000 I5 J5
 K0
-G3 F5000 I20 J20 P5)";
+G3 F5000 I5 J5
+G3 F5000 I10 J10
+G3 F5000 I15 J15
+G3 F5000 I20 J20)";
 
-// Gcode necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
+// Gcodes necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =
 R"(G28 X Y
-M190 R93)"; // MUDAR PARA R93, aqui é a temperatura ideal, a máquina não fará nada até chegar nesse ponto
+M190 R93)";
 
 void setup() {
     struct InfoBoca {
@@ -109,18 +116,15 @@ void atualizar_leds(millis_t tick) {
 	static bool ultimo = true;
 
 	for (auto& boca : Boca::lista()) {
-        if (boca.aguardando_botao()) {
-			// bocas indisponíveis piscam em um intervalo constante
-			// FIXME: essa lógica tem que mudar quando chegar o aplicativo
+		if (Boca::ativa() == &boca) {
+            WRITE(boca.led(), true);
+		} else if (boca.aguardando_botao()) {
             if (tick % TIMER_LED == 0) {
                 WRITE(boca.led(), ultimo);
 			}
-        } else {
-			// a boca está disponível...
-			// 		- se está ativa fica ligada estaticamente
-			// 		- se não está ativa fica apagada
-            WRITE(boca.led(), Boca::ativa() == &boca);
-        }
+		} else {
+            WRITE(boca.led(), false);
+		}
     }
 
     if (tick % TIMER_LED == 0)
@@ -133,8 +137,10 @@ void atualizar_botoes(millis_t tick) {
 	if (Boca::ativa()) {
 		auto& boca = *Boca::ativa();
 		if (marlin::apertado(boca.botao())) {
-			if (!boca.tick_apertado_para_cancelar())
+			if (!boca.tick_apertado_para_cancelar()) {
 				boca.set_tick_apertado_para_cancelar(tick);
+				return;
+			}
 
 			if (tick - boca.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA)	 {
 				boca.cancelar_receita();
