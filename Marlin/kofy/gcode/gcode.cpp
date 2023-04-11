@@ -1,6 +1,7 @@
 #include "gcode.h"
 #include <cstring>
 #include <src/gcode/parser.h>
+#include <src/gcode/queue.h>
 #include <kofy/Boca.h>
 
 namespace kofy::gcode {

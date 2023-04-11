@@ -1,8 +1,6 @@
 #include "kofy.h"
-#include "Boca.h"
-#include <src/module/planner.h>
-#include <src/module/temperature.h>
-#include <src/gcode/parser.h>
+#include <kofy/Boca.h>
+#include <kofy/util/util.h>
 
 namespace kofy {
 
@@ -52,12 +50,13 @@ void setup() {
     DBG("bocas inicializadas - ", Boca::NUM_BOCAS);
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita");
 
-    g_conectando_wifi = true;
-	DBG("conectando wifi");
-	// marlin::wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
-	// marlin::wifi::conectar("CLARO_2G97D2E8", "1297D2E8"); // vini
-	marlin::wifi::conectar("Kika-Amora", "Desconto5"); // marcel
-
+	#if KOFY_CONECTAR_WIFI
+		g_conectando_wifi = true;
+		DBG("conectando wifi");
+		// wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
+		// wifi::conectar("CLARO_2G97D2E8", "1297D2E8"); // vini
+		wifi::conectar("Kika-Amora", "Desconto5"); // marcel
+	#endif
 }
 
 void atualizar_leds(millis_t tick);
@@ -69,9 +68,9 @@ void idle() {
 
 	// a 'idle' pode ser chamada mais de uma vez em um milésimo, precisamos fitrar esses casos
 	// OBS: essa variável pode ser inicializada com 'millis()' também mas daí perderíamos o primeiro tick...
-    static millis_t ultimo_tick = 0;
+    static millis_t ultimo_estado_tick = 0;
     auto tick = millis();
-	if (ultimo_tick == tick)
+	if (ultimo_estado_tick == tick)
 		return;
 
 	atualizar_leds(tick);
@@ -81,7 +80,7 @@ void idle() {
 
 	atualizar_botoes(tick);
 
-    ultimo_tick = tick;
+    ultimo_estado_tick = tick;
 }
 
 bool pronto();
@@ -113,22 +112,27 @@ void event_handler()  {
 
 void atualizar_leds(millis_t tick) {
 	constexpr auto TIMER_LED = 650; // 650ms
-	static bool ultimo = true;
+	// é necessario manter um estado geral para que as leds se mantenham em sincronia.
+	// poderiamos simplificar essa funcao substituindo o 'WRITE(boca.led(), ultimo_estado)' por 'TOGGLE(boca.led())'
+	// porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
+	static bool ultimo_estado = true;
 
 	for (auto& boca : Boca::lista()) {
 		if (Boca::ativa() == &boca) {
+			// somos a boca ativa, led ligada em cor sólida
             WRITE(boca.led(), true);
 		} else if (boca.aguardando_botao()) {
-            if (tick % TIMER_LED == 0) {
-                WRITE(boca.led(), ultimo);
-			}
+			// aguardando input do usuário, led piscando
+            if (tick % TIMER_LED == 0)
+                WRITE(boca.led(), ultimo_estado);
 		} else {
+			// não somos a boca ativa mas estamos disponíveis, led apagada
             WRITE(boca.led(), false);
 		}
     }
 
     if (tick % TIMER_LED == 0)
-		ultimo = !ultimo;
+		ultimo_estado = !ultimo_estado;
 }
 
 void atualizar_botoes(millis_t tick) {
@@ -136,7 +140,7 @@ void atualizar_botoes(millis_t tick) {
 	static int botao_boca_cancelada = 0;
 	if (Boca::ativa()) {
 		auto& boca = *Boca::ativa();
-		if (marlin::apertado(boca.botao())) {
+		if (util::apertado(boca.botao())) {
 			if (!boca.tick_apertado_para_cancelar()) {
 				boca.set_tick_apertado_para_cancelar(tick);
 				return;
@@ -154,21 +158,23 @@ void atualizar_botoes(millis_t tick) {
 		}
 	}
 
-	if (botao_boca_cancelada && marlin::apertado(botao_boca_cancelada))
+	// se ainda está apertado o botão da boca que acabou de ser cancelada
+	// nós não atualizamos a boca ativa e/ou disponibilizamos nova bocas para uso
+	// sem essa verificação a boca cancelada é instantaneamente marcada como disponível após seu cancelamento
+	if (botao_boca_cancelada && util::apertado(botao_boca_cancelada))
 		return;
 
+	// quando o botão é solto podemos reiniciar essa variável
 	botao_boca_cancelada = 0;
 
     for (auto& boca : Boca::lista()) {
-		auto apertado = marlin::apertado(boca.botao());
+		auto apertado = util::apertado(boca.botao());
+		// o botão acabou de ser solto...
 		if (!apertado && boca.botao_apertado() && boca.aguardando_botao()) {
-			// o botão acabou de ser solto
-			// se a boca já é a ativa não é necessário fazer nada
 			if (Boca::ativa() && Boca::ativa() == &boca)
 				continue;
 
 			boca.disponibilizar_para_uso();
-			// se ainda não temos uma boca ativa setamos essa
 			if (!Boca::ativa())
 				Boca::set_boca_ativa(&boca);
         }
@@ -179,13 +185,13 @@ void atualizar_botoes(millis_t tick) {
 
 bool pronto() {
 	if (g_conectando_wifi)   {
-        if (marlin::wifi::conectado()) {
+        if (wifi::conectado()) {
             g_conectando_wifi = false;
             DBG("conectado!");
 			DBG("-- informações da rede --");
-			DBG("ip = ", marlin::wifi::ip().data(),
-			" \nnome = ", marlin::wifi::nome_rede().data(),
-			" \nsenha = ", marlin::wifi::senha_rede().data());
+			DBG("ip = ", wifi::ip().data(),
+			" \nnome = ", wifi::nome_rede().data(),
+			" \nsenha = ", wifi::senha_rede().data());
 			DBG("-------------------------");
 
 			#if KOFY_ROTINA_INICIAL

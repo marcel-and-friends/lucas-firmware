@@ -1,10 +1,10 @@
 #include "wifi.h"
-#include "kofy.h"
+#include <kofy/kofy.h>
 #include <cstdint>
 #include <vector>
 #include <src/lcd/extui/mks_ui/draw_ui.h>
 
-namespace kofy::marlin::wifi {
+namespace kofy::wifi {
 
 enum class Mensagem : byte {
 	/*

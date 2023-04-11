@@ -1,10 +1,9 @@
 #pragma once
 
-#include <src/gcode/queue.h>
-#include "Bico.h"
-#include "wifi.h"
-#include "opcoes.h"
-#include "gcode.h"
+#include <kofy/wifi/wifi.h>
+#include <kofy/gcode/gcode.h>
+#include <kofy/Bico.h>
+#include <kofy/opcoes.h>
 
 namespace kofy {
 
@@ -20,13 +19,5 @@ void setup();
 void event_handler();
 
 void idle();
-
-namespace marlin {
-
-inline bool apertado(int pino) {
-    return READ(pino) == false;
-}
-
-}
 
 }

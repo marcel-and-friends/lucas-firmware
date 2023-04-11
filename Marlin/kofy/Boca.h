@@ -3,7 +3,7 @@
 #include <array>
 #include <string>
 #include <string_view>
-#include "kofy.h"
+#include <kofy/kofy.h>
 
 namespace kofy {
 
