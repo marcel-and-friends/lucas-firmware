@@ -68,9 +68,9 @@ void idle() {
 
 	// a 'idle' pode ser chamada mais de uma vez em um milésimo, precisamos fitrar esses casos
 	// OBS: essa variável pode ser inicializada com 'millis()' também mas daí perderíamos o primeiro tick...
-    static millis_t ultimo_estado_tick = 0;
+    static millis_t ultimo_tick = 0;
     auto tick = millis();
-	if (ultimo_estado_tick == tick)
+	if (ultimo_tick == tick)
 		return;
 
 	atualizar_leds(tick);
@@ -80,7 +80,7 @@ void idle() {
 
 	atualizar_botoes(tick);
 
-    ultimo_estado_tick = tick;
+    ultimo_tick = tick;
 }
 
 bool pronto();
