@@ -250,7 +250,7 @@ bool wait_for_heatup = true;
 // For M0/M1, this flag may be cleared (by M108) to exit the wait-for-user loop
 #if HAS_RESUME_CONTINUE
     bool wait_for_user; // = false;
-  
+
     void wait_for_user_response(millis_t ms/*=0*/, const bool no_sleep/*=false*/) {
       UNUSED(no_sleep);
       KEEPALIVE_STATE(PAUSED_FOR_USER);
@@ -260,7 +260,7 @@ bool wait_for_heatup = true;
         idle(TERN_(ADVANCED_PAUSE_FEATURE, no_sleep));
       wait_for_user = false;
     }
-  
+
 #endif
 
 /**
@@ -338,31 +338,31 @@ void startOrResumeJob() {
 }
 
 #if ENABLED(SDSUPPORT)
-  
+
     inline void abortSDPrinting() {
       IF_DISABLED(NO_SD_AUTOSTART, card.autofile_cancel());
       card.abortFilePrintNow(TERN_(SD_RESORT, true));
-  
+
       queue.clear();
       quickstop_stepper();
-  
+
       print_job_timer.abort();
-  
+
       IF_DISABLED(SD_ABORT_NO_COOLDOWN, thermalManager.disable_all_heaters());
-  
+
       TERN(HAS_CUTTER, cutter.kill(), thermalManager.zero_fan_speeds()); // Full cutter shutdown including ISR control
-  
+
       wait_for_heatup = false;
-  
+
       TERN_(POWER_LOSS_RECOVERY, recovery.purge());
-  
+
       #ifdef EVENT_GCODE_SD_ABORT
           queue.inject_P(PSTR(EVENT_GCODE_SD_ABORT));
       #endif
-  
+
       TERN_(PASSWORD_AFTER_SD_PRINT_ABORT, password.lock_machine());
     }
-  
+
     inline void finishSDPrinting() {
       if (queue.enqueue_one_P(PSTR("M1001"))) { // Keep trying until it gets queued
         marlin_state = MF_RUNNING;              // Signal to stop trying
@@ -370,7 +370,7 @@ void startOrResumeJob() {
         TERN_(DGUS_LCD_UI_MKS, ScreenHandler.SDPrintingFinished());
       }
     }
-  
+
 #endif // SDSUPPORT
 
 /**
@@ -443,7 +443,7 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
   #endif
 
   #if HAS_KILL
-  
+
       // Check if the kill button was pressed and wait just in case it was an accidental
       // key kill key press
       // -------------------------------------------------------------------------------
@@ -453,7 +453,7 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
         killCount++;
       else if (killCount > 0)
         killCount--;
-  
+
       // Exceeded threshold and we can confirm that it was not accidental
       // KILL the machine
       // ----------------------------------------------------------------
@@ -498,10 +498,10 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
           }                                                              \
         }                                                                \
       }while(0)
-  
+
       #define CHECK_CUSTOM_USER_BUTTON(N)     _CHECK_CUSTOM_USER_BUTTON(N, NOOP)
       #define CHECK_BETTER_USER_BUTTON(N) _CHECK_CUSTOM_USER_BUTTON(N, if (strlen(BUTTON##N##_DESC)) LCD_MESSAGEPGM_P(PSTR(BUTTON##N##_DESC)))
-  
+
       #if HAS_BETTER_USER_BUTTON(1)
           CHECK_BETTER_USER_BUTTON(1);
       #elif HAS_CUSTOM_USER_BUTTON(1)
@@ -662,14 +662,14 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
               REPEAT(E_STEPPERS, _CASE_EN);
             }
         #endif
-  
+
         const float olde = current_position.e;
         current_position.e += EXTRUDER_RUNOUT_EXTRUDE;
         line_to_current_position(MMM_TO_MMS(EXTRUDER_RUNOUT_SPEED));
         current_position.e = olde;
         planner.set_e_position_mm(olde);
         planner.synchronize();
-  
+
         #if ENABLED(SWITCHING_EXTRUDER)
             switch (active_extruder) {
               default: if (oldstatus) stepper.ENABLE_EXTRUDER(0); else stepper.DISABLE_EXTRUDER(0); break;
@@ -686,7 +686,7 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
               REPEAT(E_STEPPERS, _CASE_RESTORE);
             }
         #endif // !SWITCHING_EXTRUDER
-  
+
         gcode.reset_stepper_timeout(ms);
       }
   #endif // EXTRUDER_RUNOUT_PREVENT
@@ -749,7 +749,7 @@ inline void manage_inactivity(const bool no_stepper_sleep=false) {
  *  - Handle Joystick jogging
  */
 
-#include <kofy/kofy.h>
+#include <lucas/lucas.h>
 
 void idle(bool no_stepper_sleep/*=false*/) {
   #if ENABLED(MARLIN_DEV_MODE)
@@ -846,7 +846,7 @@ void idle(bool no_stepper_sleep/*=false*/) {
   // Update the LVGL interface
   TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-  kofy::idle();
+  lucas::idle();
 
   IDLE_DONE:
   TERN_(MARLIN_DEV_MODE, idle_depth--);
@@ -907,22 +907,22 @@ void minkill(const bool steppers_off/*=false*/) {
   TERN_(HAS_SUICIDE, suicide());
 
   #if EITHER(HAS_KILL, SOFT_RESET_ON_KILL)
-  
+
       // Wait for both KILL and ENC to be released
       while (TERN0(HAS_KILL, kill_state()) || TERN0(SOFT_RESET_ON_KILL, ui.button_pressed()))
         watchdog_refresh();
-  
+
       // Wait for either KILL or ENC to be pressed again
       while (TERN1(HAS_KILL, !kill_state()) && TERN1(SOFT_RESET_ON_KILL, !ui.button_pressed()))
         watchdog_refresh();
-  
+
       // Reboot the board
       HAL_reboot();
-  
+
   #else
-  
+
       for (;;) watchdog_refresh();  // Wait for RESET button or power-cycle
-  
+
   #endif
 }
 
@@ -1377,7 +1377,7 @@ void setup() {
 
   #if ENABLED(CUSTOM_USER_BUTTONS)
       #define INIT_CUSTOM_USER_BUTTON_PIN(N) do{ SET_INPUT(BUTTON##N##_PIN); WRITE(BUTTON##N##_PIN, !BUTTON##N##_HIT_STATE); }while(0)
-  
+
       #if HAS_CUSTOM_USER_BUTTON(1)
           INIT_CUSTOM_USER_BUTTON_PIN(1);
       #endif
@@ -1572,14 +1572,14 @@ void setup() {
       SETUP_RUN(page_manager.init());
   #endif
 
-  #if HAS_TFT_LVGL_UI  
+  #if HAS_TFT_LVGL_UI
       #if ENABLED(SDSUPPORT)
           #if ENABLED(MULTI_VOLUME)
               card.changeMedia(&card.media_driver_sdcard);
           #endif
-    
+
           // if (!card.isMounted()) SETUP_RUN(card.mount()); // Mount SD to load graphics and fonts
-    
+
       #endif
       SETUP_RUN(tft_lvgl_init());
   #endif
@@ -1601,7 +1601,7 @@ void setup() {
 
   marlin_state = MF_RUNNING;
 
-  kofy::setup();
+  lucas::setup();
 
   SETUP_LOG("setup() completed.");
 }
@@ -1622,7 +1622,7 @@ void setup() {
 
 /*main loop do STM32F4*/
 void loop() {
-  //do 
+  //do
   {
     idle();
 

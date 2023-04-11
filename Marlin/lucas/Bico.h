@@ -2,7 +2,7 @@
 
 #include <src/MarlinCore.h>
 
-namespace kofy {
+namespace lucas {
 
 class Bico {
 public:

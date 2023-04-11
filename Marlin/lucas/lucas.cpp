@@ -1,8 +1,8 @@
-#include "kofy.h"
-#include <kofy/Boca.h>
-#include <kofy/util/util.h>
+#include "lucas.h"
+#include <lucas/Boca.h>
+#include <lucas/util/util.h>
 
-namespace kofy {
+namespace lucas {
 
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
@@ -50,7 +50,7 @@ void setup() {
     DBG("bocas inicializadas - ", Boca::NUM_BOCAS);
     DBG("todas as bocas começam indisponíveis, aperte um dos botões para iniciar uma receita");
 
-	#if KOFY_CONECTAR_WIFI
+	#if LUCAS_CONECTAR_WIFI
 		g_conectando_wifi = true;
 		DBG("conectando wifi");
 		// wifi::conectar("VIVOFIBRA-CASA4", "kira243casa4"); // marcio
@@ -93,8 +93,8 @@ void event_handler()  {
 	if (Bico::ativo())
 		return;
 
-	#ifdef KOFY_ROUBAR_FILA_GCODE
-		gcode::injetar(KOFY_ROUBAR_FILA_GCODE);
+	#ifdef LUCAS_ROUBAR_FILA_GCODE
+		gcode::injetar(LUCAS_ROUBAR_FILA_GCODE);
 		return;
 	#endif
 
@@ -194,10 +194,10 @@ bool pronto() {
 			" \nsenha = ", wifi::senha_rede().data());
 			DBG("-------------------------");
 
-			#if KOFY_ROTINA_INICIAL
+			#if LUCAS_ROTINA_INICIAL
 				DBG("executando rotina inicial");
             	gcode::injetar(ROTINA_INICIAL);
-				#if KOFY_DEBUG_GCODE
+				#if LUCAS_DEBUG_GCODE
 				    DBG("---- gcode da rotina ----\n", ROTINA_INICIAL);
 					DBG("-------------------------");
 				#endif

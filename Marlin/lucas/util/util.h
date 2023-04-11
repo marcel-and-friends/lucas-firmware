@@ -2,7 +2,7 @@
 
 #include <src/MarlinCore.h>
 
-namespace kofy::util {
+namespace lucas::util {
 
 inline bool apertado(int pino) {
     return READ(pino) == false;

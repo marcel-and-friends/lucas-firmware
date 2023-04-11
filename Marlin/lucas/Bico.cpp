@@ -1,7 +1,7 @@
 #include "Bico.h"
-#include <kofy/kofy.h>
+#include <lucas/lucas.h>
 
-namespace kofy {
+namespace lucas {
 void Bico::agir(millis_t tick) {
 	if (s_ativo) {
 		if (tick - s_tick <= s_tempo) {

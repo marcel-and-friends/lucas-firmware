@@ -2,7 +2,7 @@
 
 #include <string_view>
 
-namespace kofy::gcode {
+namespace lucas::gcode {
 
 void injetar(std::string_view gcode);
 

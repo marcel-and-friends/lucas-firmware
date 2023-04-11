@@ -2,7 +2,7 @@
 #include <memory>
 #include <src/module/temperature.h>
 
-namespace kofy {
+namespace lucas {
 
 Boca::Lista Boca::s_lista = {};
 
@@ -28,7 +28,7 @@ M109 T0 R)";
 }
 
 static void boca_ativa_mudou() {
-	#if KOFY_DEBUG_GCODE
+	#if LUCAS_DEBUG_GCODE
 		auto gcode = Boca::ativa()->receita().c_str() + Boca::ativa()->progresso_receita();
 		DBG("-------- receita --------\n", gcode);
 		DBG("-------------------------");
@@ -40,7 +40,7 @@ static void boca_ativa_mudou() {
     // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
     rotina_troca_de_boca_ativa.append(util::usar_movimento_absoluto);
 
-	#if KOFY_CUIDAR_TEMP
+	#if LUCAS_CUIDAR_TEMP
     	// se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
     	if (abs(thermalManager.wholeDegHotend(0) - util::temp_ideal) >= util::margem_erro_temp)
     	   rotina_troca_de_boca_ativa.append(util::descartar_agua_e_aguardar_temp_ideal).append(util::temp_ideal_str);
@@ -52,10 +52,10 @@ static void boca_ativa_mudou() {
     // volta para movimentação relativa
     rotina_troca_de_boca_ativa.append(util::usar_movimento_relativo);
 
-	#if KOFY_ROTINA_TROCA
+	#if LUCAS_ROTINA_TROCA
     	DBG("executando rotina da troca de boca ativa");
     	gcode::injetar(rotina_troca_de_boca_ativa);
-    	#if KOFY_DEBUG_GCODE
+    	#if LUCAS_DEBUG_GCODE
     		DBG("---- gcode da rotina ----\n", rotina_troca_de_boca_ativa.c_str());
 			DBG("-------------------------");
     	#endif
@@ -122,7 +122,7 @@ void Boca::cancelar_receita() {
 }
 
 void Boca::executar_instrucao(std::string_view instrucao) {
-    #if KOFY_DEBUG_GCODE
+    #if LUCAS_DEBUG_GCODE
 		static char buf[256] = {};
 		memcpy(buf, instrucao.data(), instrucao.size());
 		buf[instrucao.size()] = '\0';

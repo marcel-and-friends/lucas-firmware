@@ -1,10 +1,10 @@
 #include "wifi.h"
-#include <kofy/kofy.h>
+#include <lucas/lucas.h>
 #include <cstdint>
 #include <vector>
 #include <src/lcd/extui/mks_ui/draw_ui.h>
 
-namespace kofy::wifi {
+namespace lucas::wifi {
 
 enum class Mensagem : byte {
 	/*

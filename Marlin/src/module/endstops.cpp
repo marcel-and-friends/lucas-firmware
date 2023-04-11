@@ -354,7 +354,7 @@ void Endstops::init() {
 
 // Called at ~1KHz from Temperature ISR: Poll endstop state if required
 void Endstops::poll() {
-  
+
     TERN_(PINS_DEBUGGING, run_monitor()); // Report changes in endstop status
 
   #if DISABLED(ENDSTOP_INTERRUPTS_FEATURE)
@@ -415,10 +415,10 @@ void Endstops::resync() {
   }
 #endif
 
-#include <kofy/kofy.h>
+#include <lucas/lucas.h>
 
 void Endstops::event_handler() {
-  kofy::event_handler();
+  lucas::event_handler();
 
   static endstop_mask_t prev_hit_state; // = 0
   if (hit_state == prev_hit_state) return;

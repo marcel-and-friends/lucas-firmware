@@ -3,9 +3,9 @@
 #include <array>
 #include <string>
 #include <string_view>
-#include <kofy/kofy.h>
+#include <lucas/lucas.h>
 
-namespace kofy {
+namespace lucas {
 
 class Boca {
 public:

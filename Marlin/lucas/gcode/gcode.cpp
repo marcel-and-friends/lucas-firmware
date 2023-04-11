@@ -2,9 +2,9 @@
 #include <cstring>
 #include <src/gcode/parser.h>
 #include <src/gcode/queue.h>
-#include <kofy/Boca.h>
+#include <lucas/Boca.h>
 
-namespace kofy::gcode {
+namespace lucas::gcode {
 
 void injetar(std::string_view gcode) {
 	if (!queue.injected_commands_P)
