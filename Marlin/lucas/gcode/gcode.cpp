@@ -10,13 +10,22 @@ void injetar(std::string_view gcode) {
 	if (!queue.injected_commands_P)
 		queue.injected_commands_P = gcode.data();
 
+	// temos que salvar a string pois caso ocorra um gcode customizado
+	// ela muito provavelmente vai ser setada como nullptr
+	// ja que a maior parte dos gcode customizados param a fila
+	auto backup = queue.injected_commands_P;
 	if (lidar_com_custom_gcode(queue.injected_commands_P)) {
-		auto fim_do_proximo_gcode = strchr(queue.injected_commands_P, '\n');
+		// se o próximo gcode é um dos nossos customizados nós pulamos ele,
+		// evitando erros de gcode desconhecido no serial
+		auto fim_do_proximo_gcode = strchr(backup, '\n');
 		if (fim_do_proximo_gcode != nullptr) {
 			if (queue.injected_commands_P) {
 				auto offset = fim_do_proximo_gcode - queue.injected_commands_P;
 				queue.injected_commands_P += offset + 1;
 			}
+		} else {
+			// se não temos mais gcodes após o próximo basta parar a fila
+			queue.injected_commands_P = nullptr;
 		}
 	}
 }
@@ -56,7 +65,7 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
 			auto tempo = parser.longval('T');
 			// FIXME: fazer uma conta mais legal aqui pra trabalhar somente no range de tensão ideal
 			//		  algo entre 2-5V fica bom, o pino atual (FAN) produz 12V se passamos 100 para o K1.
-			auto potencia = parser.longval('P') * 2.5; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
+			auto potencia = static_cast<float>(parser.longval('P')) * 2.5f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
 			Bico::ativar(tick, tempo, potencia);
 			if (Boca::ativa())
 				parar_fila();
