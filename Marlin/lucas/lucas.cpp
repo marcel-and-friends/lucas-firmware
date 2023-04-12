@@ -66,17 +66,18 @@ void idle() {
     if (g_inicializando || g_conectando_wifi)
         return;
 
-	// a 'idle' pode ser chamada mais de uma vez em um milésimo, precisamos fitrar esses casos
-	// OBS: essa variável pode ser inicializada com 'millis()' também mas daí perderíamos o primeiro tick...
     static millis_t ultimo_tick = 0;
     auto tick = millis();
+
+	if (Bico::ativo())
+		Bico::agir(tick);
+
+	// a 'idle' pode ser chamada mais de uma vez em um milésimo, precisamos fitrar esses casos
+	// OBS: essa variável pode ser inicializada com 'millis()' também mas daí perderíamos o primeiro tick...
 	if (ultimo_tick == tick)
 		return;
 
 	atualizar_leds(tick);
-
-	if (Bico::ativo())
-		Bico::agir(tick);
 
 	atualizar_botoes(tick);
 
@@ -146,7 +147,7 @@ void atualizar_botoes(millis_t tick) {
 				return;
 			}
 
-			if (tick - boca.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA)	 {
+			if (tick - boca.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA) {
 				boca.cancelar_receita();
 				botao_boca_cancelada = boca.botao();
 				DBG("!!!! RECEITA CANCELADA !!!!");
