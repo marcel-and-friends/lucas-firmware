@@ -38,7 +38,7 @@
 
 #define IP_DHCP_FLAG          1
 
-#define WIFI_AP_NAME          ""
+#define WIFI_AP_NAME          "LUCAS_REDE_INICIAL"
 #define WIFI_KEY_CODE         ""
 
 #define IP_ADDR               "0.0.0.0"

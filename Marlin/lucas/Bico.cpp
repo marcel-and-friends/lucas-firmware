@@ -1,23 +1,25 @@
 #include "Bico.h"
 #include <lucas/lucas.h>
+#include <src/module/temperature.h>
 
 namespace lucas {
+static constexpr auto PINO = PC14; // FAN_PIN
+
 void Bico::agir(millis_t tick) {
 	if (s_ativo) {
 		if (tick - s_tick <= s_tempo) {
-			WRITE(PINO, s_poder);
+			thermalManager.set_fan_speed(0, s_poder);
 		} else {
-			DBG("finalizando troço no tick: ", tick, " - diff: ", tick - s_tick, " - ideal: ", s_tempo);
+			DBG("finalizando bico com valor ", s_poder, " no tick: ", tick, " - diff: ", tick - s_tick, " - ideal: ", s_tempo);
 			reset();
 		}
 	} else {
-		WRITE(PINO, 0);
+		thermalManager.set_fan_speed(0, 0);
 	}
-
 }
 
 void Bico::reset() {
-	WRITE(PINO, 0);
+	thermalManager.set_fan_speed(0, 0);
 	s_ativo = false;
 	s_poder = 0;
 	s_tick = 0;

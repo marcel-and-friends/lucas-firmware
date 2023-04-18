@@ -846,7 +846,7 @@ void idle(bool no_stepper_sleep/*=false*/) {
   // Update the LVGL interface
   TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-  lucas::idle();
+  lucas::tick();
 
   IDLE_DONE:
   TERN_(MARLIN_DEV_MODE, idle_depth--);
@@ -1632,6 +1632,8 @@ void loop() {
     #endif
 
     queue.advance();
+
+	lucas::pos_execucao_gcode();
 
     //endstops.report_states();
     endstops.event_handler();

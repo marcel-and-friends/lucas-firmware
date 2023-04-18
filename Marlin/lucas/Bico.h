@@ -6,8 +6,6 @@ namespace lucas {
 
 class Bico {
 public:
-	static constexpr auto PINO = FAN_PIN;
-
 	static void agir(millis_t tick);
 
 	static void ativar(millis_t tick, millis_t tempo, int poder);

@@ -606,7 +606,7 @@ void GCodeQueue::get_serial_commands() {
 void GCodeQueue::get_available_commands() {
   if (ring_buffer.full()) return;
 
-  get_serial_commands();
+  // get_serial_commands(); saia daqui SEU BOSTA
 
   TERN_(SDSUPPORT, get_sdcard_commands());
 }

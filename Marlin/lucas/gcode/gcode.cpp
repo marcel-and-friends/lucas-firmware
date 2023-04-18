@@ -2,7 +2,7 @@
 #include <cstring>
 #include <src/gcode/parser.h>
 #include <src/gcode/queue.h>
-#include <lucas/Boca.h>
+#include <lucas/Estacao.h>
 
 namespace lucas::gcode {
 
@@ -10,22 +10,17 @@ void injetar(std::string_view gcode) {
 	if (!queue.injected_commands_P)
 		queue.injected_commands_P = gcode.data();
 
-	// temos que salvar a string pois caso ocorra um gcode customizado
-	// ela muito provavelmente vai ser setada como nullptr
-	// ja que a maior parte dos gcode customizados param a fila
-	auto backup = queue.injected_commands_P;
 	if (lidar_com_custom_gcode(queue.injected_commands_P)) {
-		// se o próximo gcode é um dos nossos customizados nós pulamos ele,
-		// evitando erros de gcode desconhecido no serial
-		auto fim_do_proximo_gcode = strchr(backup, '\n');
-		if (fim_do_proximo_gcode != nullptr) {
-			if (queue.injected_commands_P) {
+		// se o próximo gcode é customizado e a fila não foi parada
+		// nós temos de manualmente pula-lo para evitar erros de gcode desconhecido no serial
+		if (queue.injected_commands_P) {
+			auto fim_do_proximo_gcode = strchr(queue.injected_commands_P, '\n');
+			if (fim_do_proximo_gcode) {
 				auto offset = fim_do_proximo_gcode - queue.injected_commands_P;
 				queue.injected_commands_P += offset + 1;
+			} else {
+				queue.injected_commands_P = nullptr;
 			}
-		} else {
-			// se não temos mais gcodes após o próximo basta parar a fila
-			queue.injected_commands_P = nullptr;
 		}
 	}
 }
@@ -44,20 +39,21 @@ std::string_view proxima_instrucao(std::string_view gcode) {
 
 bool lidar_com_custom_gcode(std::string_view gcode) {
 	parser.parse(const_cast<char*>(gcode.data()));
-	if (parser.command_letter != 'K')
+	// o parser é resetado somente na execucao do proximo gcode, entao podemos reutiliza-lo
+	if (parser.command_letter != 'L')
 		return false;
 
 	switch (parser.codenum) {
-		// K0 -> Interrompe a boca ativa até seu botão ser apertado
+		// L0 -> Interrompe a estacao ativa até seu botão ser apertado
 		case 0:
-			if (!Boca::ativa())
+			if (!Estacao::ativa())
 				break;
 
-			Boca::ativa()->aguardar_botao();
+			Estacao::ativa()->aguardar_input();
 			parar_fila();
 
 			break;
-		// K1 -> Controla o bico
+		// L1 -> Controla o bico
 		// T - Tempo, em milisegundos, que o bico deve ficar ligado
 		// P - Potência, [0-100], controla a força que a água é despejada
 		case 1: {
@@ -65,16 +61,16 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
 			auto tempo = parser.longval('T');
 			// FIXME: fazer uma conta mais legal aqui pra trabalhar somente no range de tensão ideal
 			//		  algo entre 2-5V fica bom, o pino atual (FAN) produz 12V se passamos 100 para o K1.
-			auto potencia = static_cast<float>(parser.longval('P')) * 2.5f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
+			auto potencia = static_cast<float>(parser.longval('P')) * 2.55f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
 			Bico::ativar(tick, tempo, potencia);
-			if (Boca::ativa())
+			if (Estacao::ativa())
 				parar_fila();
 
 			break;
 		}
 	}
 
-	DBG("lidando manualmente com gcode customizado 'K", parser.codenum, "'");
+	DBG("lidando manualmente com gcode customizado 'L", parser.codenum, "'");
 
 	return true;
 
