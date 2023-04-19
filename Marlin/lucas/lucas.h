@@ -10,7 +10,7 @@ namespace lucas {
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
 static constexpr auto RECEITA_PADRAO =
-R"(G3 F5000 I20 J20
+    R"(G3 F5000 I20 J20
 G3 F5000 I15 J15
 G3 F5000 I10 J10
 G3 F5000 I5 J5
@@ -22,7 +22,7 @@ G3 F5000 I20 J20)";
 
 // Gcodes necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =
-R"(G28 X Y
+    R"(G28 X Y
 M190 R93)";
 
 #define DBG SERIAL_ECHOLNPGM

@@ -5,9 +5,6 @@
 		"**/buildroot": true,
 	},
   	"C_Cpp.intelliSenseEngine": "default",
-  	"[cpp]": {
-		"editor.defaultFormatter": "platformio.platformio-ide"
-	},
 	"files.associations": {
 		"*.lv": "rust",
 		"array": "cpp",
