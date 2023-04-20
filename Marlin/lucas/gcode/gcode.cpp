@@ -7,8 +7,12 @@
 namespace lucas::gcode {
 
 void injetar(std::string_view gcode) {
+#ifdef LUCAS_ROUBAR_FILA_GCODE
     if (!queue.injected_commands_P)
         queue.injected_commands_P = gcode.data();
+#else
+    queue.injected_commands_P = gcode.data();
+#endif
 
     if (lidar_com_custom_gcode(queue.injected_commands_P)) {
         // se o próximo gcode é customizado e a fila não foi parada
@@ -39,20 +43,18 @@ std::string_view proxima_instrucao(std::string_view gcode) {
 
 bool lidar_com_custom_gcode(std::string_view gcode) {
     parser.parse(const_cast<char*>(gcode.data()));
-    // o parser é resetado somente na execucao do proximo gcode, entao podemos reutiliza-lo
     if (parser.command_letter != 'L')
         return false;
 
     switch (parser.codenum) {
     // L0 -> Interrompe a estacao ativa até seu botão ser apertado
-    case 0:
-        if (!Estacao::ativa())
-            break;
-
-        Estacao::ativa()->aguardar_input();
-        parar_fila();
-
+    case 0: {
+        if (Estacao::ativa()) {
+            Estacao::ativa()->aguardar_input();
+            parar_fila();
+        }
         break;
+    }
     // L1 -> Controla o bico
     // T - Tempo, em milisegundos, que o bico deve ficar ligado
     // P - Potência, [0-100], controla a força que a água é despejada
@@ -70,7 +72,7 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
     }
     }
 
-    DBG("lidando manualmente com gcode customizado 'L", parser.codenum, "'");
+    LOG("lidando manualmente com gcode customizado 'L", parser.codenum, "'");
 
     return true;
 }
@@ -86,5 +88,4 @@ void parar_fila() {
 bool tem_comandos_pendentes() {
     return queue.injected_commands_P != nullptr;
 }
-
 }

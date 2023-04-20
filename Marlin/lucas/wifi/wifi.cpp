@@ -121,6 +121,18 @@ bool conectado() {
     return wifi_link_state == WIFI_CONNECTED;
 }
 
+void terminou_de_conectar() {
+    LOG("conectado!");
+    LOG("-- informacoeses da rede --");
+    LOG("ip = ",
+        wifi::ip().data(),
+        " \nnome = ",
+        wifi::nome_rede().data(),
+        " \nsenha = ",
+        wifi::senha_rede().data());
+    LOG("-------------------------");
+}
+
 std::string_view ip() {
     return ipPara.ip_addr;
 }

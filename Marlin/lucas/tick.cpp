@@ -56,7 +56,7 @@ static void atualizar_leds(millis_t tick) {
     }
 }
 
-static bool tentar_cancelar_receita(millis_t tick) {
+static bool cancelar_receita(millis_t tick) {
     constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
     static int botao_estacao_cancelada = 0;
 
@@ -73,7 +73,7 @@ static bool tentar_cancelar_receita(millis_t tick) {
         if (tick - estacao.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA) {
             estacao.cancelar_receita();
             botao_estacao_cancelada = estacao.botao();
-            DBG("!!!! RECEITA CANCELADA !!!!");
+            LOG("!!!! RECEITA CANCELADA !!!!");
             return true;
         }
     } else {
@@ -94,7 +94,7 @@ static bool tentar_cancelar_receita(millis_t tick) {
 }
 
 static void atualizar_estacoes(millis_t tick) {
-    if (tentar_cancelar_receita(tick))
+    if (cancelar_receita(tick))
         return;
 
     for (auto& estacao : Estacao::lista()) {
@@ -102,7 +102,7 @@ static void atualizar_estacoes(millis_t tick) {
         if (!apertado && estacao.botao_apertado()) {
             // o botão acabou de ser solto...
             if (estacao.livre()) {
-                estacao.set_receita(RECEITA_PADRAO);
+                estacao.set_receita(gcode::RECEITA_PADRAO);
                 estacao.set_livre(false);
                 estacao.aguardar_input();
             } else if (estacao.aguardando_input()) {
@@ -115,7 +115,47 @@ static void atualizar_estacoes(millis_t tick) {
     }
 }
 
+static void interpretar_comando_recebido(std::string_view input) {
+    if (input.front() != '$')
+        return;
+
+    LOG("interpretando comando '", input.data(), "'");
+    input.remove_prefix(1);
+
+    switch (input.front()) {
+    case 'R': {
+        for (auto& estacao : Estacao::lista()) {
+            if (estacao.livre()) {
+                estacao.set_receita(gcode::RECEITA_PADRAO);
+                estacao.set_livre(false);
+                estacao.aguardar_input();
+                return;
+            }
+        }
+    }
+    case 'H': {
+        if (Estacao::ativa())
+            Estacao::ativa()->cancelar_receita();
+
+        gcode::injetar("G28 X Y");
+    }
+    default:
+        return;
+    }
+}
+
 static void atualizar_serial(millis_t tick) {
+    static std::string input = "";
+    while (SERIAL_IMPL.available()) {
+        auto c = SERIAL_IMPL.read();
+        if (c == '\n') {
+            interpretar_comando_recebido(input);
+            input.clear();
+            continue;
+        }
+        input += c;
+    }
+
     static millis_t ultimo_update_temp = 0;
     if (tick - ultimo_update_temp >= LUCAS_INTERVALO_UPDATE_TEMP) {
         UPDATE(LUCAS_NOME_UPDATE_TEMP_ATUAL_BICO, thermalManager.degHotend(0));

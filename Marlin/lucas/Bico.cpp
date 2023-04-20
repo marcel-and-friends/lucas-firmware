@@ -10,7 +10,7 @@ void Bico::agir(millis_t tick) {
         if (tick - s_tick <= s_tempo) {
             thermalManager.set_fan_speed(0, s_poder);
         } else {
-            DBG("finalizando bico com valor ", s_poder, " no tick: ", tick, " - diff: ", tick - s_tick, " - ideal: ", s_tempo);
+            LOG("finalizando bico com valor ", s_poder, " no tick: ", tick, " - diff: ", tick - s_tick, " - ideal: ", s_tempo);
             reset();
         }
     } else {
@@ -32,7 +32,7 @@ void Bico::ativar(millis_t tick, millis_t tempo, int poder) {
     s_tempo = tempo;
     s_poder = poder;
 
-    DBG("T: ", s_tempo, " - P: ", s_poder, " - tick: ", s_tick);
+    LOG("T: ", s_tempo, " - P: ", s_poder, " - tick: ", s_tick);
 }
 
 }

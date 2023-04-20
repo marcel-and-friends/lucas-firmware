@@ -2,6 +2,8 @@
 #include <memory>
 #include <src/module/temperature.h>
 
+#define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", __VA_ARGS__)
+
 namespace lucas {
 
 Estacao::Lista Estacao::s_lista = {};
@@ -47,24 +49,24 @@ static void executar_rotina_troca_de_estacao_ativa() {
     // volta para movimentação relativa
     rotina_troca_de_estacao_ativa.append(util::usar_movimento_relativo);
 
-    DBG("executando rotina da troca de estacao ativa");
+    LOG("executando rotina da troca de estacao ativa");
     gcode::injetar(rotina_troca_de_estacao_ativa);
 #if LUCAS_DEBUG_GCODE
-    DBG("---- gcode da rotina ----\n", rotina_troca_de_estacao_ativa.c_str());
-    DBG("-------------------------");
+    LOG("---- gcode da rotina ----\n", rotina_troca_de_estacao_ativa.c_str());
+    LOG("-------------------------");
 #endif
     g_trocando_estacao_ativa = true;
 }
 
 // TODO: desenvolver um algoritmo legal pra isso...
 void Estacao::procurar_nova_ativa() {
-    DBG("procurando nova estacao ativa...");
+    LOG("procurando nova estacao ativa...");
 
     for (auto& estacao : s_lista)
         if (estacao.esta_na_fila())
             return set_estacao_ativa(&estacao);
 
-    DBG("nenhuma estacao esta disponivel :(");
+    LOG("nenhuma estacao esta disponivel :(");
     set_estacao_ativa(nullptr);
 }
 
@@ -75,32 +77,40 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
     s_estacao_ativa = estacao;
     if (s_estacao_ativa) {
         auto& estacao = *s_estacao_ativa;
-        DBG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
-
+        LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
 #if LUCAS_ROTINA_TROCA
         executar_rotina_troca_de_estacao_ativa();
 #endif
-
 #if LUCAS_DEBUG_GCODE
         auto gcode = estacao.receita().c_str() + estacao.progresso_receita();
-        DBG("-------- receita --------\n", gcode);
-        DBG("-------------------------");
+        LOG("-------- receita --------\n", gcode);
+        LOG("-------------------------");
 #endif
-
-        UPDATE(LUCAS_NOME_UPDATE_ESTACAO_ATIVA, estacao.numero());
-        estacao.atualizar_status("Executando");
     } else {
         UPDATE(LUCAS_NOME_UPDATE_ESTACAO_ATIVA, "-");
         gcode::parar_fila();
     }
 }
 
+void Estacao::ativa_prestes_a_comecar() {
+    auto& estacao_ativa = *Estacao::ativa();
+    UPDATE(LUCAS_NOME_UPDATE_ESTACAO_ATIVA, estacao_ativa.numero());
+    estacao_ativa.atualizar_status("Executando");
+}
+
 void Estacao::prosseguir_receita() {
     executar_instrucao(proxima_instrucao());
 }
 
+void Estacao::finalizar_receita() {
+    m_receita.clear();
+    m_progresso_receita = 0;
+    set_livre(true);
+    set_aguardando_input(false);
+}
+
 void Estacao::disponibilizar_para_uso() {
-    DBG("estacao #", numero(), " - disponibilizada para uso");
+    ESTACAO_LOG("disponibilizada para uso");
     set_livre(false);
     set_aguardando_input(false);
     atualizar_status("Na fila");
@@ -164,22 +174,18 @@ std::string_view Estacao::proxima_instrucao() const {
 }
 
 void Estacao::executar_instrucao(std::string_view instrucao) {
+#if LUCAS_DEBUG_GCODE
+    auto string = std::string(instrucao);
+    ESTACAO_LOG("injetando gcode '", string.data(), "'");
+#endif
     gcode::injetar(instrucao);
-
+    atualizar_campo_gcode(CampoGcode::Atual, instrucao);
     if (gcode::e_ultima_instrucao(instrucao)) {
         atualizar_campo_gcode(CampoGcode::Proximo, "-");
         finalizar_receita();
     } else {
         m_progresso_receita += instrucao.size() + 1;
-        atualizar_campo_gcode(CampoGcode::Atual, instrucao);
         atualizar_campo_gcode(CampoGcode::Proximo, proxima_instrucao());
     }
-}
-
-void Estacao::finalizar_receita() {
-    m_receita.clear();
-    m_progresso_receita = 0;
-    set_livre(true);
-    set_aguardando_input(false);
 }
 }
