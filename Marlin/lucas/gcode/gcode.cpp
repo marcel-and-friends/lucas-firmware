@@ -67,7 +67,7 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
     case 1: {
         auto tick = millis();
         auto tempo = parser.longval('T');
-        auto potencia = static_cast<float>(parser.longval('P')) * 0.16f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
+        auto potencia = static_cast<float>(parser.longval('P')); // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
         Bico::ativar(tick, tempo, potencia);
         if (Estacao::ativa())
             parar_fila();

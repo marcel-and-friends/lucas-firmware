@@ -2,7 +2,7 @@
 
 /* gcode */
 #define LUCAS_DEBUG_GCODE true
-// #define LUCAS_ROUBAR_FILA_GCODE "M106 S128"
+#define LUCAS_ROUBAR_FILA_GCODE "L1 P200 T10000"
 /* ----- */
 
 /* rotinas */
@@ -27,8 +27,12 @@
 
 /* wifi */
 #define LUCAS_CONECTAR_WIFI true
-#define LUCAS_WIFI_NOME_SENHA "Kika-Amora", "Desconto5" // marcel
-// #define LUCAS_WIFI_NOME_SENHA "VIVOFIBRA-CASA4", "kira234casa4" 	// marcio
-// #define LUCAS_WIFI_NOME_SENHA "CLARO_2G97D2E8", "1297D2E8" 		// sol & cegueira
-// #define LUCAS_WIFI_NOME_SENHA "ooga", "booga" 						// random
+// marcel
+// #define LUCAS_WIFI_NOME_SENHA "Kika-Amora", "Desconto5"
+// marcio
+#define LUCAS_WIFI_NOME_SENHA "VIVOFIBRA-CASA4", "kira234casa4"
+// sol & cegueira
+// #define LUCAS_WIFI_NOME_SENHA "CLARO_2G97D2E8", "1297D2E8"
+// uepa
+// #define LUCAS_WIFI_NOME_SENHA "ooga", "booga"
 /* ---- */

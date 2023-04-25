@@ -16,7 +16,7 @@ void tick() {
 
     static millis_t ultimo_tick = 0;
     auto tick = millis();
-    // Bico::agir(tick);
+    Bico::agir(tick);
     //  a 'idle' pode ser chamada mais de uma vez em um milésimo
     //  precisamos fitrar esses casos para nao mudarmos o estado das estacoes/leds mais de uma vez por ms
     if (ultimo_tick == tick)
