@@ -2,6 +2,7 @@
 #include <lucas/Estacao.h>
 
 namespace lucas {
+
 void setup() {
     struct InfoEstacao {
         int pino_botao;
@@ -26,7 +27,6 @@ void setup() {
     }
 
     LOG("iniciando! - numero de estacoes = ", Estacao::NUM_ESTACOES);
-
 #if LUCAS_CONECTAR_WIFI
     g_conectando_wifi = true;
     LOG("conectando wifi");
@@ -49,19 +49,17 @@ void pos_execucao_gcode() {
     return;
 #endif
 
-    auto estacao_ativa = Estacao::ativa();
-    if (!estacao_ativa)
+    if (!Estacao::ativa())
         return;
 
-    if (estacao_ativa->livre()) {
+    auto& estacao = *Estacao::ativa();
+    if (estacao.livre()) {
         // a receita acabou
-        estacao_ativa->atualizar_status("Livre");
-        estacao_ativa->atualizar_campo_gcode(Estacao::CampoGcode::Atual, "-");
-        Estacao::procurar_nova_ativa();
-    } else if (estacao_ativa->aguardando_input()) {
+        estacao.atualizar_status("Livre");
+        estacao.atualizar_campo_gcode(Estacao::CampoGcode::Atual, "-");
         Estacao::procurar_nova_ativa();
     } else {
-        estacao_ativa->prosseguir_receita();
+        estacao.prosseguir_receita();
     }
 }
 
@@ -108,5 +106,4 @@ static bool pronto() {
 
     return !g_conectando_wifi && !g_executando_rotina_inicial && !g_trocando_estacao_ativa;
 }
-
 }

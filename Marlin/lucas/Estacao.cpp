@@ -63,7 +63,7 @@ void Estacao::procurar_nova_ativa() {
     LOG("procurando nova estacao ativa...");
 
     for (auto& estacao : s_lista)
-        if (estacao.esta_na_fila())
+        if (estacao.disponivel_para_uso())
             return set_estacao_ativa(&estacao);
 
     LOG("nenhuma estacao esta disponivel :(");
@@ -87,15 +87,15 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         LOG("-------------------------");
 #endif
     } else {
-        UPDATE(LUCAS_NOME_UPDATE_ESTACAO_ATIVA, "-");
+        UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, "-");
         gcode::parar_fila();
     }
 }
 
 void Estacao::ativa_prestes_a_comecar() {
-    auto& estacao_ativa = *Estacao::ativa();
-    UPDATE(LUCAS_NOME_UPDATE_ESTACAO_ATIVA, estacao_ativa.numero());
-    estacao_ativa.atualizar_status("Executando");
+    auto& estacao = *Estacao::ativa();
+    UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, estacao.numero());
+    estacao.atualizar_status("Executando");
 }
 
 void Estacao::prosseguir_receita() {
@@ -113,7 +113,11 @@ void Estacao::disponibilizar_para_uso() {
     ESTACAO_LOG("disponibilizada para uso");
     set_livre(false);
     set_aguardando_input(false);
-    atualizar_status("Na fila");
+    m_pausada = false;
+    if (!Estacao::ativa())
+        Estacao::set_estacao_ativa(this);
+    else
+        atualizar_status("Na fila");
 }
 
 void Estacao::aguardar_input() {
@@ -125,10 +129,25 @@ void Estacao::cancelar_receita() {
     finalizar_receita();
     if (esta_ativa())
         Estacao::set_estacao_ativa(nullptr);
+
+    atualizar_status("Livre");
+    atualizar_campo_gcode(CampoGcode::Atual, "-");
+    atualizar_campo_gcode(CampoGcode::Proximo, "-");
 }
 
-bool Estacao::esta_na_fila() const {
-    return !livre() && !aguardando_input() && !esta_ativa();
+void Estacao::pausar(millis_t duracao) {
+    m_pausada = true;
+    m_comeco_pausa = millis();
+    m_duracao_pausa = duracao;
+    LOG("pausando por ", duracao, "ms");
+}
+
+bool Estacao::tempo_de_pausa_atingido(millis_t tick) {
+    return tick - m_comeco_pausa >= m_duracao_pausa;
+}
+
+bool Estacao::disponivel_para_uso() const {
+    return !esta_ativa() && !livre() && !aguardando_input() && !pausada();
 }
 
 bool Estacao::esta_ativa() const {
@@ -136,7 +155,7 @@ bool Estacao::esta_ativa() const {
 }
 
 void Estacao::atualizar_campo_gcode(CampoGcode qual, std::string_view valor) const {
-    static char valor_buffer[256] = {};
+    static char valor_buffer[64] = {};
     static char nome_buffer[] = "gCode?E?";
 
     nome_buffer[5] = static_cast<char>(qual) + '0';

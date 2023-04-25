@@ -584,7 +584,7 @@
  * Multiple extruders can be assigned to the same pin in which case
  * the fan will turn on when any selected extruder is above the threshold.
  */
-#define E0_AUTO_FAN_PIN 0
+#define E0_AUTO_FAN_PIN -1
 #define E1_AUTO_FAN_PIN -1
 #define E2_AUTO_FAN_PIN -1
 #define E3_AUTO_FAN_PIN -1
@@ -1403,7 +1403,7 @@
      * an option on the LCD screen to continue the print from the last-known
      * point in the file.
      */
-    #define POWER_LOSS_RECOVERY
+    // #define POWER_LOSS_RECOVERY
     #if ENABLED(POWER_LOSS_RECOVERY)
         #define PLR_ENABLED_DEFAULT true // Power Loss Recovery enabled by default. (Set with 'M413 Sn' & M500)
         // #define BACKUP_POWER_SUPPLY       // Backup power / UPS to move the steppers on power loss
@@ -1880,7 +1880,7 @@
  *
  * Warning: Does not respect endstops!
  */
-#define BABYSTEPPING
+// #define BABYSTEPPING
 #if ENABLED(BABYSTEPPING)
     // #define INTEGRATED_BABYSTEPPING         // EXPERIMENTAL integration of babystepping into the Stepper ISR
     // #define BABYSTEP_WITHOUT_HOMING
@@ -2233,7 +2233,7 @@
  * Currently handles M108, M112, M410, M876
  * NOTE: Not yet implemented for all platforms.
  */
-#define EMERGENCY_PARSER
+// #define EMERGENCY_PARSER
 
 /**
  * Realtime Reporting (requires EMERGENCY_PARSER)
@@ -2437,7 +2437,7 @@
                                             //   Filament can be extruded repeatedly from the Filament Change menu
                                             //   until extrusion is consistent, and to purge old filament.
     #define ADVANCED_PAUSE_RESUME_PRIME 0   // (mm) Extra distance to prime nozzle after returning from park.
-// #define ADVANCED_PAUSE_FANS_PAUSE             // Turn off print-cooling fans while the machine is paused.
+                                            // #define ADVANCED_PAUSE_FANS_PAUSE             // Turn off print-cooling fans while the machine is paused.
 
 // Filament Unload does a Retract, Delay, and Purge first:
     #define FILAMENT_UNLOAD_PURGE_RETRACT 13  // (mm) Unload initial retract length.
@@ -2877,22 +2877,22 @@
      * { <off_time[1..15]>, <hysteresis_end[-3..12]>, hysteresis_start[1..8] }
      */
     #define CHOPPER_TIMING CHOPPER_DEFAULT_12V // All axes (override below)
-// #define CHOPPER_TIMING_X  CHOPPER_TIMING        // For X Axes (override below)
-// #define CHOPPER_TIMING_X2 CHOPPER_TIMING_X
-// #define CHOPPER_TIMING_Y  CHOPPER_TIMING        // For Y Axes (override below)
-// #define CHOPPER_TIMING_Y2 CHOPPER_TIMING_Y
-// #define CHOPPER_TIMING_Z  CHOPPER_TIMING        // For Z Axes (override below)
-// #define CHOPPER_TIMING_Z2 CHOPPER_TIMING_Z
-// #define CHOPPER_TIMING_Z3 CHOPPER_TIMING_Z
-// #define CHOPPER_TIMING_Z4 CHOPPER_TIMING_Z
-// #define CHOPPER_TIMING_E  CHOPPER_TIMING        // For Extruders (override below)
-// #define CHOPPER_TIMING_E1 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E2 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E3 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E4 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E5 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E6 CHOPPER_TIMING_E
-// #define CHOPPER_TIMING_E7 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_X  CHOPPER_TIMING        // For X Axes (override below)
+                                               // #define CHOPPER_TIMING_X2 CHOPPER_TIMING_X
+                                               // #define CHOPPER_TIMING_Y  CHOPPER_TIMING        // For Y Axes (override below)
+                                               // #define CHOPPER_TIMING_Y2 CHOPPER_TIMING_Y
+                                               // #define CHOPPER_TIMING_Z  CHOPPER_TIMING        // For Z Axes (override below)
+                                               // #define CHOPPER_TIMING_Z2 CHOPPER_TIMING_Z
+                                               // #define CHOPPER_TIMING_Z3 CHOPPER_TIMING_Z
+                                               // #define CHOPPER_TIMING_Z4 CHOPPER_TIMING_Z
+                                               // #define CHOPPER_TIMING_E  CHOPPER_TIMING        // For Extruders (override below)
+                                               // #define CHOPPER_TIMING_E1 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E2 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E3 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E4 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E5 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E6 CHOPPER_TIMING_E
+                                               // #define CHOPPER_TIMING_E7 CHOPPER_TIMING_E
 
 /**
  * Monitor Trinamic drivers

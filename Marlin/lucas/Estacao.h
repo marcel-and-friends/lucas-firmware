@@ -33,11 +33,15 @@ public:
 
     void cancelar_receita();
 
-    bool esta_na_fila() const;
+    void pausar(millis_t duracao);
+
+    bool tempo_de_pausa_atingido(millis_t tick);
+
+    bool disponivel_para_uso() const;
 
     bool esta_ativa() const;
 
-    enum class CampoGcode {
+    enum class CampoGcode : char {
         Atual = 0,
         Proximo = 1,
     };
@@ -60,8 +64,6 @@ public:
     bool botao_apertado() const { return m_botao_apertado; }
     void set_botao_apertado(bool b) { m_botao_apertado = b; }
 
-    void aguardar_botao();
-
     int led() const { return m_pino_led; }
     void set_led(int pino) {
         m_pino_led = pino;
@@ -82,6 +84,8 @@ public:
 
     bool livre() const { return m_livre; }
     void set_livre(bool b) { m_livre = b; }
+
+    bool pausada() const { return m_pausada; }
 
 private:
     static Lista s_lista;
@@ -112,6 +116,10 @@ private:
     // usado para cancelar uma receita
     millis_t m_tick_apertado_para_cancelar = 0;
 
+    millis_t m_comeco_pausa = 0;
+
+    millis_t m_duracao_pausa = 0;
+
     // estacao aguardando input do usuário para prosseguir
     // ocorre no começo de uma receita, após o K0 e no final de uma receita
     bool m_aguardando_input = false;
@@ -124,6 +132,8 @@ private:
 
     // usado como um debounce para ativar uma estacao somente quando o botão é solto
     bool m_botao_apertado = false;
+
+    bool m_pausada = false;
 };
 
 }

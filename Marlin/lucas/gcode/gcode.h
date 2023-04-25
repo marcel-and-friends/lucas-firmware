@@ -7,7 +7,8 @@ namespace lucas::gcode {
 // Gcode executado ao apertar os botões
 // (lembrando que as coordenadas são relativas!)
 static constexpr auto RECEITA_PADRAO =
-    R"(G3 F5000 I20 J20
+    R"(L2 T10000
+G3 F5000 I20 J20
 G3 F5000 I15 J15
 G3 F5000 I10 J10
 G3 F5000 I5 J5
@@ -26,7 +27,7 @@ void injetar(std::string_view gcode);
 
 std::string_view proxima_instrucao(std::string_view gcode);
 
-bool lidar_com_custom_gcode(std::string_view gcode);
+void lidar_com_gcode_customizado(std::string_view gcode);
 
 bool e_ultima_instrucao(std::string_view gcode);
 

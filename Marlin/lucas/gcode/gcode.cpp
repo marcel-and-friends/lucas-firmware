@@ -14,19 +14,21 @@ void injetar(std::string_view gcode) {
     queue.injected_commands_P = gcode.data();
 #endif
 
-    if (lidar_com_custom_gcode(queue.injected_commands_P)) {
-        // se o próximo gcode é customizado e a fila não foi parada
-        // nós temos de manualmente pula-lo para evitar erros de gcode desconhecido no serial
-        if (queue.injected_commands_P) {
-            auto fim_do_proximo_gcode = strchr(queue.injected_commands_P, '\n');
-            if (fim_do_proximo_gcode) {
-                auto offset = fim_do_proximo_gcode - queue.injected_commands_P;
-                queue.injected_commands_P += offset + 1;
-            } else {
-                queue.injected_commands_P = nullptr;
-            }
+    lidar_com_gcode_customizado(queue.injected_commands_P);
+
+#ifdef LUCAS_ROUBAR_FILA_GCODE
+    // se o próximo gcode é customizado e a fila não foi parada
+    // nós temos de manualmente pula-lo para evitar erros de gcode desconhecido no serial
+    if (queue.injected_commands_P) {
+        auto fim_do_proximo_gcode = strchr(queue.injected_commands_P, '\n');
+        if (fim_do_proximo_gcode) {
+            auto offset = fim_do_proximo_gcode - queue.injected_commands_P;
+            queue.injected_commands_P += offset + 1;
+        } else {
+            queue.injected_commands_P = nullptr;
         }
     }
+#endif
 }
 
 std::string_view proxima_instrucao(std::string_view gcode) {
@@ -41,18 +43,22 @@ std::string_view proxima_instrucao(std::string_view gcode) {
     return std::string_view{ c_str, static_cast<size_t>(fim_do_proximo_gcode - c_str) };
 }
 
-bool lidar_com_custom_gcode(std::string_view gcode) {
+void lidar_com_gcode_customizado(std::string_view gcode) {
     parser.parse(const_cast<char*>(gcode.data()));
     if (parser.command_letter != 'L')
-        return false;
+        return;
+
+    LOG("lidando manualmente com gcode customizado 'L", parser.codenum, "'");
 
     switch (parser.codenum) {
     // L0 -> Interrompe a estacao ativa até seu botão ser apertado
     case 0: {
-        if (Estacao::ativa()) {
-            Estacao::ativa()->aguardar_input();
-            parar_fila();
-        }
+        if (!Estacao::ativa())
+            break;
+
+        Estacao::ativa()->aguardar_input();
+        Estacao::procurar_nova_ativa();
+
         break;
     }
     // L1 -> Controla o bico
@@ -61,20 +67,28 @@ bool lidar_com_custom_gcode(std::string_view gcode) {
     case 1: {
         auto tick = millis();
         auto tempo = parser.longval('T');
-        // FIXME: fazer uma conta mais legal aqui pra trabalhar somente no range de tensão ideal
-        //		  algo entre 2-5V fica bom, o pino atual (FAN) produz 12V se passamos 100 para o K1.
-        auto potencia = static_cast<float>(parser.longval('P')) * 2.55f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
+        auto potencia = static_cast<float>(parser.longval('P')) * 0.16f; // PWM funciona de [0-255], então multiplicamos antes de passar pro Bico
         Bico::ativar(tick, tempo, potencia);
         if (Estacao::ativa())
             parar_fila();
 
         break;
     }
+    case 2: {
+        if (!Estacao::ativa())
+            break;
+
+        auto tempo = parser.longval('T');
+        auto& estacao = *Estacao::ativa();
+        estacao.pausar(tempo);
+        Estacao::procurar_nova_ativa();
+
+        break;
     }
-
-    LOG("lidando manualmente com gcode customizado 'L", parser.codenum, "'");
-
-    return true;
+    default: {
+        break;
+    }
+    }
 }
 
 bool e_ultima_instrucao(std::string_view gcode) {

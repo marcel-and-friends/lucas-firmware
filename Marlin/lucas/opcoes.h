@@ -15,13 +15,13 @@
 #define LUCAS_INTERVALO_UPDATE_TEMP 5000
 #define LUCAS_INTERVALO_UPDATE_POS 100
 /* nomes */
-#define LUCAS_NOME_UPDATE_TEMP_ATUAL_BICO "tempAtualBico"
-#define LUCAS_NOME_UPDATE_TEMP_TARGET_BICO "tempTargetBico"
-#define LUCAS_NOME_UPDATE_TEMP_ATUAL_BOILER "tempAtualBoiler"
-#define LUCAS_NOME_UPDATE_TEMP_TARGET_BOILER "tempTargetBoiler"
-#define LUCAS_NOME_UPDATE_POSICAO_X "posicaoX"
-#define LUCAS_NOME_UPDATE_POSICAO_Y "posicaoY"
-#define LUCAS_NOME_UPDATE_ESTACAO_ATIVA "ativa"
+#define LUCAS_UPDATE_TEMP_ATUAL_BICO "tempAtualBico"
+#define LUCAS_UPDATE_TEMP_TARGET_BICO "tempTargetBico"
+#define LUCAS_UPDATE_TEMP_ATUAL_BOILER "tempAtualBoiler"
+#define LUCAS_UPDATE_TEMP_TARGET_BOILER "tempTargetBoiler"
+#define LUCAS_UPDATE_POSICAO_X "posicaoX"
+#define LUCAS_UPDATE_POSICAO_Y "posicaoY"
+#define LUCAS_UPDATE_ESTACAO_ATIVA "ativa"
 /* ---- */
 /* ---------------- */
 
