@@ -11,7 +11,7 @@ static void atualizar_estacoes(millis_t tick);
 static void atualizar_serial(millis_t diff);
 
 void tick() {
-    if (g_executando_rotina_inicial || g_conectando_wifi)
+    if (g_executando_rotina_inicial || wifi::conectando())
         return;
 
     static millis_t ultimo_tick = 0;
@@ -22,9 +22,9 @@ void tick() {
     if (ultimo_tick == tick)
         return;
 
-    atualizar_serial(tick);
     atualizar_leds(tick);
     atualizar_estacoes(tick);
+    atualizar_serial(tick);
 
     ultimo_tick = tick;
 }

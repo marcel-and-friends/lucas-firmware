@@ -4,19 +4,17 @@
 
 namespace lucas::gcode {
 
-// Gcode executado ao apertar os botões
-// (lembrando que as coordenadas são relativas!)
 static constexpr auto RECEITA_PADRAO =
-    R"(L2 T10000
-G3 F5000 I20 J20
-G3 F5000 I15 J15
-G3 F5000 I10 J10
-G3 F5000 I5 J5
+    R"(L3 D11 N3 R1
 L0
-G3 F5000 I5 J5
-G3 F5000 I10 J10
-G3 F5000 I15 J15
-G3 F5000 I20 J20)";
+L3 D7.5 N3 R1
+L2 T10000
+L3 D8 N5 R1
+L2 T15000
+L3 D8.5 N5 R1
+L2 T20000
+L3 D8.5 N5 R1
+L2 T25000)";
 
 // Gcodes necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =
@@ -32,6 +30,10 @@ void lidar_com_gcode_customizado(std::string_view gcode);
 bool e_ultima_instrucao(std::string_view gcode);
 
 void parar_fila();
+
+void roubar_fila(const char* gcode);
+
+bool roubando_fila();
 
 bool tem_comandos_pendentes();
 

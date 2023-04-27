@@ -22,6 +22,9 @@ public:
 
     static Estacao* const ativa() { return s_estacao_ativa; }
 
+    static bool trocando_de_estacao_ativa() { return s_trocando_estacao_ativa; }
+    static void set_trocando_de_estacao_ativa(bool b) { s_trocando_estacao_ativa = b; }
+
 public:
     void prosseguir_receita();
 
@@ -35,7 +38,7 @@ public:
 
     void pausar(millis_t duracao);
 
-    bool tempo_de_pausa_atingido(millis_t tick);
+    bool tempo_de_pausa_atingido(millis_t tick) const;
 
     bool disponivel_para_uso() const;
 
@@ -49,6 +52,8 @@ public:
     void atualizar_campo_gcode(CampoGcode, std::string_view str) const;
 
     void atualizar_status(std::string_view str) const;
+
+    int posicao_absoluta() const;
 
     size_t numero() const;
 
@@ -91,6 +96,10 @@ private:
     static Lista s_lista;
 
     static inline Estacao* s_estacao_ativa = nullptr;
+
+    static inline bool s_trocando_estacao_ativa = false;
+
+    static void executar_rotina_troca_de_estacao_ativa();
 
 private:
     std::string_view proxima_instrucao() const;

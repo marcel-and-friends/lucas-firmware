@@ -28,19 +28,16 @@ void setup() {
 
     LOG("iniciando! - numero de estacoes = ", Estacao::NUM_ESTACOES);
 #if LUCAS_CONECTAR_WIFI
-    g_conectando_wifi = true;
-    LOG("conectando wifi");
     wifi::conectar(LUCAS_WIFI_NOME_SENHA);
 #endif
 }
 
-static bool pronto();
+static bool pronto_para_prosseguir_receita();
 
 void pos_execucao_gcode() {
-    if (!pronto())
+    if (!pronto_para_prosseguir_receita())
         return;
 
-    // não prosseguimos com a receita se o bico está ativo
     if (Bico::ativo())
         return;
 
@@ -73,17 +70,15 @@ static void executar_rotina_inicial() {
     g_executando_rotina_inicial = true;
 }
 
-static bool pronto() {
+static bool pronto_para_prosseguir_receita() {
 #if LUCAS_CONECTAR_WIFI
-    if (g_conectando_wifi) {
-        if (wifi::conectado()) {
-            g_conectando_wifi = false;
-            wifi::terminou_de_conectar();
+    if (wifi::terminou_de_conectar()) {
+        wifi::informar_sobre_rede();
     #if LUCAS_ROTINA_INICIAL
-            executar_rotina_inicial();
+        executar_rotina_inicial();
     #endif
-        }
     }
+
 #else
     if (!g_executando_rotina_inicial)
         executar_rotina_inicial();
@@ -96,14 +91,14 @@ static bool pronto() {
         }
     }
 
-    if (g_trocando_estacao_ativa) {
-        if (!gcode::tem_comandos_pendentes()) {
-            g_trocando_estacao_ativa = false;
-            LOG("troca de estacao finalizada, bico esta na nova posicao");
-            Estacao::ativa_prestes_a_comecar();
-        }
-    }
+    if (gcode::roubando_fila())
+        if (!gcode::tem_comandos_pendentes())
+            gcode::roubar_fila(nullptr);
 
-    return !g_conectando_wifi && !g_executando_rotina_inicial && !g_trocando_estacao_ativa;
+    if (Estacao::trocando_de_estacao_ativa())
+        if (!gcode::tem_comandos_pendentes())
+            Estacao::ativa_prestes_a_comecar();
+
+    return !Estacao::trocando_de_estacao_ativa() && !gcode::roubando_fila() && !g_executando_rotina_inicial;
 }
 }

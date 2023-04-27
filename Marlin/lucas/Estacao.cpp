@@ -8,56 +8,6 @@ namespace lucas {
 
 Estacao::Lista Estacao::s_lista = {};
 
-namespace util {
-static constexpr auto temp_ideal = 90;
-static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
-static constexpr auto margem_erro_temp = 10;
-
-static constexpr auto distancia_primeira_estacao = 80;
-static constexpr auto distancia_entre_estacoes = 160;
-
-// a segunda linha desse gcode indica a posição que será feita o descarte da água
-static constexpr auto descartar_agua_e_aguardar_temp_ideal =
-    R"(G0 F50000 Y60 X10
-G4 P3000
-G0 F1000 E100
-M109 T0 R)";
-
-static constexpr auto mover_ate_estacao_correta = "G0 F50000 Y60 X";
-
-static constexpr auto usar_movimento_absoluto = "G90\n";
-static constexpr auto usar_movimento_relativo = "\nG91";
-}
-
-static void executar_rotina_troca_de_estacao_ativa() {
-    // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente para os gcodes serem executados
-    static std::string rotina_troca_de_estacao_ativa = "";
-    // e significa que tem que ser limpa toda vez que essa função é chamada
-    rotina_troca_de_estacao_ativa.clear();
-    // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
-    rotina_troca_de_estacao_ativa.append(util::usar_movimento_absoluto);
-
-#if LUCAS_ROTINA_TEMP
-    // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    if (abs(thermalManager.wholeDegHotend(0) - util::temp_ideal) >= util::margem_erro_temp)
-        rotina_troca_de_estacao_ativa.append(util::descartar_agua_e_aguardar_temp_ideal).append(util::temp_ideal_str);
-#endif
-
-    auto posicao_absoluta_estacao_ativa = util::distancia_primeira_estacao + Estacao::ativa()->index() * util::distancia_entre_estacoes;
-    // posiciona o bico na estacao correta
-    rotina_troca_de_estacao_ativa.append(util::mover_ate_estacao_correta).append(std::to_string(posicao_absoluta_estacao_ativa));
-    // volta para movimentação relativa
-    rotina_troca_de_estacao_ativa.append(util::usar_movimento_relativo);
-
-    LOG("executando rotina da troca de estacao ativa");
-    gcode::injetar(rotina_troca_de_estacao_ativa);
-#if LUCAS_DEBUG_GCODE
-    LOG("---- gcode da rotina ----\n", rotina_troca_de_estacao_ativa.c_str());
-    LOG("-------------------------");
-#endif
-    g_trocando_estacao_ativa = true;
-}
-
 // TODO: desenvolver um algoritmo legal pra isso...
 void Estacao::procurar_nova_ativa() {
     LOG("procurando nova estacao ativa...");
@@ -93,6 +43,8 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
 }
 
 void Estacao::ativa_prestes_a_comecar() {
+    s_trocando_estacao_ativa = false;
+    LOG("troca de estacao finalizada, bico esta na nova posicao");
     auto& estacao = *Estacao::ativa();
     UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, estacao.numero());
     estacao.atualizar_status("Executando");
@@ -140,9 +92,10 @@ void Estacao::pausar(millis_t duracao) {
     m_comeco_pausa = millis();
     m_duracao_pausa = duracao;
     LOG("pausando por ", duracao, "ms");
+    atualizar_status("Pausada");
 }
 
-bool Estacao::tempo_de_pausa_atingido(millis_t tick) {
+bool Estacao::tempo_de_pausa_atingido(millis_t tick) const {
     return tick - m_comeco_pausa >= m_duracao_pausa;
 }
 
@@ -172,6 +125,12 @@ void Estacao::atualizar_status(std::string_view str) const {
     UPDATE(nome_buffer, str.data());
 }
 
+int Estacao::posicao_absoluta() const {
+    static constexpr auto distancia_primeira_estacao = 80;
+    static constexpr auto distancia_entre_estacoes = 160;
+    return distancia_primeira_estacao + index() * distancia_entre_estacoes;
+}
+
 size_t Estacao::numero() const {
     return index() + 1;
 }
@@ -186,6 +145,53 @@ void Estacao::set_aguardando_input(bool b) {
     } else {
         m_aguardando_input = false;
     }
+}
+
+namespace util {
+static constexpr auto temp_ideal = 90;
+static auto temp_ideal_str = std::to_string(temp_ideal) + '\n';
+static constexpr auto margem_erro_temp = 10;
+
+// a segunda linha desse gcode indica a posição que será feita o descarte da água
+static constexpr auto descartar_agua_e_aguardar_temp_ideal =
+    R"(G0 F50000 Y60 X10
+G4 P3000
+G0 F1000 E100
+M109 T0 R)";
+
+static constexpr auto mover_ate_estacao_correta = "G0 F50000 Y60 X";
+
+static constexpr auto usar_movimento_absoluto = "G90\n";
+static constexpr auto usar_movimento_relativo = "\nG91";
+}
+
+void Estacao::executar_rotina_troca_de_estacao_ativa() {
+    // essa variável tem que ser 'static' pois a memória dela tem que viver o suficiente para os gcodes serem executados
+    static std::string rotina_troca_de_estacao_ativa = "";
+    // e significa que tem que ser limpa toda vez que essa função é chamada
+    rotina_troca_de_estacao_ativa.clear();
+    // começamos a rotina indicando ao marlin que os gcodes devem ser executados em coodernadas absolutas
+    rotina_troca_de_estacao_ativa.append(util::usar_movimento_absoluto);
+
+#if LUCAS_ROTINA_TEMP
+    // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
+    if (abs(thermalManager.wholeDegHotend(0) - util::temp_ideal) >= util::margem_erro_temp)
+        rotina_troca_de_estacao_ativa.append(util::descartar_agua_e_aguardar_temp_ideal).append(util::temp_ideal_str);
+#endif
+
+    auto posicao_absoluta_estacao_ativa = ativa()->posicao_absoluta();
+    // posiciona o bico na estacao correta
+    rotina_troca_de_estacao_ativa.append(util::mover_ate_estacao_correta).append(std::to_string(posicao_absoluta_estacao_ativa));
+    // volta para movimentação relativa
+    rotina_troca_de_estacao_ativa.append(util::usar_movimento_relativo);
+
+    s_trocando_estacao_ativa = true;
+    LOG("executando rotina da troca de estacao ativa");
+    gcode::injetar(rotina_troca_de_estacao_ativa);
+#if LUCAS_DEBUG_GCODE
+    LOG("---- gcode da rotina ----\n", rotina_troca_de_estacao_ativa.c_str());
+    LOG("-------------------------");
+#endif
 }
 
 std::string_view Estacao::proxima_instrucao() const {

@@ -96,6 +96,8 @@ static void enviar_protocolo(Mensagem tipo, Bytes... bytes) {
     enviar_protocolo(tipo, msg);
 }
 
+static bool g_conectando = false;
+
 void conectar(std::string_view nome_rede, std::string_view senha_rede) {
     // u8 + u8 + nome_rede + u8 + senha_rede
     auto tamanho_msg = 1 + 1 + nome_rede.size() + 1 + senha_rede.size();
@@ -115,15 +117,25 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
 
     enviar_protocolo(Mensagem::Config, config_msg);
     enviar_protocolo(Mensagem::Conectar, Operacao::Conectar);
+
+    LOG("conectando wifi na rede '", nome_rede.data(), " - ", senha_rede.data(), "'");
+    g_conectando = true;
 }
 
-bool conectado() {
-    return wifi_link_state == WIFI_CONNECTED;
+bool conectando() {
+    return g_conectando;
 }
 
-void terminou_de_conectar() {
+bool terminou_de_conectar() {
+    if (g_conectando)
+        return wifi_link_state == WIFI_CONNECTED;
+    return false;
+}
+
+void informar_sobre_rede() {
+    g_conectando = false;
     LOG("conectado!");
-    LOG("-- informacoeses da rede --");
+    LOG("-- informacoes da rede --");
     LOG("ip = ",
         wifi::ip().data(),
         " \nnome = ",
