@@ -125,7 +125,7 @@ uint32_t getWifiTickDiff(int32_t lastTick, int32_t curTick) {
 void wifi_delay(int n) {
     const uint32_t start = getWifiTick();
     while (getWifiTickDiff(start, getWifiTick()) < (uint32_t)n)
-        watchdog_refresh();
+        hal.watchdog_refresh();
 }
 
 void wifi_reset() {
@@ -846,6 +846,7 @@ static void wifi_gcode_exec(uint8_t* cmd_line) {
     int8_t tempBuf[100] = { 0 };
     uint8_t* tmpStr = 0;
     int cmd_value;
+    volatile int print_rate;
     if (strchr((char*)cmd_line, '\n') && (strchr((char*)cmd_line, 'G') || strchr((char*)cmd_line, 'M') || strchr((char*)cmd_line, 'T'))) {
         tmpStr = (uint8_t*)strchr((char*)cmd_line, '\n');
         if (tmpStr)
@@ -1073,8 +1074,9 @@ static void wifi_gcode_exec(uint8_t* cmd_line) {
             case 27:
                 // Report print rate
                 if ((uiCfg.print_state == WORKING) || (uiCfg.print_state == PAUSED) || (uiCfg.print_state == REPRINTING)) {
+                    print_rate = uiCfg.totalSend;
                     ZERO(tempBuf);
-                    sprintf_P((char*)tempBuf, PSTR("M27 %ld\r\n"), uiCfg.print_progress);
+                    sprintf_P((char*)tempBuf, PSTR("M27 %d\r\n"), print_rate);
                     send_to_wifi((uint8_t*)tempBuf, strlen((char*)tempBuf));
                 }
                 break;
@@ -1162,7 +1164,6 @@ static void wifi_gcode_exec(uint8_t* cmd_line) {
                 }
 
                 send_to_wifi((uint8_t*)tempBuf, strlen((char*)tempBuf));
-                // queue.enqueue_one_P(PSTR("M105")); wini - cale a boca
                 break;
 
             case 992:
@@ -1636,7 +1637,7 @@ void esp_data_parser(char* cmdRxBuf, int len) {
 
             esp_msg_index += cpyLen;
 
-            leftLen = leftLen - cpyLen;
+            leftLen -= cpyLen;
             tail_pos = charAtArray(esp_msg_buf, esp_msg_index, ESP_PROTOC_TAIL);
 
             if (tail_pos == -1) {
@@ -1769,7 +1770,7 @@ void stopEspTransfer() {
     esp_port_begin(1);
     wifi_delay(200);
 
-    W25QXX.init(SPI_FULL_SPEED);
+    W25QXX.init(SPI_QUARTER_SPEED);
 
     TERN_(HAS_TFT_LVGL_UI_SPI, SPI_TFT.spi_init(SPI_FULL_SPEED));
     TERN_(HAS_SERVOS, servo_init());
@@ -1879,7 +1880,7 @@ void wifi_rcv_handle() {
 void wifi_looping() {
     do {
         wifi_rcv_handle();
-        watchdog_refresh();
+        hal.watchdog_refresh();
     } while (wifi_link_state == WIFI_TRANS_FILE);
 }
 
@@ -1894,7 +1895,7 @@ void mks_esp_wifi_init() {
 
     esp_state = TRANSFER_IDLE;
     esp_port_begin(1);
-    watchdog_refresh();
+    hal.watchdog_refresh();
     wifi_reset();
 
     #if 0
@@ -1947,14 +1948,14 @@ void mks_esp_wifi_init() {
 }
 
 void mks_wifi_firmware_update() {
-    watchdog_refresh();
+    hal.watchdog_refresh();
     card.openFileRead((char*)ESP_FIRMWARE_FILE);
 
     if (card.isFileOpen()) {
         card.closefile();
 
         wifi_delay(2000);
-        watchdog_refresh();
+        hal.watchdog_refresh();
         if (usartFifoAvailable((SZ_USART_FIFO*)&WifiRxFifo) < 20)
             return;
 
@@ -1963,7 +1964,7 @@ void mks_wifi_firmware_update() {
         lv_draw_dialog(DIALOG_TYPE_UPDATE_ESP_FIRMWARE);
 
         lv_task_handler();
-        watchdog_refresh();
+        hal.watchdog_refresh();
 
         if (wifi_upload(0) >= 0) {
             card.removeFile((char*)ESP_FIRMWARE_FILE_RENAME);
@@ -2018,7 +2019,7 @@ void get_wifi_commands() {
                             TERN_(BEZIER_CURVE_SUPPORT, case 5
                                   :)
                             SERIAL_ECHOLNPGM(STR_ERR_STOPPED);
-                            LCD_MESSAGEPGM(MSG_STOPPED);
+                            LCD_MESSAGE(MSG_STOPPED);
                             break;
                         }
                     }
@@ -2026,18 +2027,18 @@ void get_wifi_commands() {
 
     #if DISABLED(EMERGENCY_PARSER)
                 // Process critical commands early
-                if (strcmp(command, "M108") == 0) {
+                if (strcmp_P(command, PSTR("M108")) == 0) {
                     wait_for_heatup = false;
-                    TERN_(HAS_LCD_MENU, wait_for_user = false);
+                    TERN_(HAS_MARLINUI_MENU, wait_for_user = false);
                 }
-                if (strcmp(command, "M112") == 0)
-                    kill(M112_KILL_STR, nullptr, true);
-                if (strcmp(command, "M410") == 0)
+                if (strcmp_P(command, PSTR("M112")) == 0)
+                    kill(FPSTR(M112_KILL_STR), nullptr, true);
+                if (strcmp_P(command, PSTR("M410")) == 0)
                     quickstop_stepper();
     #endif
 
                 // Add the command to the queue
-                queue.enqueue_one_P(wifi_line_buffer);
+                queue.enqueue_one(wifi_line_buffer);
             } else if (wifi_read_count >= MAX_CMD_SIZE - 1) {
             } else { // it's not a newline, carriage return or escape char
                 if (wifi_char == ';')

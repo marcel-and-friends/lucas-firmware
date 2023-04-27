@@ -138,7 +138,7 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
         }
 
         if (series % 2 != comecar_na_borda)
-            adicionar_gcode("G90\nG0 F50000 X%d Y63\nG91", Estacao::ativa()->posicao_absoluta());
+            adicionar_gcode("G90\nG0 F2500 X%d Y63\nG91", Estacao::ativa()->posicao_absoluta());
 
         LOG("buffer = ", buffer.c_str());
 

@@ -154,12 +154,12 @@ static constexpr auto margem_erro_temp = 10;
 
 // a segunda linha desse gcode indica a posição que será feita o descarte da água
 static constexpr auto descartar_agua_e_aguardar_temp_ideal =
-    R"(G0 F50000 Y60 X10
+    R"(G0 F5000 Y60 X10
 G4 P3000
 G0 F1000 E100
 M109 T0 R)";
 
-static constexpr auto mover_ate_estacao_correta = "G0 F50000 Y60 X";
+static constexpr auto mover_ate_estacao_correta = "G0 F5000 Y60 X";
 
 static constexpr auto usar_movimento_absoluto = "G90\n";
 static constexpr auto usar_movimento_relativo = "\nG91";

@@ -16,7 +16,7 @@
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
- * along with this program.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
  */
 #pragma once
@@ -107,7 +107,7 @@ namespace DGUSRxHandler {
         break;
       }
       case 2: {
-        const uint16_t data = Swap16(*(uint16_t*)data_ptr);
+        const uint16_t data = BE16_P(data_ptr);
         *(T*)vp.extra = (T)data;
         break;
       }

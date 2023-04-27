@@ -51,7 +51,7 @@ const uint16_t VPList_Main[] PROGMEM = {
   #if HAS_HOTEND
     VP_T_E0_Is, VP_T_E0_Set, VP_E0_STATUS,
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VP_T_E1_Is, VP_T_E1_Set,
   #endif
   #if HAS_HEATED_BED
@@ -63,7 +63,7 @@ const uint16_t VPList_Main[] PROGMEM = {
   VP_XPos, VP_YPos, VP_ZPos,
   VP_Fan0_Percentage,
   VP_Feedrate_Percentage,
-  #if ENABLED(LCD_SET_PROGRESS_MANUALLY)
+  #if ENABLED(SET_PROGRESS_PERCENT)
     VP_PrintProgress_Percentage,
   #endif
   0x0000
@@ -73,7 +73,7 @@ const uint16_t VPList_Temp[] PROGMEM = {
   #if HAS_HOTEND
     VP_T_E0_Is, VP_T_E0_Set,
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VP_T_E1_Is, VP_T_E1_Set,
   #endif
   #if HAS_HEATED_BED
@@ -87,7 +87,7 @@ const uint16_t VPList_Status[] PROGMEM = {
   #if HAS_HOTEND
     VP_T_E0_Is, VP_T_E0_Set,
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VP_T_E1_Is, VP_T_E1_Set,
   #endif
   #if HAS_HEATED_BED
@@ -120,7 +120,7 @@ const uint16_t VPList_Preheat[] PROGMEM = {
   #if HAS_HOTEND
     VP_T_E0_Is, VP_T_E0_Set,
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VP_T_E1_Is, VP_T_E1_Set,
   #endif
   #if HAS_HEATED_BED
@@ -187,7 +187,7 @@ const uint16_t VPList_SD_PrintManipulation[] PROGMEM = {
   #if HAS_HOTEND
     VP_T_E0_Is, VP_T_E0_Set,
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VP_T_E1_Is, VP_T_E1_Set,
   #endif
   #if HAS_HEATED_BED
@@ -379,7 +379,7 @@ const struct DGUS_VP_Variable ListOfVP[] PROGMEM = {
       VPHELPER(VP_E0_FILAMENT_LOAD_UNLOAD, nullptr, ScreenHandler.HandleFilamentOption, ScreenHandler.HandleFilamentLoadUnload),
     #endif
   #endif
-  #if HOTENDS >= 2
+  #if HAS_MULTI_HOTEND
     VPHELPER(VP_T_E1_Is, &thermalManager.temp_hotend[1].celsius, nullptr, ScreenHandler.DGUSLCD_SendFloatAsLongValueToDisplay<0>),
     VPHELPER(VP_T_E1_Set, &thermalManager.temp_hotend[1].target, ScreenHandler.HandleTemperatureChanged, ScreenHandler.DGUSLCD_SendWordValueToDisplay),
     VPHELPER(VP_Flowrate_E1, &planner.flow_percentage[ExtUI::extruder_t::E1], ScreenHandler.HandleFlowRateChanged, ScreenHandler.DGUSLCD_SendWordValueToDisplay),  // ERROR: Flow is per-extruder, not per-hotend

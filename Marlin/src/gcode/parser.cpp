@@ -278,7 +278,7 @@ void GCodeParser::parse(char* p) {
                           :, case 'X'
                           :, case 'Y'
                           :, case 'Z'
-                          :, case AXIS4_NAME:, case AXIS5_NAME:, case AXIS6_NAME:)
+                          :, case AXIS4_NAME:, case AXIS5_NAME:, case AXIS6_NAME:, case AXIS7_NAME:, case AXIS8_NAME:, case AXIS9_NAME:)
     case 'F':
         if (motion_mode_codenum < 0)
             return;
@@ -317,7 +317,7 @@ void GCodeParser::parse(char* p) {
         }
 
 #if ENABLED(DEBUG_GCODE_PARSER)
-    const bool print_info = true;
+    const bool debug = codenum == 800;
 #endif
 
 /**
@@ -373,7 +373,7 @@ void GCodeParser::parse(char* p) {
 #endif
 
 #if ENABLED(DEBUG_GCODE_PARSER)
-            if (print_info) {
+            if (debug) {
                 SERIAL_ECHOPGM("Got param ", AS_CHAR(param), " at index ", p - command_ptr - 1);
                 if (has_val)
                     SERIAL_ECHOPGM(" (has_val)");
@@ -383,19 +383,19 @@ void GCodeParser::parse(char* p) {
             if (!has_val && !string_arg) { // No value? First time, keep as string_arg
                 string_arg = p - 1;
 #if ENABLED(DEBUG_GCODE_PARSER)
-                if (print_info)
+                if (debug)
                     SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
 #endif
             }
 
-            if (TERN0(DEBUG_GCODE_PARSER, print_info))
+            if (TERN0(DEBUG_GCODE_PARSER, debug))
                 SERIAL_EOL();
 
             TERN_(FASTER_GCODE_PARSER, set(param, valptr)); // Set parameter exists and pointer (nullptr for no value)
         } else if (!string_arg) {                           // Not A-Z? First time, keep as the string_arg
             string_arg = p - 1;
 #if ENABLED(DEBUG_GCODE_PARSER)
-            if (print_info)
+            if (debug)
                 SERIAL_ECHOPGM(" string_arg: ", hex_address((void*)string_arg)); // DEBUG
 #endif
         }

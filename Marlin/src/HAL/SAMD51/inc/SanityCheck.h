@@ -1,8 +1,9 @@
 /**
  * Marlin 3D Printer Firmware
- *
  * Copyright (c) 2020 MarlinFirmware [https://github.com/MarlinFirmware/Marlin]
- * SAMD51 HAL developed by Giuliano Zaro (AKA GMagician)
+ *
+ * Based on Sprinter and grbl.
+ * Copyright (c) 2011 Camiel Gubbels / Erik van der Zalm
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,6 +18,11 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
+ */
+#pragma once
+
+/**
+ * SAMD51 HAL developed by Giuliano Zaro (AKA GMagician)
  */
 
 /**
@@ -36,7 +42,7 @@
   #error "OnBoard SPI BUS can't be shared with other devices."
 #endif
 
-#if SERVO_TC == RTC_TIMER_NUM
+#if SERVO_TC == MF_TIMER_RTC
   #error "Servos can't use RTC timer"
 #endif
 

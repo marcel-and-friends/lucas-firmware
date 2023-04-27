@@ -41,6 +41,7 @@
 #define DATASIZE_8BIT  SPI_DATASIZE_8BIT
 #define DATASIZE_16BIT SPI_DATASIZE_16BIT
 #define TFT_IO_DRIVER  TFT_FSMC
+#define DMA_MAX_SIZE   0xFFFF
 
 #define TFT_DATASIZE TERN(TFT_INTERFACE_FSMC_8BIT, DATASIZE_8BIT, DATASIZE_16BIT)
 typedef TERN(TFT_INTERFACE_FSMC_8BIT, uint8_t, uint16_t) tft_data_t;
@@ -53,39 +54,37 @@ typedef struct {
 class TFT_FSMC {
   private:
     static SRAM_HandleTypeDef SRAMx;
+    static DMA_HandleTypeDef DMAtx;
+
     static LCD_CONTROLLER_TypeDef *LCD;
 
     static uint32_t ReadID(tft_data_t Reg);
     static void Transmit(tft_data_t Data) { LCD->RAM = Data; __DSB(); }
+    static void Transmit(uint32_t MemoryIncrease, uint16_t *Data, uint16_t Count);
     static void TransmitDMA(uint32_t MemoryIncrease, uint16_t *Data, uint16_t Count);
-    static void TransmitDMA_TI(uint32_t MemoryIncrease, uint16_t *Data, uint16_t Count);
-  public:
-    static DMA_HandleTypeDef DMAtx;
 
+  public:
     static void Init();
     static uint32_t GetID();
     static bool isBusy();
-    static void Abort() { __HAL_DMA_DISABLE(&DMAtx); }
+    static void Abort();
 
     static void DataTransferBegin(uint16_t DataWidth = TFT_DATASIZE) {}
     static void DataTransferEnd() {};
-  
+
     static void WriteData(uint16_t Data) { Transmit(tft_data_t(Data)); }
     static void WriteReg(uint16_t Reg) { LCD->REG = tft_data_t(Reg); __DSB(); }
 
-    static void WriteSequenceIT(uint16_t *Data, uint16_t Count) { TransmitDMA_TI(DMA_PINC_ENABLE, Data, Count); }
+    static void WriteSequence_DMA(uint16_t *Data, uint16_t Count) { TransmitDMA(DMA_PINC_ENABLE, Data, Count); }
+    static void WriteMultiple_DMA(uint16_t Color, uint16_t Count) { static uint16_t Data; Data = Color; TransmitDMA(DMA_PINC_DISABLE, &Data, Count); }
 
-    static void WriteSequence(uint16_t *Data, uint16_t Count) { TransmitDMA(DMA_PINC_ENABLE, Data, Count); }
-    static void WriteMultiple(uint16_t Color, uint16_t Count) { static uint16_t Data; Data = Color; TransmitDMA(DMA_PINC_DISABLE, &Data, Count); }
+    static void WriteSequence(uint16_t *Data, uint16_t Count) { Transmit(DMA_PINC_ENABLE, Data, Count); }
     static void WriteMultiple(uint16_t Color, uint32_t Count) {
-      static uint16_t Data; Data = Color;
       while (Count > 0) {
-        TransmitDMA(DMA_MINC_DISABLE, &Data, Count > 0xFFFF ? 0xFFFF : Count);
-        Count = Count > 0xFFFF ? Count - 0xFFFF : 0;
+        Transmit(DMA_MINC_DISABLE, &Color, Count > DMA_MAX_SIZE ? DMA_MAX_SIZE : Count);
+        Count = Count > DMA_MAX_SIZE ? Count - DMA_MAX_SIZE : 0;
       }
     }
-
-    // static void DMA2_Channel1_IRQHandler(void) {};
 };
 
 #ifdef STM32F1xx

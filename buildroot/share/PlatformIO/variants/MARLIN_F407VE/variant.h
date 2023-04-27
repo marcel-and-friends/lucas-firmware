@@ -39,7 +39,7 @@ extern "C" {
 #endif // __cplusplus
 
 /*----------------------------------------------------------------------------
- *        Pins ROBIN NANO v3.1f
+ *        Pins
  *----------------------------------------------------------------------------*/
 #if defined(ARDUINO_BLACK_F407VE) || defined(ARDUINO_BLACK_F407VG)
 // Right Side
@@ -299,10 +299,10 @@ extern "C" {
 
 // Timer Definitions
 // Do not use timer used by PWM pins when possible. See PinMap_PWM in PeripheralPins.c
-#define TIMER_TONE              TIM6
+#define TIMER_TONE              TIM6  // TIMER_TONE must be defined in this file
 
 // Do not use basic timer: OC is required
-#define TIMER_SERVO             TIM2  //TODO: advanced-control timers don't work
+#define TIMER_SERVO             TIM2  // TODO: advanced-control timers don't work
 
 // UART Definitions
 // Define here Serial instance number to map on Serial generic name

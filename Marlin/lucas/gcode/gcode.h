@@ -5,16 +5,15 @@
 namespace lucas::gcode {
 
 static constexpr auto RECEITA_PADRAO =
-    R"(L3 D11 N3 R1
+    R"(L3 D8 N3 R1
 L0
-L3 D7.5 N3 R1
+L3 D6.5 N3 R1
 L2 T10000
-L3 D8 N5 R1
+L3 D7 N5 R1
 L2 T15000
-L3 D8.5 N5 R1
+L3 D7.5 N5 R1
 L2 T20000
-L3 D8.5 N5 R1
-L2 T25000)";
+L3 D8 N5 R1)";
 
 // Gcodes necessário para o funcionamento ideal da máquina, executando quando a máquina liga, logo após conectar ao WiFi
 static constexpr auto ROTINA_INICIAL =

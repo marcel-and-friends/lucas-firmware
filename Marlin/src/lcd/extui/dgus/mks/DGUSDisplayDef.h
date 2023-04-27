@@ -28,13 +28,9 @@
 #define LOGO_TIME_DELAY TERN(USE_MKS_GREEN_UI, 8000, 1500)
 
 #if ENABLED(DGUS_MKS_RUNOUT_SENSOR)
-  // #define MT_DET_1_PIN     1
-  #define BT_MT_DET_1_PIN     1
-  // #define MT_DET_2_PIN     2
-  #define BT_MT_DET_2_PIN     2
-
-  // #define MT_DET_PIN_STATE LOW
-  #define BT_MT_DET_PIN_STATE LOW
+  #define MT_DET_1_PIN     1
+  #define MT_DET_2_PIN     2
+  #define MT_DET_PIN_STATE LOW
 #endif
 
 #define MKS_FINSH
@@ -104,7 +100,7 @@ extern EX_FILAMENT_DEF ex_filament;
 typedef enum {
   UNRUNOUT_STATUS,
   RUNOUT_STATUS,
-  RUNOUT_WAITTING_STATUS,
+  RUNOUT_WAITING_STATUS,
   RUNOUT_BEGIN_STATUS,
 } RUNOUT_MKS_STATUS_DEF;
 
@@ -684,8 +680,8 @@ constexpr uint16_t SP_T_Bed_Set   = 0x5040;
   constexpr uint16_t VP_EX_TEMP_INFO2_Dis             = 0x5620;
   constexpr uint16_t VP_EX_TEMP_INFO3_Dis             = 0x5630;
   constexpr uint16_t VP_LCD_BLK_Dis                   = 0x56A0;
-  constexpr uint16_t VP_Info_PrinfFinsh_1_Dis         = 0x5C00;
-  constexpr uint16_t VP_Info_PrinfFinsh_2_Dis         = 0x5C10;
+  constexpr uint16_t VP_Info_PrintFinish_1_Dis        = 0x5C00;
+  constexpr uint16_t VP_Info_PrintFinish_2_Dis        = 0x5C10;
 
   constexpr uint16_t VP_Length_Dis                    = 0x5B00;
 

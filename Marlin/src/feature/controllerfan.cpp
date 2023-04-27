@@ -40,6 +40,9 @@ uint8_t ControllerFan::speed;
 
 void ControllerFan::setup() {
   SET_OUTPUT(CONTROLLER_FAN_PIN);
+  #ifdef CONTROLLER_FAN2_PIN
+    SET_OUTPUT(CONTROLLER_FAN2_PIN);
+  #endif
   init();
 }
 
@@ -58,7 +61,7 @@ void ControllerFan::update() {
     //   - At least one stepper driver is enabled
     //   - The heated bed is enabled
     //   - TEMP_SENSOR_BOARD is reporting >= CONTROLLER_FAN_MIN_BOARD_TEMP
-    const ena_mask_t axis_mask = TERN(CONTROLLER_FAN_USE_Z_ONLY, _BV(Z_AXIS), ~TERN0(CONTROLLER_FAN_IGNORE_Z, _BV(Z_AXIS)));
+    const ena_mask_t axis_mask = TERN(CONTROLLER_FAN_USE_Z_ONLY, _BV(Z_AXIS), (ena_mask_t)~TERN0(CONTROLLER_FAN_IGNORE_Z, _BV(Z_AXIS)));
     if ( (stepper.axis_enabled.bits & axis_mask)
       || TERN0(HAS_HEATED_BED, thermalManager.temp_bed.soft_pwm_amount > 0)
       || TERN0(HAS_CONTROLLER_FAN_MIN_BOARD_TEMP, thermalManager.wholeDegBoard() >= CONTROLLER_FAN_MIN_BOARD_TEMP)
@@ -72,9 +75,37 @@ void ControllerFan::update() {
       ? settings.active_speed : settings.idle_speed
     );
 
-    // Allow digital or PWM fan output (see M42 handling)
-    WRITE(CONTROLLER_FAN_PIN, speed);
-    analogWrite(pin_t(CONTROLLER_FAN_PIN), speed);
+    speed = CALC_FAN_SPEED(speed);
+
+    #if FAN_KICKSTART_TIME
+      static millis_t fan_kick_end = 0;
+      if (speed > FAN_OFF_PWM) {
+        if (!fan_kick_end) {
+          fan_kick_end = ms + FAN_KICKSTART_TIME; // May be longer based on slow update interval for controller fn check. Sets minimum
+          speed = FAN_KICKSTART_POWER;
+        }
+        else if (PENDING(ms, fan_kick_end))
+          speed = FAN_KICKSTART_POWER;
+      }
+      else
+        fan_kick_end = 0;
+    #endif
+
+    #if ENABLED(FAN_SOFT_PWM)
+      thermalManager.soft_pwm_controller_speed = speed;
+    #else
+      if (PWM_PIN(CONTROLLER_FAN_PIN))
+        hal.set_pwm_duty(pin_t(CONTROLLER_FAN_PIN), speed);
+      else
+        WRITE(CONTROLLER_FAN_PIN, speed > 0);
+
+      #ifdef CONTROLLER_FAN2_PIN
+        if (PWM_PIN(CONTROLLER_FAN2_PIN))
+          hal.set_pwm_duty(pin_t(CONTROLLER_FAN2_PIN), speed);
+        else
+          WRITE(CONTROLLER_FAN2_PIN, speed > 0);
+      #endif
+    #endif
   }
 }
 

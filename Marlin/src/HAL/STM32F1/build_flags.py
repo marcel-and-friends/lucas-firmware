@@ -3,7 +3,8 @@ import sys
 
 #dynamic build flags for generic compile options
 if __name__ == "__main__":
-  args = " ".join(["-Os",
+  args = " ".join([ "-std=gnu++14",
+                    "-Os",
                     "-mcpu=cortex-m3",
                     "-mthumb",
 
@@ -29,25 +30,27 @@ if __name__ == "__main__":
 
 # extra script for linker options
 else:
-  from SCons.Script import DefaultEnvironment
-  env = DefaultEnvironment()
-  env.Append(
+  import pioutil
+  if pioutil.is_pio_build():
+    from SCons.Script import DefaultEnvironment
+    env = DefaultEnvironment()
+    env.Append(
       ARFLAGS=["rcs"],
 
       ASFLAGS=["-x", "assembler-with-cpp"],
 
       CXXFLAGS=[
-          "-fabi-version=0",
-          "-fno-use-cxa-atexit",
-          "-fno-threadsafe-statics"
+        "-fabi-version=0",
+        "-fno-use-cxa-atexit",
+        "-fno-threadsafe-statics"
       ],
       LINKFLAGS=[
-          "-Os",
-          "-mcpu=cortex-m3",
-          "-ffreestanding",
-          "-mthumb",
-          "--specs=nano.specs",
-          "--specs=nosys.specs",
-          "-u_printf_float",
+        "-Os",
+        "-mcpu=cortex-m3",
+        "-ffreestanding",
+        "-mthumb",
+        "--specs=nano.specs",
+        "--specs=nosys.specs",
+        "-u_printf_float",
       ],
-  )
+    )
