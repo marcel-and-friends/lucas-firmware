@@ -90,7 +90,6 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
         static std::string buffer(512, '\0');
         buffer.clear();
 
-        const auto comecar_na_borda = parser.seen_test('B');
         // o diametro é passado em cm, porem o marlin trabalho com mm
         const auto diametro = parser.floatval('D') * 10.f;
         const auto raio = diametro / 2.f;
@@ -99,6 +98,7 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
         const auto offset_por_semicirculo = raio / static_cast<float>(num_circulos);
         const auto repeticoes = parser.intval('R', 0);
         const auto series = repeticoes + 1;
+        const auto comecar_na_borda = parser.seen_test('B');
 
         auto adicionar_gcode = [](const char* fmt, auto... args) {
             static char buffer_gcode[128] = {};
@@ -109,7 +109,7 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
         if (comecar_na_borda) {
             static char buffer_raio[16] = {};
             dtostrf(-raio, 0, 2, buffer_raio);
-            adicionar_gcode("G0 F5000 X%s\n", buffer_raio);
+            adicionar_gcode("G0 F50000 X%s\n", buffer_raio);
         }
 
         for (auto i = 0; i < series; i++) {
@@ -133,12 +133,12 @@ void lidar_com_gcode_customizado(std::string_view gcode) {
                 static char buffer_offset_centro[16] = {};
                 dtostrf(offset_centro, 0, 2, buffer_offset_centro);
 
-                adicionar_gcode("G2 F5000 X%s I%s\n", buffer_offset_x, buffer_offset_centro);
+                adicionar_gcode("G2 F10000 X%s I%s\n", buffer_offset_x, buffer_offset_centro);
             }
         }
 
         if (series % 2 != comecar_na_borda)
-            adicionar_gcode("G90\nG0 F2500 X%d Y63\nG91", Estacao::ativa()->posicao_absoluta());
+            adicionar_gcode("G90\nG0 F50000 X%d Y63\nG91", Estacao::ativa()->posicao_absoluta());
 
         LOG("buffer = ", buffer.c_str());
 

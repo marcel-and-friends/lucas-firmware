@@ -170,8 +170,8 @@
  * 'TMC26X_STANDALONE', 'TMC2660', 'TMC2660_STANDALONE', 'TMC5130',
  * 'TMC5130_STANDALONE', 'TMC5160', 'TMC5160_STANDALONE']
  */
-#define X_DRIVER_TYPE TMC2208
-#define Y_DRIVER_TYPE A4988
+#define X_DRIVER_TYPE TMC2209
+#define Y_DRIVER_TYPE TMC2209
 #define Z_DRIVER_TYPE A4988
 // #define X2_DRIVER_TYPE A4988
 // #define Y2_DRIVER_TYPE A4988
@@ -3704,3 +3704,5 @@
 // Disable servo with M282 to reduce power consumption, noise, and heat when not
 // in use
 // #define SERVO_DETACH_GCODE
+
+#define DIAG_JUMPERS_REMOVED
