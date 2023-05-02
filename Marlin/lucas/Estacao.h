@@ -53,7 +53,7 @@ public:
 
     void atualizar_status(std::string_view str) const;
 
-    int posicao_absoluta() const;
+    float posicao_absoluta() const;
 
     size_t numero() const;
 

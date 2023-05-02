@@ -117,47 +117,7 @@ static void atualizar_estacoes(millis_t tick) {
     }
 }
 
-static void interpretar_comando_recebido(std::string_view input) {
-    if (input.front() != '$')
-        return;
-
-    LOG("interpretando comando '", input.data(), "'");
-    input.remove_prefix(1);
-
-    switch (input.front()) {
-    case 'R': {
-        for (auto& estacao : Estacao::lista()) {
-            if (estacao.livre()) {
-                estacao.set_livre(false);
-                estacao.set_receita(gcode::RECEITA_PADRAO);
-                estacao.aguardar_input();
-                return;
-            }
-        }
-    }
-    case 'H': {
-        if (Estacao::ativa())
-            Estacao::ativa()->cancelar_receita();
-
-        gcode::injetar("G28 X Y");
-    }
-    default:
-        return;
-    }
-}
-
 static void atualizar_serial(millis_t tick) {
-    static std::string input = "";
-    while (SERIAL_IMPL.available()) {
-        auto c = SERIAL_IMPL.read();
-        if (c == '\n') {
-            interpretar_comando_recebido(input);
-            input.clear();
-            continue;
-        }
-        input += c;
-    }
-
     static millis_t ultimo_update_temp = 0;
     if (tick - ultimo_update_temp >= LUCAS_INTERVALO_UPDATE_TEMP) {
         UPDATE(LUCAS_UPDATE_TEMP_ATUAL_BICO, thermalManager.degHotend(0));

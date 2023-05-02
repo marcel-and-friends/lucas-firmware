@@ -93,7 +93,7 @@ static bool pronto_para_prosseguir_receita() {
 
     if (gcode::roubando_fila())
         if (!gcode::tem_comandos_pendentes())
-            gcode::roubar_fila(nullptr);
+            gcode::fila_roubada_terminou();
 
     if (Estacao::trocando_de_estacao_ativa())
         if (!gcode::tem_comandos_pendentes())

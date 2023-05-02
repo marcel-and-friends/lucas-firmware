@@ -1333,7 +1333,7 @@
  * E2...]]
  */
 #define DEFAULT_MAX_FEEDRATE \
-    { 5000, 5000, 4, 10 }
+    { 100000, 100000, 4, 10 }
 
 // #define LIMITED_MAX_FR_EDITING        // Limit edit via M203 or LCD to
 // DEFAULT_MAX_FEEDRATE * 2

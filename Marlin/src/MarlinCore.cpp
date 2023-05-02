@@ -417,6 +417,8 @@ inline void finishSDPrinting() {
  *  - Pulse FET_SAFETY_PIN if it exists
  */
 inline void manage_inactivity(const bool no_stepper_sleep = false) {
+    queue.get_available_commands();
+
     const millis_t ms = millis();
 
     // Prevent steppers timing-out
