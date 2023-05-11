@@ -378,34 +378,14 @@ void GcodeSuite::process_parsed_command(const bool no_ok /*=false*/) {
         case 4:
             lucas::gcode::L4();
             break;
+        case 5:
+            lucas::gcode::L5();
+            break;
+        default:
+            parser.unknown_command_warning();
+            break;
         }
         break;
-        /*
-        M92 X44 Y24
-G28 X Y
-G90
-G1 F1500 X120 Y30
-G91
-G2 F1000 X4.00 I2.00
-G2 F1000 X-8.00 I-4.00
-G2 F1000 X12.00 I6.00
-G2 F1000 X-16.00 I-8.00
-G2 F1000 X20.00 I10.00
-G2 F1000 X-24.00 I-12.00
-G2 F1000 X28.00 I14.00
-G2 F1000 X-32.00 I-16.00
-G2 F1000 X36.00 I18.00
-G2 F1000 X-40.00 I-20.00
-G2 F1000 X40.00 I20.00
-G2 F1000 X-36.00 I-18.00
-G2 F1000 X32.00 I16.00
-G2 F1000 X-28.00 I-14.00
-G2 F1000 X24.00 I12.00
-G2 F1000 X-20.00 I-10.00
-G2 F1000 X16.00 I8.00
-G2 F1000 X-8.00 I-4.00
-G2 F1000 X8.00 I4.00*/
-
     case 'G':
         switch (parser.codenum) {
         case 0:

@@ -6,54 +6,97 @@
 #include <lucas/Estacao.h>
 
 namespace lucas::gcode {
-
-void injetar(std::string_view gcode) {
-    queue.injected_commands_P = gcode.data();
-}
-
-void injetar_imediato(const char* gcode) {
+void injetar(const char* gcode) {
     queue.injected_commands_P = gcode;
 }
 
-std::string_view proxima_instrucao(std::string_view gcode) {
-    auto c_str = gcode.data();
+std::string_view proxima_instrucao(const char* gcode) {
     // como uma sequência de gcodes é separada pelo caractere de nova linha basta procurar um desse para encontrar o fim
-    auto fim_do_proximo_gcode = strchr(c_str, '\n');
+    auto fim_do_proximo_gcode = strchr(gcode, '\n');
     if (!fim_do_proximo_gcode) {
         // se a nova linha não existe então estamos no último
         return gcode;
     }
 
-    return std::string_view{ c_str, static_cast<size_t>(fim_do_proximo_gcode - c_str) };
+    return std::string_view{ gcode, static_cast<size_t>(fim_do_proximo_gcode - gcode) };
 }
 
-bool e_ultima_instrucao(std::string_view gcode) {
-    return strchr(gcode.data(), '\n') == nullptr;
+bool ultima_instrucao(const char* gcode) {
+    return strchr(gcode, '\n') == nullptr;
 }
-
-static const char* g_fila_roubada = nullptr;
-static const char* g_fila_backup = nullptr;
 
 void parar_fila() {
-    queue.injected_commands_P = g_fila_backup = g_fila_roubada = nullptr;
-}
-
-void roubar_fila(const char* gcode) {
-    g_fila_roubada = gcode;
-    g_fila_backup = queue.injected_commands_P;
-    queue.injected_commands_P = g_fila_roubada;
-}
-
-void fila_roubada_terminou() {
-    queue.injected_commands_P = g_fila_backup;
-    g_fila_backup = g_fila_roubada = nullptr;
-}
-
-bool roubando_fila() {
-    return g_fila_roubada;
+    queue.injected_commands_P = nullptr;
 }
 
 bool tem_comandos_pendentes() {
     return queue.injected_commands_P != nullptr;
 }
 }
+
+/*
+(
+M92 X132 Y72
+G28 XY
+G90
+G0 F15000 X90 Y110
+G91
+G2 F2500 X2.50 I1.25
+G2 F2500 X-5.00 I-2.50
+G2 F2500 X7.50 I3.75
+G2 F2500 X-10.00 I-5.00
+G2 F2500 X12.50 I6.25
+G2 F2500 X-15.00 I-7.50
+G2 F2500 X15.00 I7.50
+G2 F2500 X-12.50 I-6.25
+G2 F2500 X10.00 I5.00
+G2 F2500 X-7.50 I-3.75
+G2 F2500 X5.00 I2.50
+G2 F2500 X-2.50 I-1.25
+G90
+G0 F15000 X10 Y110
+G91
+G2 F1000 X2.50 I1.25
+G2 F1000 X-5.00 I-2.50
+G2 F1000 X7.50 I3.75
+G2 F1000 X-10.00 I-5.00
+G2 F1000 X12.50 I6.25
+G2 F1000 X-15.00 I-7.50
+G2 F1000 X15.00 I7.50
+G2 F1000 X-12.50 I-6.25
+G2 F1000 X10.00 I5.00
+G2 F1000 X-7.50 I-3.75
+G2 F1000 X5.00 I2.50
+G2 F1000 X-2.50 I-1.25
+G90
+G0 F15000 X100 Y110
+G91
+G2 F2500 X2.50 I1.25
+G2 F2500 X-5.00 I-2.50
+G2 F2500 X7.50 I3.75
+G2 F2500 X-10.00 I-5.00
+G2 F2500 X12.50 I6.25
+G2 F2500 X-15.00 I-7.50
+G2 F2500 X15.00 I7.50
+G2 F2500 X-12.50 I-6.25
+G2 F2500 X10.00 I5.00
+G2 F2500 X-7.50 I-3.75
+G2 F2500 X5.00 I2.50
+G2 F2500 X-2.50 I-1.25
+G90
+G0 F15000 X50 Y110
+G91
+G2 F1000 X2.50 I1.25
+G2 F1000 X-5.00 I-2.50
+G2 F1000 X7.50 I3.75
+G2 F1000 X-10.00 I-5.00
+G2 F1000 X12.50 I6.25
+G2 F1000 X-15.00 I-7.50
+G2 F1000 X15.00 I7.50
+G2 F1000 X-12.50 I-6.25
+G2 F1000 X10.00 I5.00
+G2 F1000 X-7.50 I-3.75
+G2 F1000 X5.00 I2.50
+G2 F1000 X-2.50 I-1.25
+)
+*/

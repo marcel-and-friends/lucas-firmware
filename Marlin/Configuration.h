@@ -1379,7 +1379,7 @@
  * When changing speed and direction, if the difference is less than the
  * value set here, it may happen instantaneously.
  */
-// #define CLASSIC_JERK
+#define CLASSIC_JERK
 #if ENABLED(CLASSIC_JERK)
     #define DEFAULT_XJERK 10.0
     #define DEFAULT_YJERK 10.0
@@ -2475,8 +2475,8 @@
 // When enabled Marlin will send a busy status message to the host
 // every couple of seconds when it can't accept commands.
 //
-#define HOST_KEEPALIVE_FEATURE // Disable this if your host doesn't like
-                               // keepalive messages
+// #define HOST_KEEPALIVE_FEATURE // Disable this if your host doesn't like
+// keepalive messages
 #define DEFAULT_KEEPALIVE_INTERVAL \
     2                      // Number of seconds between "busy" messages. Set with M113.
 #define BUSY_WHILE_HEATING // Some hosts require "busy" messages even during
@@ -3494,7 +3494,7 @@
 //
 // Touch Screen Settings
 //
-#define TOUCH_SCREEN
+// #define TOUCH_SCREEN
 #if ENABLED(TOUCH_SCREEN)
     #define BUTTON_DELAY_EDIT 50  // (ms) Button repeat delay for edit screens
     #define BUTTON_DELAY_MENU 250 // (ms) Button repeat delay for menus
@@ -3554,7 +3554,7 @@
 // However, control resolution will be halved for each increment;
 // at zero value, there are 128 effective control positions.
 // :[0,1,2,3,4,5,6,7]
-#define SOFT_PWM_SCALE 0
+// #define SOFT_PWM_SCALE 0
 
 // If SOFT_PWM_SCALE is set to a value higher than 0, dithering can
 // be used to mitigate the associated resolution loss. If enabled,

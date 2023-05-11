@@ -6,7 +6,6 @@
 #include <lucas/lucas.h>
 
 namespace lucas {
-
 class Estacao {
 public:
     static constexpr size_t NUM_ESTACOES = 5;
@@ -22,19 +21,18 @@ public:
 
     static Estacao* const ativa() { return s_estacao_ativa; }
 
-    static bool trocando_de_estacao_ativa() { return s_trocando_estacao_ativa; }
-    static void set_trocando_de_estacao_ativa(bool b) { s_trocando_estacao_ativa = b; }
-
 public:
     void prosseguir_receita();
 
-    void finalizar_receita();
+    void preparar_para_finalizar_receita();
 
     void disponibilizar_para_uso();
 
     void aguardar_input();
 
     void cancelar_receita();
+
+    void receita_finalizada();
 
     void pausar(millis_t duracao);
 
@@ -61,7 +59,10 @@ public:
 
 public:
     int botao() const { return m_pino_botao; }
-    void set_botao(int pino) { m_pino_botao = pino; }
+    void set_botao(int pino) {
+        m_pino_botao = pino;
+        SET_INPUT_PULLUP(pino);
+    }
 
     bool aguardando_input() const { return m_aguardando_input; }
     void set_aguardando_input(bool b);
@@ -90,14 +91,15 @@ public:
     bool livre() const { return m_livre; }
     void set_livre(bool b) { m_livre = b; }
 
+    bool cancelada() const { return m_cancelada; }
+    void set_cancelada(bool b) { m_cancelada = b; }
+
     bool pausada() const { return m_pausada; }
 
 private:
     static Lista s_lista;
 
     static inline Estacao* s_estacao_ativa = nullptr;
-
-    static inline bool s_trocando_estacao_ativa = false;
 
     static void executar_rotina_troca_de_estacao_ativa();
 
@@ -142,7 +144,8 @@ private:
     // usado como um debounce para ativar uma estacao somente quando o botão é solto
     bool m_botao_apertado = false;
 
+    bool m_cancelada = false;
+
     bool m_pausada = false;
 };
-
 }

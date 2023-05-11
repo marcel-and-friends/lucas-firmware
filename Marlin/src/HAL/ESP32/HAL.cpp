@@ -358,7 +358,7 @@ int8_t MarlinHAL::set_pwm_frequency(const pin_t pin, const uint32_t f_desired) {
   #if ENABLED(I2S_STEPPER_STREAM)
     if (pin > 127) {
       pwm_pin_data[pin & 0x7F].pwm_cycle_ticks = 1000000UL / f_desired / 4; // # of 4µs ticks per full PWM cycle
-      return 0;
+      retset_pwm_frequencyrn 0;
     }
     else
   #endif

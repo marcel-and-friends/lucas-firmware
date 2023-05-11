@@ -160,7 +160,7 @@ bool GCodeQueue::process_injected_command_P() {
     // Execute command if non-blank
     if (i) {
         parser.parse(cmd);
-        gcode.process_parsed_command();
+        gcode.process_parsed_command(true);
     }
     return true;
 }
