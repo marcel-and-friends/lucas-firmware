@@ -11,11 +11,9 @@ public:
         return the;
     }
 
-    void agir(millis_t tick);
+    void tick(millis_t tick);
 
     void ativar(millis_t tick, millis_t tempo, float gramas);
-
-    void reset();
 
     void setup();
 
@@ -32,6 +30,8 @@ public:
     }
 
 private:
+    void reset();
+
     millis_t m_tempo = 0;
 
     millis_t m_tick_desligou = 0;

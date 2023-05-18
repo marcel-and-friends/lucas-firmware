@@ -28,74 +28,49 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
     if (s_estacao_ativa) {
         auto& estacao = *s_estacao_ativa;
         LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
+        UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, estacao.numero());
+        estacao.atualizar_status("Executando");
 
         const auto& bico = Bico::the();
         bico.descartar_agua_ruim();
         bico.viajar_para_estacao(estacao);
-
 #if LUCAS_DEBUG_GCODE
-        auto gcode = estacao.receita().c_str() + estacao.progresso_receita();
-        LOG("-------- receita --------\n", gcode);
+        LOG("-------- receita --------\n", estacao.receita().c_str() + estacao.progresso_receita());
         LOG("-------------------------");
 #endif
-        Estacao::ativa()->atualizar_status("Executando");
-        UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, Estacao::ativa()->numero());
     } else {
         UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, "-");
         gcode::parar_fila();
     }
 }
 
-void Estacao::ativa_prestes_a_comecar() {
+void Estacao::enviar_receita(std::string receita) {
+    set_receita(std::move(receita));
+    set_livre(false);
+    set_aguardando_input(true);
 }
 
 void Estacao::prosseguir_receita() {
     executar_instrucao(proxima_instrucao());
 }
 
-void Estacao::preparar_para_finalizar_receita() {
-    set_livre(true);
-    set_aguardando_input(false);
-    m_receita.clear();
-    m_progresso_receita = 0;
-    m_pausada = false;
-    m_comeco_pausa = 0;
-    m_duracao_pausa = 0;
-}
-
 void Estacao::disponibilizar_para_uso() {
+    if (m_receita.empty())
+        return;
+
     ESTACAO_LOG("disponibilizada para uso");
     set_livre(false);
     set_aguardando_input(false);
-    m_pausada = false;
     if (!Estacao::ativa())
         Estacao::set_estacao_ativa(this);
     else
         atualizar_status("Na fila");
 }
 
-void Estacao::aguardar_input() {
-    m_aguardando_input = true;
-    atualizar_status("Aguardando input");
-}
-
 void Estacao::cancelar_receita() {
-    set_cancelada(true);
-    preparar_para_finalizar_receita();
-    if (esta_ativa())
-        set_estacao_ativa(nullptr);
-
-    atualizar_status("Livre");
-    atualizar_campo_gcode(CampoGcode::Atual, "-");
-    atualizar_campo_gcode(CampoGcode::Proximo, "-");
+    reset();
+    set_receita_cancelada(true);
     ESTACAO_LOG("RECEITA CANCELADA!");
-}
-
-void Estacao::receita_finalizada() {
-    atualizar_status("Livre");
-    // o campo 'Proximo' já foi atualizado dentro da função 'prosseguir_receita'
-    atualizar_campo_gcode(CampoGcode::Atual, "-");
-    procurar_nova_ativa();
 }
 
 void Estacao::pausar(millis_t duracao) {
@@ -104,6 +79,10 @@ void Estacao::pausar(millis_t duracao) {
     m_duracao_pausa = duracao;
     ESTACAO_LOG("pausando por ", duracao, "ms");
     atualizar_status("Pausada");
+    procurar_nova_ativa();
+}
+
+void Estacao::despausar() {
 }
 
 bool Estacao::tempo_de_pausa_atingido(millis_t tick) const {
@@ -130,10 +109,10 @@ void Estacao::atualizar_campo_gcode(CampoGcode qual, std::string_view valor) con
     UPDATE(nome_buffer, valor_buffer);
 }
 
-void Estacao::atualizar_status(std::string_view str) const {
+void Estacao::atualizar_status(const char* str) const {
     static char nome_buffer[] = "statusE?";
     nome_buffer[7] = numero() + '0';
-    UPDATE(nome_buffer, str.data());
+    UPDATE(nome_buffer, str);
 }
 
 float Estacao::posicao_absoluta() const {
@@ -151,14 +130,15 @@ size_t Estacao::index() const {
 }
 
 void Estacao::set_aguardando_input(bool b) {
-    if (b) {
-        aguardar_input();
-    } else {
-        m_aguardando_input = false;
-    }
+    m_aguardando_input = b;
+    if (m_aguardando_input)
+        atualizar_status("Aguardando input");
 }
 
-void Estacao::executar_rotina_troca_de_estacao_ativa() {
+void Estacao::set_livre(bool b) {
+    m_livre = b;
+    if (m_livre)
+        atualizar_status("Livre");
 }
 
 std::string_view Estacao::proxima_instrucao() const {
@@ -166,14 +146,33 @@ std::string_view Estacao::proxima_instrucao() const {
 }
 
 void Estacao::executar_instrucao(std::string_view instrucao) {
-    gcode::injetar(instrucao.data());
     atualizar_campo_gcode(CampoGcode::Atual, instrucao);
     if (gcode::ultima_instrucao(instrucao.data())) {
         atualizar_campo_gcode(CampoGcode::Proximo, "-");
-        preparar_para_finalizar_receita();
+        // podemos 'executar()' aqui pois, como se trata da ultima instrucao, a string é null-terminated
+        gcode::executar(instrucao.data());
+        ESTACAO_LOG("receita finalizada");
+        reset();
     } else {
+        gcode::injetar(instrucao.data());
         m_progresso_receita += instrucao.size() + 1;
         atualizar_campo_gcode(CampoGcode::Proximo, proxima_instrucao());
     }
+}
+
+void Estacao::reset() {
+    set_livre(true);
+    set_aguardando_input(false);
+    m_pausada = false;
+    m_comeco_pausa = 0;
+    m_duracao_pausa = 0;
+    m_progresso_receita = 0;
+    m_receita.clear();
+
+    if (esta_ativa())
+        procurar_nova_ativa();
+
+    atualizar_campo_gcode(CampoGcode::Atual, "-");
+    atualizar_campo_gcode(CampoGcode::Proximo, "-");
 }
 }

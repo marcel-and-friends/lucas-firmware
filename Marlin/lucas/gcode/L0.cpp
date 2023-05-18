@@ -5,7 +5,7 @@ void L0() {
     if (!Estacao::ativa())
         return;
 
-    Estacao::ativa()->aguardar_input();
+    Estacao::ativa()->set_aguardando_input(true);
     Estacao::procurar_nova_ativa();
 }
 }

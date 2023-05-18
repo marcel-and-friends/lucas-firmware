@@ -22,19 +22,17 @@ public:
     static Estacao* const ativa() { return s_estacao_ativa; }
 
 public:
-    void prosseguir_receita();
+    void enviar_receita(std::string receita);
 
-    void preparar_para_finalizar_receita();
+    void prosseguir_receita();
 
     void disponibilizar_para_uso();
 
-    void aguardar_input();
-
     void cancelar_receita();
 
-    void receita_finalizada();
-
     void pausar(millis_t duracao);
+
+    void despausar();
 
     bool tempo_de_pausa_atingido(millis_t tick) const;
 
@@ -49,7 +47,7 @@ public:
 
     void atualizar_campo_gcode(CampoGcode, std::string_view str) const;
 
-    void atualizar_status(std::string_view str) const;
+    void atualizar_status(const char* str) const;
 
     float posicao_absoluta() const;
 
@@ -85,14 +83,14 @@ public:
     ptrdiff_t progresso_receita() const { return m_progresso_receita; }
     void reiniciar_receita() { m_progresso_receita = 0; }
 
-    millis_t tick_apertado_para_cancelar() const { return m_tick_apertado_para_cancelar; }
-    void set_tick_apertado_para_cancelar(millis_t t) { m_tick_apertado_para_cancelar = t; }
+    millis_t tick_botao_segurado() const { return m_tick_botao_segurado; }
+    void set_tick_botao_segurado(millis_t t) { m_tick_botao_segurado = t; }
 
     bool livre() const { return m_livre; }
-    void set_livre(bool b) { m_livre = b; }
+    void set_livre(bool b);
 
-    bool cancelada() const { return m_cancelada; }
-    void set_cancelada(bool b) { m_cancelada = b; }
+    bool receita_cancelada() const { return m_receita_cancelada; }
+    void set_receita_cancelada(bool b) { m_receita_cancelada = b; }
 
     bool pausada() const { return m_pausada; }
 
@@ -110,6 +108,8 @@ private:
 
     void reiniciar_progresso() { m_progresso_receita = 0; }
 
+    void reset();
+
 private:
     // a receita inteira, contém todos os gcodes que vamos executar
     std::string m_receita;
@@ -125,11 +125,7 @@ private:
 
     // o ultimo tick em que o botao foi apertado
     // usado para cancelar uma receita
-    millis_t m_tick_apertado_para_cancelar = 0;
-
-    millis_t m_comeco_pausa = 0;
-
-    millis_t m_duracao_pausa = 0;
+    millis_t m_tick_botao_segurado = 0;
 
     // estacao aguardando input do usuário para prosseguir
     // ocorre no começo de uma receita, após o K0 e no final de uma receita
@@ -144,8 +140,13 @@ private:
     // usado como um debounce para ativar uma estacao somente quando o botão é solto
     bool m_botao_apertado = false;
 
-    bool m_cancelada = false;
+    // se a receita acabou de ser cancelada e o botao ainda nao foi solto
+    bool m_receita_cancelada = false;
 
     bool m_pausada = false;
+
+    millis_t m_comeco_pausa = 0;
+
+    millis_t m_duracao_pausa = 0;
 };
 }

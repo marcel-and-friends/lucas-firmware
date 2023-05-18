@@ -6,9 +6,7 @@ namespace lucas::gcode {
 void L4() {
     for (auto& estacao : Estacao::lista()) {
         if (estacao.livre()) {
-            estacao.set_livre(false);
-            estacao.set_receita(gcode::RECEITA_PADRAO);
-            estacao.aguardar_input();
+            estacao.enviar_receita(gcode::RECEITA_PADRAO);
             return;
         }
     }

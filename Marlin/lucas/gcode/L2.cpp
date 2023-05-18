@@ -6,7 +6,6 @@ void L2() {
     if (!Estacao::ativa())
         return;
 
-    Estacao::ativa()->pausar(parser.intval('T'));
-    Estacao::procurar_nova_ativa();
+    Estacao::ativa()->pausar(parser.ulongval('T'));
 }
 }

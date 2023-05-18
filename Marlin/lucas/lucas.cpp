@@ -47,11 +47,6 @@ void pos_execucao_gcode() {
         return;
 
     auto& estacao = *Estacao::ativa();
-    // ultimo gcode acabou de ser executado
-    if (estacao.livre()) {
-        estacao.receita_finalizada();
-    } else {
-        estacao.prosseguir_receita();
-    }
+    estacao.prosseguir_receita();
 }
 }

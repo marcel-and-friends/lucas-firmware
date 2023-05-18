@@ -10,42 +10,57 @@ static void atualizar_estacoes(millis_t tick) {
     constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
 
     for (auto& estacao : Estacao::lista()) {
-        if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
-            LOG("estacao #", estacao.numero(), " - tempo de pausa acabou");
-            estacao.disponibilizar_para_uso();
-            continue;
-        }
+        // atualizacao simples do estado do botao
+        bool apertado_antes = estacao.botao_apertado();
+        bool apertado_agora = util::apertado(estacao.botao());
+        estacao.set_botao_apertado(apertado_agora);
 
-        auto apertado = util::apertado(estacao.botao());
-        if (apertado && !estacao.receita().empty()) {
-            if (!estacao.tick_apertado_para_cancelar())
-                estacao.set_tick_apertado_para_cancelar(tick);
-
-            if (tick - estacao.tick_apertado_para_cancelar() >= TEMPO_PARA_CANCELAR_RECEITA) {
-                estacao.cancelar_receita();
+        // primeiro cuidamos de estacoes pausadas
+        {
+            if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
+                estacao.despausar();
+                estacao.disponibilizar_para_uso();
                 continue;
             }
         }
 
-        // o botão acabou de ser solto
-        if (!apertado && estacao.botao_apertado()) {
-            if (estacao.tick_apertado_para_cancelar())
-                estacao.set_tick_apertado_para_cancelar(0);
+        // agora vemos se o usuario quer cancelar a receita
+        {
+            if (apertado_agora && !estacao.receita().empty()) {
+                if (!estacao.tick_botao_segurado())
+                    estacao.set_tick_botao_segurado(tick);
 
-            if (estacao.cancelada()) {
-                estacao.set_cancelada(false);
-            } else {
-                if (estacao.livre()) {
-                    estacao.set_livre(false);
-                    estacao.set_receita(gcode::RECEITA_PADRAO);
-                    estacao.aguardar_input();
-                } else if (estacao.aguardando_input()) {
-                    estacao.disponibilizar_para_uso();
+                if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
+                    estacao.cancelar_receita();
+                    continue;
                 }
             }
         }
 
-        estacao.set_botao_apertado(apertado);
+        // o botão acabou de ser solto, temos varias opcoes
+        if (!apertado_agora && apertado_antes) {
+            if (estacao.tick_botao_segurado())
+                // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
+                estacao.set_tick_botao_segurado(0);
+
+            if (estacao.receita_cancelada()) {
+                // se acabou de ser cancelada podemos voltar ao normal
+                estacao.set_receita_cancelada(false);
+                continue;
+            }
+
+            if (estacao.livre()) {
+                // se a boca estava livre e apertamos o botao enviamos a receita padrao
+                estacao.enviar_receita(gcode::RECEITA_PADRAO);
+                continue;
+            }
+
+            if (estacao.aguardando_input()) {
+                // se estavamos aguardando input prosseguimos normalmente
+                estacao.disponibilizar_para_uso();
+                continue;
+            }
+        }
     }
 }
 
@@ -101,12 +116,12 @@ void tick() {
 
     static millis_t ultimo_tick = 0;
     auto tick = millis();
-    Bico::the().agir(tick);
     //  a 'idle' pode ser chamada mais de uma vez em um milésimo
     //  precisamos fitrar esses casos para nao mudarmos o estado das estacoes/leds mais de uma vez por ms
     if (ultimo_tick == tick)
         return;
 
+    Bico::the().tick(tick);
     atualizar_leds(tick);
     atualizar_estacoes(tick);
     atualizar_serial(tick);

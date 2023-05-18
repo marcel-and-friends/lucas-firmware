@@ -11,12 +11,7 @@ static constexpr auto RECEITA_PADRAO =
     R"(L3 D8 N3 R1
 L0
 L3 D6.5 N3 R1
-L2 T10000
-L3 D7 N5 R1
-L2 T15000
-L3 D7.5 N5 R1
-L2 T20000
-L3 D8 N5 R1)";
+L3 D4 N2 R2)";
 
 static constexpr auto ROTINA_NIVELAMENTO =
     R"(M92 X22 Y12

@@ -9,39 +9,14 @@ constexpr auto PINO_SV = MT_DET_1_PIN;
 constexpr auto PINO_ENABLE = MT_DET_2_PIN;
 constexpr auto PINO_BREAK = PB2;
 
-void Bico::agir(millis_t tick) {
+void Bico::tick(millis_t tick) {
     if (!m_ativo)
         return;
 
-    if (tick - m_tick < m_tempo) {
-        analogWrite(PINO_ENABLE, 0);   // libera a comunicação
-        analogWrite(PINO_SV, m_poder); // seta a força desejada
-        analogWrite(PINO_BREAK, 4095); // libera o break
-    } else {
-        LOG("Bico - finalizando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, " - diff: ", tick - m_tick, "]");
+    if (tick - m_tick > m_tempo) {
+        LOG("bico - finalizando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, " - diff: ", tick - m_tick, "]");
         reset();
     }
-}
-
-void Bico::reset() {
-    analogWrite(PINO_BREAK, 0);     // breca o motor
-    analogWrite(PINO_SV, 0);        // zera a força
-    analogWrite(PINO_ENABLE, 4095); // desliga comunicação
-    m_ativo = false;
-    m_poder = 0;
-    m_tick = 0;
-    m_tempo = 0;
-}
-
-void Bico::setup() {
-    // nossos pinos DAC tem resolução de 12 bits
-    analogWriteResolution(12);
-    // os 3 porquinhos
-    pinMode(PINO_SV, OUTPUT);
-    pinMode(PINO_ENABLE, OUTPUT);
-    pinMode(PINO_BREAK, OUTPUT);
-    reset();
-    nivelar();
 }
 
 void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
@@ -61,15 +36,42 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     m_ativo = true;
     m_tick = tick;
     m_tempo = tempo;
-    LOG("Bico - iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
+    LOG("bico - iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
+
+    analogWrite(PINO_ENABLE, 0);   // libera a comunicação
+    analogWrite(PINO_SV, m_poder); // seta a força desejada
+    analogWrite(PINO_BREAK, 4095); // libera o break
+}
+
+void Bico::reset() {
+    m_ativo = false;
+    m_poder = 0;
+    m_tick = 0;
+    m_tempo = 0;
+
+    analogWrite(PINO_BREAK, 0);     // breca o motor
+    analogWrite(PINO_SV, 0);        // zera a força
+    analogWrite(PINO_ENABLE, 4095); // desliga comunicação
+}
+
+void Bico::setup() {
+    // nossos pinos DAC tem resolução de 12 bits
+    analogWriteResolution(12);
+    // os 3 porquinhos
+    pinMode(PINO_SV, OUTPUT);
+    pinMode(PINO_ENABLE, OUTPUT);
+    pinMode(PINO_BREAK, OUTPUT);
+
+    reset();
+    nivelar();
 }
 
 void Bico::viajar_para_estacao(Estacao& estacao) const {
-    viajar_para_estacao(estacao.index());
+    viajar_para_estacao(estacao.numero());
 }
 
 void Bico::viajar_para_estacao(size_t numero) const {
-    LOG("Bico - indo para estacao numero ", numero);
+    LOG("bico - indo para estacao #", numero);
     auto& estacao = Estacao::lista().at(numero - 1);
     gcode::executar("G90");
     gcode::executarff("G0 F50000 Y60 X%s", estacao.posicao_absoluta());
@@ -92,12 +94,12 @@ M109 T0 R%s)";
 }
 
 void Bico::nivelar() const {
-    LOG("Bico - executando rotina de nivelamento");
+    LOG("bico - executando rotina de nivelamento");
     gcode::executar("G28 XY");
 #if LUCAS_ROTINA_TEMP
     gcode::executarff("M190 S%s", 90.f);
 #endif
-    LOG("Bico - nivelamento finalizado");
+    LOG("bico - nivelamento finalizado");
 }
 
 }
