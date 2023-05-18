@@ -3,41 +3,44 @@
 #include <src/MarlinCore.h>
 
 namespace lucas {
-
+class Estacao;
 class Bico {
 public:
-    static void agir(millis_t tick);
-
-    static void ativar(millis_t tick, millis_t tempo, float poder);
-
-    static void reset();
-
-    static void setup();
-
-    static bool ativo() {
-        return s_ativo;
+    static Bico& the() {
+        static Bico the;
+        return the;
     }
 
-    static void set_min(float f) {
-        s_min = f;
-    }
+    void agir(millis_t tick);
 
-    static void set_max(float f) {
-        s_max = f;
+    void ativar(millis_t tick, millis_t tempo, float gramas);
+
+    void reset();
+
+    void setup();
+
+    void viajar_para_estacao(Estacao&) const;
+
+    void viajar_para_estacao(size_t numero) const;
+
+    void descartar_agua_ruim() const;
+
+    void nivelar() const;
+
+    bool ativo() const {
+        return m_ativo;
     }
 
 private:
-    static inline float s_min = 0.f;
+    millis_t m_tempo = 0;
 
-    static inline float s_max = 255.f;
+    millis_t m_tick_desligou = 0;
 
-    static inline millis_t s_tempo = 0;
+    millis_t m_tick = 0;
 
-    static inline millis_t s_tick = 0;
+    uint32_t m_poder = 0;
 
-    static inline int s_poder = 0;
-
-    static inline bool s_ativo = false;
+    bool m_ativo = false;
 };
 
 }

@@ -5,17 +5,9 @@
 
 namespace lucas::gcode {
 void L1() {
-    if (Bico::ativo())
+    if (Bico::the().ativo())
         return;
 
-    const auto tick = millis();
-    const auto tempo = parser.longval('T');
-    auto valor = parser.longval('P');
-    if (valor > 100)
-        valor = 100;
-    if (valor < 0)
-        valor = 0;
-
-    Bico::ativar(tick, tempo, static_cast<float>(valor));
+    Bico::the().ativar(millis(), parser.intval('T'), parser.floatval('G'));
 }
 }

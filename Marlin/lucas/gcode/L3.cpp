@@ -17,7 +17,7 @@ void L3() {
     const auto velocidade = parser.intval('F', 5000);
 
     if (comecar_na_borda)
-        executarff("G0 F50000 X%s", -raio);
+        executarff("G0 F10000 X%s", -raio);
 
     for (auto i = 0; i < series; i++) {
         const bool fora_pra_dentro = i % 2 != comecar_na_borda;
@@ -45,6 +45,6 @@ void L3() {
     }
 
     if (series % 2 != comecar_na_borda)
-        executarff("G0 F50000 X%s", raio);
+        executarff("G0 F10000 X%s", raio);
 }
 }

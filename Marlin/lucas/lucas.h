@@ -10,8 +10,6 @@ namespace lucas {
 #define LOG SERIAL_ECHOLNPGM
 #define UPDATE(tipo, valor) LOG("$", tipo, ":", valor);
 
-inline bool g_nivelando = false;
-
 void setup();
 
 void pos_execucao_gcode();

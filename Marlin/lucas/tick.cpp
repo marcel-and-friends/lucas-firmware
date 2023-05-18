@@ -96,12 +96,12 @@ static void atualizar_serial(millis_t tick) {
 }
 
 void tick() {
-    if (g_nivelando || wifi::conectando())
+    if (wifi::conectando())
         return;
 
     static millis_t ultimo_tick = 0;
     auto tick = millis();
-    Bico::agir(tick);
+    Bico::the().agir(tick);
     //  a 'idle' pode ser chamada mais de uma vez em um milésimo
     //  precisamos fitrar esses casos para nao mudarmos o estado das estacoes/leds mais de uma vez por ms
     if (ultimo_tick == tick)

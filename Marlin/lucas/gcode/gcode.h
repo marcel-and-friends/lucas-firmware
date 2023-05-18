@@ -7,7 +7,6 @@
 #include <src/gcode/parser.h>
 
 namespace lucas::gcode {
-
 static constexpr auto RECEITA_PADRAO =
     R"(L3 D8 N3 R1
 L0
@@ -22,7 +21,7 @@ L3 D8 N5 R1)";
 static constexpr auto ROTINA_NIVELAMENTO =
     R"(M92 X22 Y12
 G28 X Y
-M190 R93)";
+M190 R80)";
 
 void injetar(const char* gcode);
 
@@ -37,6 +36,9 @@ bool tem_comandos_pendentes();
 inline void executar(const char* gcode) {
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);
+#if LUCAS_DEBUG_GCODE
+    LOG("Executando gcode imediato '", gcode, "'");
+#endif
 }
 
 inline void executarf(const char* fmt, auto... args) {
@@ -54,8 +56,8 @@ inline void executarff(const char* fmt, float value) {
 // L0 -> Pausa a estação ativa e aguarda input do usuário
 void L0();
 // L1 -> Controla o bico
-// T - Tempo, em milisegundos, que o bico deve ficar ligado
 // P - Potência, [0-100], controla a força que a água é despejada
+// T - Tempo, em milisegundos, que o bico deve ficar ligado
 void L1();
 // L2 -> Pausa cronometrada
 // T - Tempo, em milisegundos, que a estação ativa vai ficar pausada
@@ -68,6 +70,7 @@ void L2();
 void L3();
 // L4 -> Enviar receita padrão para a primeira boca livre
 void L4();
-// L5
+// L5 -> Viajar para uma estacao (pelo numero)
+// N - Número da estação
 void L5();
 }

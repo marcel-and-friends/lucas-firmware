@@ -3,10 +3,7 @@
 
 namespace lucas::gcode {
 void L5() {
-    if (parser.seenval('A'))
-        Bico::set_min(parser.value_long());
-
-    if (parser.seenval('B'))
-        Bico::set_max(parser.value_long());
+    auto numero = std::clamp(parser.longval('N'), 1l, 5l);
+    Bico::the().viajar_para_estacao(numero);
 }
 }

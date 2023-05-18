@@ -1,6 +1,7 @@
 #include "Estacao.h"
 #include <memory>
 #include <src/module/temperature.h>
+#include <lucas/Bico.h>
 
 #define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", __VA_ARGS__)
 
@@ -27,9 +28,11 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
     if (s_estacao_ativa) {
         auto& estacao = *s_estacao_ativa;
         LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
-#if LUCAS_ROTINA_TROCA
-        executar_rotina_troca_de_estacao_ativa();
-#endif
+
+        const auto& bico = Bico::the();
+        bico.descartar_agua_ruim();
+        bico.viajar_para_estacao(estacao);
+
 #if LUCAS_DEBUG_GCODE
         auto gcode = estacao.receita().c_str() + estacao.progresso_receita();
         LOG("-------- receita --------\n", gcode);
@@ -156,28 +159,6 @@ void Estacao::set_aguardando_input(bool b) {
 }
 
 void Estacao::executar_rotina_troca_de_estacao_ativa() {
-    static constexpr auto TEMP_IDEAL = 90.f;
-    static constexpr auto MARGEM_ERRO_TEMP = 10.f;
-
-    static constexpr auto DESCARTE =
-        R"(G0 F50000 Y60 X10
-L1 P80 T10000
-M109 T0 R%s)";
-
-    LOG("executando rotina da troca de estacao ativa");
-
-    gcode::executar("G90");
-
-#if LUCAS_ROTINA_TEMP
-    // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    if (fabs(thermalManager.degHotend(0) - TEMP_IDEAL) >= MARGEM_ERRO_TEMP)
-        gcode::executarff(DESCARTE, TEMP_IDEAL);
-#endif
-
-    gcode::executarff("G0 F50000 Y60 X%s", ativa()->posicao_absoluta());
-    gcode::executar("G91");
-
-    LOG("troca de estacao finalizada, bico esta na nova posicao");
 }
 
 std::string_view Estacao::proxima_instrucao() const {

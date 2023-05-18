@@ -6,9 +6,7 @@ void L2() {
     if (!Estacao::ativa())
         return;
 
-    const auto tempo = parser.longval('T');
-    auto& estacao = *Estacao::ativa();
-    estacao.pausar(tempo);
+    Estacao::ativa()->pausar(parser.intval('T'));
     Estacao::procurar_nova_ativa();
 }
 }
