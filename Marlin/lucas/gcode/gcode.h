@@ -1,5 +1,6 @@
 #pragma once
 
+#include <lucas/lucas.h>
 #include <string_view>
 #include <avr/dtostrf.h>
 #include <string>
@@ -12,11 +13,6 @@ static constexpr auto RECEITA_PADRAO =
 L0
 L3 D6.5 N3 R1
 L3 D4 N2 R2)";
-
-static constexpr auto ROTINA_NIVELAMENTO =
-    R"(M92 X22 Y12
-G28 X Y
-M190 R80)";
 
 void injetar(const char* gcode);
 

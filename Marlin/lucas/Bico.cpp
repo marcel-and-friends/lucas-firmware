@@ -10,11 +10,19 @@ constexpr auto PINO_ENABLE = MT_DET_2_PIN;
 constexpr auto PINO_BREAK = PB2;
 
 void Bico::tick(millis_t tick) {
-    if (!m_ativo)
+    if (!m_ativo) {
+        if (m_tick_desligou) {
+            if (tick - m_tick_desligou > 10000) {
+                digitalWrite(PINO_BREAK, LOW);
+                m_tick_desligou = 0;
+            }
+        }
         return;
+    }
 
     if (tick - m_tick > m_tempo) {
         LOG("bico - finalizando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, " - diff: ", tick - m_tick, "]");
+        m_tick_desligou = tick;
         reset();
     }
 }
@@ -38,9 +46,9 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     m_tempo = tempo;
     LOG("bico - iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
 
-    analogWrite(PINO_ENABLE, 0);   // libera a comunicação
-    analogWrite(PINO_SV, m_poder); // seta a força desejada
-    analogWrite(PINO_BREAK, 4095); // libera o break
+    analogWrite(PINO_ENABLE, 4095); // libera a comunicação
+    analogWrite(PINO_SV, m_poder);  // seta a força desejada
+    digitalWrite(PINO_BREAK, 0);    // libera o break
 }
 
 void Bico::reset() {
@@ -49,9 +57,9 @@ void Bico::reset() {
     m_tick = 0;
     m_tempo = 0;
 
-    analogWrite(PINO_BREAK, 0);     // breca o motor
+    digitalWrite(PINO_BREAK, HIGH); // breca o motor
     analogWrite(PINO_SV, 0);        // zera a força
-    analogWrite(PINO_ENABLE, 4095); // desliga comunicação
+    analogWrite(PINO_ENABLE, 0);    // desliga comunicação
 }
 
 void Bico::setup() {
@@ -62,7 +70,10 @@ void Bico::setup() {
     pinMode(PINO_ENABLE, OUTPUT);
     pinMode(PINO_BREAK, OUTPUT);
 
-    reset();
+    digitalWrite(PINO_BREAK, LOW);
+    analogWrite(PINO_SV, 0);
+    analogWrite(PINO_ENABLE, 0);
+
     nivelar();
 }
 
@@ -97,7 +108,7 @@ void Bico::nivelar() const {
     LOG("bico - executando rotina de nivelamento");
     gcode::executar("G28 XY");
 #if LUCAS_ROTINA_TEMP
-    gcode::executarff("M190 S%s", 90.f);
+    // gcode::executarff("M190 S%s", 30.f);
 #endif
     LOG("bico - nivelamento finalizado");
 }

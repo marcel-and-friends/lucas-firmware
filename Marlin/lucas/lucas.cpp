@@ -21,10 +21,11 @@ void setup() {
         auto& estacao = Estacao::lista().at(i);
         estacao.set_botao(info.pino_botao);
         estacao.set_led(info.pino_led);
+        // todas as maquinas começam livres
         estacao.set_livre(true);
     }
 
-    LOG("iniciando! - numero de estacoes = ", Estacao::NUM_ESTACOES);
+    LOG("iniciando");
     Bico::the().setup();
 #if LUCAS_CONECTAR_WIFI
     wifi::conectar(LUCAS_WIFI_NOME_SENHA);
@@ -46,7 +47,6 @@ void pos_execucao_gcode() {
     if (!Estacao::ativa())
         return;
 
-    auto& estacao = *Estacao::ativa();
-    estacao.prosseguir_receita();
+    Estacao::ativa()->prosseguir_receita();
 }
 }

@@ -15,8 +15,6 @@ public:
 
     static void set_estacao_ativa(Estacao* estacao);
 
-    static void ativa_prestes_a_comecar();
-
     static Lista& lista() { return s_lista; }
 
     static Estacao* const ativa() { return s_estacao_ativa; }
@@ -99,14 +97,10 @@ private:
 
     static inline Estacao* s_estacao_ativa = nullptr;
 
-    static void executar_rotina_troca_de_estacao_ativa();
-
 private:
     std::string_view proxima_instrucao() const;
 
     void executar_instrucao(std::string_view instrucao);
-
-    void reiniciar_progresso() { m_progresso_receita = 0; }
 
     void reset();
 
