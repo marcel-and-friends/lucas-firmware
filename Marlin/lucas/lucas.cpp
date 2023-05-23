@@ -10,10 +10,7 @@ void setup() {
 
     static constexpr std::array<InfoEstacao, Estacao::NUM_ESTACOES> infos = {
         InfoEstacao{.pino_botao = PC8,   .pino_led = PE13},
-        InfoEstacao{ .pino_botao = PC4,  .pino_led = PD13},
-        InfoEstacao{ .pino_botao = PA13, .pino_led = PC6 },
-        InfoEstacao{ .pino_botao = 0,    .pino_led = PE8 },
-        InfoEstacao{ .pino_botao = 0,    .pino_led = PE15},
+        InfoEstacao{ .pino_botao = PC4,  .pino_led = PD13}
     };
 
     for (size_t i = 0; i < Estacao::NUM_ESTACOES; i++) {

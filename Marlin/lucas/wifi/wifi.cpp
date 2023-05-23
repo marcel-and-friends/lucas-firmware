@@ -2,7 +2,9 @@
 #include <lucas/lucas.h>
 #include <cstdint>
 #include <vector>
-#include <src/lcd/extui/mks_ui/draw_ui.h>
+#ifdef MKS_WIFI_MODULE
+    #include <src/lcd/extui/mks_ui/draw_ui.h>
+#endif
 
 namespace lucas::wifi {
 
@@ -87,7 +89,9 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
     // Fim
     buffer.push_back(FIM);
 
+#ifdef MKS_WIFI_MODULE
     raw_send_to_wifi(buffer.data(), buffer.size());
+#endif
 }
 
 template<typename... Bytes>
@@ -127,9 +131,13 @@ bool conectando() {
 }
 
 bool terminou_de_conectar() {
+#ifdef MKS_WIFI_MODULE
     if (g_conectando)
         return wifi_link_state == WIFI_CONNECTED;
     return false;
+#else
+    return false;
+#endif
 }
 
 void informar_sobre_rede() {
@@ -146,15 +154,27 @@ void informar_sobre_rede() {
 }
 
 std::string_view ip() {
+#ifdef MKS_WIFI_MODULE
     return ipPara.ip_addr;
+#else
+    return "";
+#endif
 }
 
 std::string_view nome_rede() {
+#ifdef MKS_WIFI_MODULE
     return wifiPara.ap_name;
+#else
+
+    return "";
+#endif
 }
 
 std::string_view senha_rede() {
+#ifdef MKS_WIFI_MODULE
     return wifiPara.keyCode;
+#else
+    return "";
+#endif
 }
-
 }

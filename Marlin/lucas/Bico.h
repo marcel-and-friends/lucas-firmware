@@ -30,7 +30,7 @@ public:
     }
 
 private:
-    void reset();
+    void desligar(millis_t tick_desligou);
 
     millis_t m_tempo = 0;
 

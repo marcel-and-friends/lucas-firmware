@@ -8,7 +8,7 @@
 namespace lucas {
 class Estacao {
 public:
-    static constexpr size_t NUM_ESTACOES = 5;
+    static constexpr size_t NUM_ESTACOES = 2;
     using Lista = std::array<Estacao, NUM_ESTACOES>;
 
     static void procurar_nova_ativa();
