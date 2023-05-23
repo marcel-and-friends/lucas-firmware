@@ -30,7 +30,9 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         estacao.atualizar_status("Executando");
 
         auto& bico = Bico::the();
+#if LUCAS_ROTINA_TEMP
         bico.descartar_agua_ruim();
+#endif
         bico.viajar_para_estacao(estacao);
 
 #if LUCAS_DEBUG_GCODE
@@ -52,7 +54,19 @@ void Estacao::enviar_receita(std::string receita) {
 }
 
 void Estacao::prosseguir_receita() {
-    executar_instrucao(proxima_instrucao());
+    auto instrucao = proxima_instrucao();
+    atualizar_campo_gcode(CampoGcode::Atual, instrucao);
+    if (gcode::ultima_instrucao(instrucao.data())) {
+        atualizar_campo_gcode(CampoGcode::Proximo, "-");
+        // podemos 'executar()' aqui pois, como se trata da ultima instrucao, a string é null-terminated
+        gcode::executar(instrucao.data());
+        reiniciar();
+        ESTACAO_LOG("receita finalizada");
+    } else {
+        gcode::injetar(instrucao.data());
+        m_progresso_receita += instrucao.size() + 1;
+        atualizar_campo_gcode(CampoGcode::Proximo, proxima_instrucao());
+    }
 }
 
 void Estacao::disponibilizar_para_uso() {
@@ -69,7 +83,7 @@ void Estacao::disponibilizar_para_uso() {
 }
 
 void Estacao::cancelar_receita() {
-    reset();
+    reiniciar();
     set_receita_cancelada(true);
     ESTACAO_LOG("receita cancelada");
 }
@@ -150,29 +164,14 @@ std::string_view Estacao::proxima_instrucao() const {
     return gcode::proxima_instrucao(m_receita.data() + m_progresso_receita);
 }
 
-void Estacao::executar_instrucao(std::string_view instrucao) {
-    atualizar_campo_gcode(CampoGcode::Atual, instrucao);
-    if (gcode::ultima_instrucao(instrucao.data())) {
-        atualizar_campo_gcode(CampoGcode::Proximo, "-");
-        // podemos 'executar()' aqui pois, como se trata da ultima instrucao, a string é null-terminated
-        gcode::executar(instrucao.data());
-        reset();
-        ESTACAO_LOG("receita finalizada");
-    } else {
-        gcode::injetar(instrucao.data());
-        m_progresso_receita += instrucao.size() + 1;
-        atualizar_campo_gcode(CampoGcode::Proximo, proxima_instrucao());
-    }
-}
-
-void Estacao::reset() {
+void Estacao::reiniciar() {
     set_livre(true);
     set_aguardando_input(false);
     m_pausada = false;
     m_comeco_pausa = 0;
     m_duracao_pausa = 0;
-    m_progresso_receita = 0;
     m_receita.clear();
+    m_progresso_receita = 0;
     if (esta_ativa())
         procurar_nova_ativa();
     atualizar_campo_gcode(CampoGcode::Atual, "-");

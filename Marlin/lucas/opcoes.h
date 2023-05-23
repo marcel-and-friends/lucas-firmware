@@ -2,7 +2,6 @@
 
 /* gcode */
 #define LUCAS_DEBUG_GCODE true
-// #define LUCAS_ROUBAR_FILA_GCODE "L1 P128 T10000"
 /* ----- */
 
 /* rotinas */

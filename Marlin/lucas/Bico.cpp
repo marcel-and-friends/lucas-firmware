@@ -93,7 +93,6 @@ void Bico::viajar_para_estacao(size_t numero) const {
 }
 
 void Bico::descartar_agua_ruim() const {
-#if LUCAS_ROTINA_TEMP
     constexpr auto TEMP_IDEAL = 90.f;
     constexpr auto MARGEM_ERRO_TEMP = 10.f;
 
@@ -104,7 +103,6 @@ M109 T0 R%s)";
     // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
     if (fabs(thermalManager.degHotend(0) - TEMP_IDEAL) >= MARGEM_ERRO_TEMP)
         gcode::executarff(DESCARTE, TEMP_IDEAL);
-#endif
 }
 
 void Bico::nivelar() const {

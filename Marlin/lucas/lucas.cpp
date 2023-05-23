@@ -9,8 +9,8 @@ void setup() {
     };
 
     static constexpr std::array<InfoEstacao, Estacao::NUM_ESTACOES> infos = {
-        InfoEstacao{.pino_botao = PC8,   .pino_led = PE13},
-        InfoEstacao{ .pino_botao = PC4,  .pino_led = PD13}
+        InfoEstacao{.pino_botao = PC8,  .pino_led = PE13},
+        InfoEstacao{ .pino_botao = PC4, .pino_led = PD13}
     };
 
     for (size_t i = 0; i < Estacao::NUM_ESTACOES; i++) {
@@ -35,11 +35,6 @@ void pos_execucao_gcode() {
             wifi::informar_sobre_rede();
         return;
     }
-
-#ifdef LUCAS_ROUBAR_FILA_GCODE
-    gcode::injetar(LUCAS_ROUBAR_FILA_GCODE);
-    return;
-#endif
 
     if (!Estacao::ativa())
         return;

@@ -100,9 +100,7 @@ private:
 private:
     std::string_view proxima_instrucao() const;
 
-    void executar_instrucao(std::string_view instrucao);
-
-    void reset();
+    void reiniciar();
 
 private:
     // a receita inteira, contém todos os gcodes que vamos executar

@@ -636,11 +636,11 @@
 
 #if TEMP_SENSOR_BED
     #define TEMP_BED_RESIDENCY_TIME \
-        10 // (seconds) Time to wait for bed to "settle" in M190
+        1 // (seconds) Time to wait for bed to "settle" in M190
     #define TEMP_BED_WINDOW \
         1 // (°C) Temperature proximity for the "temperature reached" timer
     #define TEMP_BED_HYSTERESIS \
-        3 // (°C) Temperature proximity considered "close enough" to the target
+        1 // (°C) Temperature proximity considered "close enough" to the target
 #endif
 
 #if TEMP_SENSOR_CHAMBER
@@ -698,7 +698,7 @@
 #define HEATER_5_MAXTEMP 275
 #define HEATER_6_MAXTEMP 275
 #define HEATER_7_MAXTEMP 275
-#define BED_MAXTEMP 150
+#define BED_MAXTEMP 110
 #define CHAMBER_MAXTEMP 60
 
 /**
@@ -973,9 +973,9 @@
  * details can be tuned in Configuration_adv.h
  */
 
-// #define THERMAL_PROTECTION_HOTENDS // Enable thermal protection for all
+#define THERMAL_PROTECTION_HOTENDS // Enable thermal protection for all
 //  extruders
-// #define THERMAL_PROTECTION_BED     // Enable thermal protection for the heated bed
+#define THERMAL_PROTECTION_BED     // Enable thermal protection for the heated bed
 #define THERMAL_PROTECTION_CHAMBER // Enable thermal protection for the heated
                                    // chamber
 #define THERMAL_PROTECTION_COOLER  // Enable thermal protection for the laser
@@ -1866,7 +1866,7 @@
 // WARNING: When motors turn off there is a chance of losing position accuracy!
 #define DISABLE_X false
 #define DISABLE_Y false
-#define DISABLE_Z true
+#define DISABLE_Z false
 // #define DISABLE_I false
 // #define DISABLE_J false
 // #define DISABLE_K false
@@ -1910,7 +1910,7 @@
 
 // @section homing
 
-// #define NO_MOTION_BEFORE_HOMING // Inhibit movement until all axes have been
+#define NO_MOTION_BEFORE_HOMING // Inhibit movement until all axes have been
 // homed. Also enable HOME_AFTER_DEACTIVATE for extra safety. #define
 // HOME_AFTER_DEACTIVATE   // Require rehoming after steppers are deactivated.
 // Also enable NO_MOTION_BEFORE_HOMING for extra safety.

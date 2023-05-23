@@ -111,9 +111,6 @@ static void atualizar_serial(millis_t tick) {
 }
 
 void tick() {
-    if (wifi::conectando())
-        return;
-
     static millis_t ultimo_tick = 0;
     auto tick = millis();
     //  a 'idle' pode ser chamada mais de uma vez em um milésimo
