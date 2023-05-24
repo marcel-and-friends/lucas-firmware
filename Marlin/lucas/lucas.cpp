@@ -22,6 +22,7 @@ void setup() {
         estacao.set_livre(true);
     }
 
+    UPDATE(LUCAS_UPDATE_NUM_ESTACOES, Estacao::NUM_ESTACOES)
     LOG("iniciando");
     Bico::the().setup();
 #if LUCAS_CONECTAR_WIFI

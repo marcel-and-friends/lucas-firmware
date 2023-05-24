@@ -10,6 +10,10 @@ static void atualizar_estacoes(millis_t tick) {
     constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
 
     for (auto& estacao : Estacao::lista()) {
+        // absolutamente nada é atualizado se a estacao estiver bloqueada
+        if (estacao.bloqueada())
+            continue;
+
         // atualizacao simples do estado do botao
         bool apertado_antes = estacao.botao_apertado();
         bool apertado_agora = util::apertado(estacao.botao());
@@ -45,13 +49,14 @@ static void atualizar_estacoes(millis_t tick) {
 
             if (estacao.receita_cancelada()) {
                 // se acabou de ser cancelada podemos voltar ao normal
+                // o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
                 estacao.set_receita_cancelada(false);
                 continue;
             }
 
             if (estacao.livre()) {
                 // se a boca estava livre e apertamos o botao enviamos a receita padrao
-                estacao.enviar_receita(gcode::RECEITA_PADRAO);
+                estacao.enviar_receita(gcode::RECEITA_PADRAO, gcode::RECEITA_PADRAO_ID);
                 continue;
             }
 
@@ -79,7 +84,7 @@ static void atualizar_leds(millis_t tick) {
             // aguardando input do usuário, led piscando
             WRITE(estacao.led(), ultimo_estado);
         } else {
-            // não somos a estacao ativa nem estamos na fila mas estamos disponíveis, led apagada
+            // não somos a estacao ativa nem estamos na fila - led apagada
             WRITE(estacao.led(), false);
         }
     }

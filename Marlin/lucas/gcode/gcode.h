@@ -14,6 +14,8 @@ L0
 L3 D6.5 N3 R1
 L3 D4 N2 R2)";
 
+constexpr size_t RECEITA_PADRAO_ID = 0xF0DA;
+
 void injetar(const char* gcode);
 
 std::string_view proxima_instrucao(const char* gcode);
@@ -27,9 +29,6 @@ bool tem_comandos_pendentes();
 inline void executar(const char* gcode) {
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);
-#if LUCAS_DEBUG_GCODE
-    LOG("Executando gcode imediato '", gcode, "'");
-#endif
 }
 
 inline void executarf(const char* fmt, auto... args) {

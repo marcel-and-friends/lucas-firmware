@@ -23,7 +23,7 @@ void Bico::tick(millis_t tick) {
     }
 
     if (tick - m_tick >= m_tempo) {
-        LOG("bico - finalizando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, " - diff: ", tick - m_tick, "]");
+        LOG("bico - finalizando [delta: ", tick - m_tick, "]");
         desligar(tick);
     }
 }
@@ -113,5 +113,4 @@ void Bico::nivelar() const {
 #endif
     LOG("bico - nivelamento finalizado");
 }
-
 }

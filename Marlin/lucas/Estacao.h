@@ -20,17 +20,13 @@ public:
     static Estacao* const ativa() { return s_estacao_ativa; }
 
 public:
-    void enviar_receita(std::string receita);
+    void enviar_receita(std::string receita, size_t id);
 
     void prosseguir_receita();
 
     void disponibilizar_para_uso();
 
     void cancelar_receita();
-
-    void pausar(millis_t duracao);
-
-    void despausar();
 
     bool tempo_de_pausa_atingido(millis_t tick) const;
 
@@ -61,7 +57,7 @@ public:
     }
 
     bool aguardando_input() const { return m_aguardando_input; }
-    void set_aguardando_input(bool b);
+    void set_aguardando_input(bool);
 
     bool botao_apertado() const { return m_botao_apertado; }
     void set_botao_apertado(bool b) { m_botao_apertado = b; }
@@ -72,25 +68,27 @@ public:
         SET_OUTPUT(pino);
     }
 
-    const std::string& receita() const { return m_receita; }
-    void set_receita(std::string receita) {
-        m_receita = std::move(receita);
-        m_progresso_receita = 0;
-    }
+    const std::string& receita() const { return m_receita_gcode; }
+    void set_receita(std::string receita, size_t id);
 
-    ptrdiff_t progresso_receita() const { return m_progresso_receita; }
-    void reiniciar_receita() { m_progresso_receita = 0; }
+    ptrdiff_t progresso_receita() const { return m_receita_progresso; }
+    void reiniciar_receita() { m_receita_progresso = 0; }
 
     millis_t tick_botao_segurado() const { return m_tick_botao_segurado; }
     void set_tick_botao_segurado(millis_t t) { m_tick_botao_segurado = t; }
 
     bool livre() const { return m_livre; }
-    void set_livre(bool b);
+    void set_livre(bool);
 
     bool receita_cancelada() const { return m_receita_cancelada; }
     void set_receita_cancelada(bool b) { m_receita_cancelada = b; }
 
+    void pausar(millis_t duracao);
+    void despausar();
     bool pausada() const { return m_pausada; }
+
+    void set_bloqueada(bool);
+    bool bloqueada() const { return m_bloqueada; }
 
 private:
     static Lista s_lista;
@@ -104,10 +102,13 @@ private:
 
 private:
     // a receita inteira, contém todos os gcodes que vamos executar
-    std::string m_receita;
+    std::string m_receita_gcode;
 
     // a posição dentro da receita que estamos
-    ptrdiff_t m_progresso_receita = 0;
+    ptrdiff_t m_receita_progresso = 0;
+
+    // id dela para o app
+    size_t m_receita_id;
 
     // o pino físico do nosso botão
     int m_pino_botao = 0;
@@ -126,15 +127,16 @@ private:
     // estacao sem receita, livre para ser usada
     bool m_livre = false;
 
-    // as estacoes podem ser desabilitadas pelo app
-    bool m_habilitada = true;
-
     // usado como um debounce para ativar uma estacao somente quando o botão é solto
     bool m_botao_apertado = false;
 
     // se a receita acabou de ser cancelada e o botao ainda nao foi solto
     bool m_receita_cancelada = false;
 
+    // no app voce tem a possibilidade de bloquear um boca
+    bool m_bloqueada = false;
+
+    // pausada (pelo L2)
     bool m_pausada = false;
 
     millis_t m_comeco_pausa = 0;
