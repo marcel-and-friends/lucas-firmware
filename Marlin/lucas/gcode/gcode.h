@@ -16,6 +16,10 @@ L3 D4 N2 R2)";
 
 constexpr size_t RECEITA_PADRAO_ID = 0xF0DA;
 
+constexpr auto RECEITA_PADRAO_CABECALHO =
+    R"($infoAtaque0duracao:25000
+$infoAtaque0Intervalo:25000)";
+
 void injetar(const char* gcode);
 
 std::string_view proxima_instrucao(const char* gcode);

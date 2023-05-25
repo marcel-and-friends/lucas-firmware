@@ -8,6 +8,6 @@ void L1() {
     if (Bico::the().ativo())
         return;
 
-    Bico::the().ativar(millis(), parser.intval('T'), parser.floatval('G'));
+    Bico::the().ativar(millis(), parser.ulongval('T'), parser.floatval('G'));
 }
 }

@@ -5,7 +5,7 @@
 #include <cmath>
 
 namespace lucas {
-constexpr auto PINO_SV = PA4;
+constexpr auto PINO_SV = PD15;
 constexpr auto PINO_ENABLE = PA3;
 constexpr auto PINO_BREAK = PB2;
 constexpr auto PINO_REF = PE6;
@@ -39,16 +39,20 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     const auto forca = gramas_para_forca_3_grau(gramas);
     const auto valor_digital = static_cast<int>(std::roundf(forca));
     const auto valor_final = static_cast<uint32_t>(std::clamp(valor_digital, 0, 4095));
+    const auto valor_final_owo = static_cast<uint32_t>(std::clamp(gramas, 0.f, 255.f));
 
     LOG("gramas = ", gramas, " | forca = ", forca);
-    m_poder = valor_final;
+    m_poder = valor_final_owo;
     m_ativo = true;
     m_tick = tick;
     m_tempo = tempo;
     LOG("bico - iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
 
-    digitalWrite(PINO_ENABLE, LOW); // libera a comunicação
-    analogWrite(PINO_SV, m_poder);  // seta a força desejada
+    pinMode(PA4, INPUT);
+    LOG("READ = ", analogRead(PA4));
+
+    digitalWrite(PINO_SV, m_poder); // seta a força desejada
+    hal.set_pwm_duty(PINO_SV, m_poder);
     digitalWrite(PINO_BREAK, HIGH); // libera o break
 }
 
@@ -59,14 +63,16 @@ void Bico::desligar(millis_t tick_desligou) {
     m_tempo = 0;
     m_tick_desligou = tick_desligou;
 
-    digitalWrite(PINO_BREAK, LOW);   // breca o motor
-    analogWrite(PINO_SV, LOW);       // zera a força
-    digitalWrite(PINO_ENABLE, HIGH); // desliga comunicação
+    digitalWrite(PINO_BREAK, LOW); // breca o motor
+    digitalWrite(PINO_SV, LOW);    // zera a força
+    hal.set_pwm_duty(PINO_SV, LOW);
+
+    analogRead(PINO_SV);
 }
 
 void Bico::setup() {
     // nossos pinos DAC tem resolução de 12 bits
-    analogWriteResolution(12);
+    // analogWriteResolution(12);
     // os 4 porquinhos
     pinMode(PINO_SV, OUTPUT);
     pinMode(PINO_ENABLE, OUTPUT);
@@ -74,6 +80,7 @@ void Bico::setup() {
     pinMode(PINO_REF, OUTPUT);
     // o pino de referencia fica permamentemente com 3v, pro conversor de sinal funcionar direito
     digitalWrite(PINO_REF, HIGH);
+    digitalWrite(PINO_ENABLE, LOW);
     // bico começa desligado
     desligar(millis());
     // rotina de nivelamento roda quando a placa liga

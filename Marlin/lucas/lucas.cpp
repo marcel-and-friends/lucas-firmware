@@ -1,5 +1,6 @@
 #include "lucas.h"
 #include <lucas/Estacao.h>
+#include <ArduinoJson.h>
 
 namespace lucas {
 void setup() {
@@ -24,6 +25,16 @@ void setup() {
 
     UPDATE(LUCAS_UPDATE_NUM_ESTACOES, Estacao::NUM_ESTACOES)
     LOG("iniciando");
+
+    DynamicJsonDocument doc(1024);
+
+    doc["sensor"] = "gps";
+    doc["time"] = 1351824120;
+    doc["data"][0] = 48.756080;
+    doc["data"][1] = 2.302038;
+
+    serializeJson(doc, SERIAL_IMPL);
+
     Bico::the().setup();
 #if LUCAS_CONECTAR_WIFI
     wifi::conectar(LUCAS_WIFI_NOME_SENHA);

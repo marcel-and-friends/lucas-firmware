@@ -101,6 +101,17 @@ private:
     void reiniciar();
 
 private:
+    struct InfoAtaque {
+        millis_t duracao = 0;
+        millis_t intervalo = 0;
+        bool ultimo = false;
+    };
+    struct InfoReceita {
+        std::vector<InfoAtaque> ataques;
+    };
+
+    InfoReceita m_receita_info;
+
     // a receita inteira, contém todos os gcodes que vamos executar
     std::string m_receita_gcode;
 

@@ -467,6 +467,11 @@ void GCodeQueue::get_serial_commands() {
                 continue;
             }
 
+            static bool lendo_json = false;
+            if (c == '#') {
+                lendo_json = true;
+            }
+
             const char serial_char = (char)c;
             SerialState& serial = serial_state[p];
 
