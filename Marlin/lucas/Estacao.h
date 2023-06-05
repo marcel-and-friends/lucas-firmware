@@ -19,6 +19,8 @@ public:
 
     static Estacao* const ativa() { return s_estacao_ativa; }
 
+    static float posicao_absoluta(size_t index);
+
 public:
     void enviar_receita(std::string receita, size_t id);
 
@@ -42,8 +44,6 @@ public:
     void atualizar_campo_gcode(CampoGcode, std::string_view str) const;
 
     void atualizar_status(const char* str) const;
-
-    float posicao_absoluta() const;
 
     size_t numero() const;
 

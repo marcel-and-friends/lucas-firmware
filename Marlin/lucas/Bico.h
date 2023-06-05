@@ -21,6 +21,8 @@ public:
 
     void viajar_para_estacao(size_t numero) const;
 
+    void viajar_para_esgoto() const;
+
     void descartar_agua_ruim() const;
 
     void nivelar() const;
@@ -35,6 +37,8 @@ private:
     millis_t m_tempo = 0;
 
     millis_t m_tick_desligou = 0;
+
+    millis_t m_tick_ligou = 0;
 
     millis_t m_tick = 0;
 

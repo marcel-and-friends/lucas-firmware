@@ -205,7 +205,7 @@
 #if DISABLED(PIDTEMPBED)
     #define BED_CHECK_INTERVAL 5000 // (ms) Interval between checks in bang-bang control
     #if ENABLED(BED_LIMIT_SWITCHING)
-        #define BED_HYSTERESIS 2 // (°C) Only set the relevant heater state when ABS(T-target) > BED_HYSTERESIS
+        #define BED_HYSTERESIS -1 // (°C) Only set the relevant heater state when ABS(T-target) > BED_HYSTERESIS
     #endif
 #endif
 
@@ -328,13 +328,13 @@
  * Thermal Protection parameters for the bed are just as above for hotends.
  */
 #if ENABLED(THERMAL_PROTECTION_BED)
-    #define THERMAL_PROTECTION_BED_PERIOD 60   // Seconds
+    #define THERMAL_PROTECTION_BED_PERIOD 60    // Seconds
     #define THERMAL_PROTECTION_BED_HYSTERESIS 5 // Degrees Celsius
 
     /**
      * As described above, except for the bed (M140/M190/M303).
      */
-    #define WATCH_BED_TEMP_PERIOD 120  // Seconds
+    #define WATCH_BED_TEMP_PERIOD 300 // Seconds
     #define WATCH_BED_TEMP_INCREASE 1 // Degrees Celsius
 #endif
 

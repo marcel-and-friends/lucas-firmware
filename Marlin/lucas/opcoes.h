@@ -5,7 +5,7 @@
 /* ----- */
 
 /* rotinas */
-#define LUCAS_ROTINA_TEMP false
+#define LUCAS_ROTINA_TEMP true
 /* ------- */
 
 /* update de serial */

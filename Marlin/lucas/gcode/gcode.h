@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lucas/lucas.h>
+#include <lucas/util/util.h>
 #include <string_view>
 #include <avr/dtostrf.h>
 #include <string>
@@ -9,10 +10,20 @@
 
 namespace lucas::gcode {
 static constexpr auto RECEITA_PADRAO =
-    R"(L3 D8 N3 R1
+    R"(L1 G1560 T6000
+L3 F10250 D9 N3 R1
 L0
-L3 D6.5 N3 R1
-L3 D4 N2 R2)";
+L1 G1560 T6000
+L3 F8250 D7 N3 R1
+L2 T24000
+L1 G1560 T9000
+L3 F8500 D7 N5 R1
+L2 T30000
+L1 G1560 T10000
+L3 F7650 D7 N5 R1
+L2 T35000
+L1 G1560 T10000
+L3 F7650 D7 N5 R1)";
 
 constexpr size_t RECEITA_PADRAO_ID = 0xF0DA;
 
@@ -28,23 +39,21 @@ bool ultima_instrucao(const char* gcode);
 
 void parar_fila();
 
-bool tem_comandos_pendentes();
-
 inline void executar(const char* gcode) {
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);
 }
 
-inline void executarf(const char* fmt, auto... args) {
-    static char buffer[128] = {};
-    sprintf(buffer, fmt, args...);
-    executar(buffer);
+inline void executar_cmds(auto... cmds) {
+    (executar(cmds), ...);
 }
 
-inline void executarff(const char* fmt, float value) {
-    static char buffer[16] = {};
-    dtostrf(value, 0, 2, buffer);
-    executarf(fmt, buffer);
+inline void executar_fmt(const char* str, auto... args) {
+    executar(util::fmt(str, args...));
+}
+
+inline void executar_ff(const char* str, float value) {
+    executar_fmt(util::ff(str, value));
 }
 
 // L0 -> Pausa a estação ativa e aguarda input do usuário

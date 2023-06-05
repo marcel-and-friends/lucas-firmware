@@ -60,7 +60,19 @@
 		"streambuf": "cpp",
 		"thread": "cpp",
 		"cinttypes": "cpp",
-		"typeinfo": "cpp"
+		"typeinfo": "cpp",
+		"any": "cpp",
+		"codecvt": "cpp",
+		"compare": "cpp",
+		"complex": "cpp",
+		"concepts": "cpp",
+		"map": "cpp",
+		"set": "cpp",
+		"iomanip": "cpp",
+		"ranges": "cpp",
+		"stop_token": "cpp",
+		"typeindex": "cpp",
+		"variant": "cpp"
 	},
 	"C_Cpp.intelliSenseMemoryLimit": 16384
 }

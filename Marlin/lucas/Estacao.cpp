@@ -3,7 +3,7 @@
 #include <src/module/temperature.h>
 #include <lucas/Bico.h>
 
-#define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", __VA_ARGS__)
+#define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", "", __VA_ARGS__)
 
 namespace lucas {
 Estacao::Lista Estacao::s_lista = {};
@@ -30,9 +30,7 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         estacao.atualizar_status("Executando");
 
         auto& bico = Bico::the();
-#if LUCAS_ROTINA_TEMP
-        bico.descartar_agua_ruim();
-#endif
+        // bico.descartar_agua_ruim();
         bico.viajar_para_estacao(estacao);
 
 #if LUCAS_DEBUG_GCODE
@@ -45,6 +43,12 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, "-");
         gcode::parar_fila();
     }
+}
+
+float Estacao::posicao_absoluta(size_t index) {
+    constexpr auto DISTANCIA_PRIMEIRA_ESTACAO = 80.f;
+    constexpr auto DISTANCIA_ENTRE_ESTACOES = 160.f;
+    return DISTANCIA_PRIMEIRA_ESTACAO + index * DISTANCIA_ENTRE_ESTACOES;
 }
 
 void Estacao::enviar_receita(std::string receita, size_t id) {
@@ -134,12 +138,6 @@ void Estacao::atualizar_status(const char* str) const {
     static char nome_buffer[] = "statusE?";
     nome_buffer[7] = numero() + '0';
     UPDATE(nome_buffer, str);
-}
-
-float Estacao::posicao_absoluta() const {
-    constexpr auto distancia_primeira_estacao = 80.f;
-    constexpr auto distancia_entre_estacoes = 160.f;
-    return distancia_primeira_estacao + index() * distancia_entre_estacoes;
 }
 
 size_t Estacao::numero() const {

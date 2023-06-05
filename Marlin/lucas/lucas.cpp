@@ -1,5 +1,6 @@
 #include "lucas.h"
 #include <lucas/Estacao.h>
+#include <lucas/serial/HookDelimitado.h>
 #include <ArduinoJson.h>
 
 namespace lucas {
@@ -26,14 +27,23 @@ void setup() {
     UPDATE(LUCAS_UPDATE_NUM_ESTACOES, Estacao::NUM_ESTACOES)
     LOG("iniciando");
 
-    DynamicJsonDocument doc(1024);
+    serial::HookDelimitado::make('#', [](std::span<const char> buffer) {
+        StaticJsonDocument<1024> doc;
+        auto err = deserializeJson(doc, buffer.data(), buffer.size());
+        if (err) {
+            LOG("desserializacao json falhou - [", err.c_str(), "]");
+            return;
+        }
+        LOG("doc[\"oi\"] = ", doc["oi"].as<const char*>());
+    });
 
-    doc["sensor"] = "gps";
-    doc["time"] = 1351824120;
-    doc["data"][0] = 48.756080;
-    doc["data"][1] = 2.302038;
+    serial::HookDelimitado::make('%', [](std::span<const char> buffer) {
+        LOG("gcode = ", buffer.data());
+    });
 
-    serializeJson(doc, SERIAL_IMPL);
+    serial::HookDelimitado::make('$', [](std::span<const char> buffer) {
+        LOG("coisa = ", buffer.data());
+    });
 
     Bico::the().setup();
 #if LUCAS_CONECTAR_WIFI

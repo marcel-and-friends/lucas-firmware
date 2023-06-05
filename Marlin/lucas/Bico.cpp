@@ -5,17 +5,46 @@
 #include <cmath>
 
 namespace lucas {
-constexpr auto PINO_SV = PD15;
-constexpr auto PINO_ENABLE = PA3;
-constexpr auto PINO_BREAK = PB2;
-constexpr auto PINO_REF = PE6;
+
+#define BICO_LOG(...) LOG("", "bico - ", __VA_ARGS__)
+namespace pino {
+constexpr auto ENABLE = PA3;
+constexpr auto SV = PA5;
+constexpr auto BREAK = PB2;
+constexpr auto REF = PE6;
+constexpr auto FLUXO = 0x47;
+};
+
+constexpr auto SINAL_MAX = 4095;
+constexpr auto SINAL_MIN = 0;
+
+struct Input {
+    millis_t tempo;
+    float gramas;
+
+    constexpr float fluxo_ideal() const {
+        return tempo / 1000 / gramas;
+    }
+};
+
+namespace util {
+inline float fluxo_atual() {
+    // valores medidos com uma balança
+    constexpr auto fluxo_min = 0.f;   // 0 volts - 0 digital
+    constexpr auto fluxo_max = 16.6f; // 5 volts - 255 digital
+    const auto leitura = static_cast<float>(analogRead(pino::FLUXO));
+    return std::lerp(fluxo_min, fluxo_max, leitura / 255.f);
+}
+
+constexpr auto TEMPO_PARA_DESLIGAR_O_BREAK = 2000; // 2s
+}
 
 void Bico::tick(millis_t tick) {
     if (!m_ativo) {
         if (m_tick_desligou) {
-            // deixamos o break ativado por 10 segundos após desligar
-            if (tick - m_tick_desligou > 10000) {
-                digitalWrite(PINO_BREAK, HIGH);
+            // após desligar o motor deixamos o break ativo por um tempinho e depois liberamos
+            if (tick - m_tick_desligou >= util::TEMPO_PARA_DESLIGAR_O_BREAK) {
+                digitalWrite(pino::BREAK, HIGH);
                 m_tick_desligou = 0;
             }
         }
@@ -23,7 +52,7 @@ void Bico::tick(millis_t tick) {
     }
 
     if (tick - m_tick >= m_tempo) {
-        LOG("bico - finalizando [delta: ", tick - m_tick, "]");
+        BICO_LOG("finalizando [delta: ", tick - m_tick, "]");
         desligar(tick);
     }
 }
@@ -39,21 +68,18 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     const auto forca = gramas_para_forca_3_grau(gramas);
     const auto valor_digital = static_cast<int>(std::roundf(forca));
     const auto valor_final = static_cast<uint32_t>(std::clamp(valor_digital, 0, 4095));
-    const auto valor_final_owo = static_cast<uint32_t>(std::clamp(gramas, 0.f, 255.f));
+    const auto valor_final_owo = static_cast<uint32_t>(std::clamp(gramas, 0.f, 4095.f));
 
-    LOG("gramas = ", gramas, " | forca = ", forca);
     m_poder = valor_final_owo;
     m_ativo = true;
     m_tick = tick;
     m_tempo = tempo;
-    LOG("bico - iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
+    m_tick_ligou = tick;
 
-    pinMode(PA4, INPUT);
-    LOG("READ = ", analogRead(PA4));
+    digitalWrite(pino::BREAK, HIGH); // libera o motor
+    analogWrite(pino::SV, m_poder);  // aplica a força
 
-    digitalWrite(PINO_SV, m_poder); // seta a força desejada
-    hal.set_pwm_duty(PINO_SV, m_poder);
-    digitalWrite(PINO_BREAK, HIGH); // libera o break
+    BICO_LOG("iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
 }
 
 void Bico::desligar(millis_t tick_desligou) {
@@ -63,26 +89,28 @@ void Bico::desligar(millis_t tick_desligou) {
     m_tempo = 0;
     m_tick_desligou = tick_desligou;
 
-    digitalWrite(PINO_BREAK, LOW); // breca o motor
-    digitalWrite(PINO_SV, LOW);    // zera a força
-    hal.set_pwm_duty(PINO_SV, LOW);
-
-    analogRead(PINO_SV);
+    digitalWrite(pino::BREAK, LOW); // breca o motor
+    analogWrite(pino::SV, LOW);     // zera a força
 }
 
 void Bico::setup() {
     // nossos pinos DAC tem resolução de 12 bits
-    // analogWriteResolution(12);
+    analogWriteResolution(12);
+
     // os 4 porquinhos
-    pinMode(PINO_SV, OUTPUT);
-    pinMode(PINO_ENABLE, OUTPUT);
-    pinMode(PINO_BREAK, OUTPUT);
-    pinMode(PINO_REF, OUTPUT);
+    pinMode(pino::SV, OUTPUT);
+    pinMode(pino::ENABLE, OUTPUT);
+    pinMode(pino::BREAK, OUTPUT);
+    pinMode(pino::REF, OUTPUT);
+
     // o pino de referencia fica permamentemente com 3v, pro conversor de sinal funcionar direito
-    digitalWrite(PINO_REF, HIGH);
-    digitalWrite(PINO_ENABLE, LOW);
+    digitalWrite(pino::REF, HIGH);
+    // e o enable permamentemente ligado, o motor é controlado somente pelo break e sv
+    digitalWrite(pino::ENABLE, LOW);
+
     // bico começa desligado
     desligar(millis());
+
     // rotina de nivelamento roda quando a placa liga
     nivelar();
 }
@@ -92,32 +120,52 @@ void Bico::viajar_para_estacao(Estacao& estacao) const {
 }
 
 void Bico::viajar_para_estacao(size_t numero) const {
-    LOG("bico - indo para estacao #", numero);
-    auto& estacao = Estacao::lista().at(numero - 1);
-    gcode::executar("G90");
-    gcode::executarff("G0 F50000 Y60 X%s", estacao.posicao_absoluta());
-    gcode::executar("G91");
+    BICO_LOG("indo para estacao #", numero);
+    auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(numero - 1));
+    gcode::executar_cmds("G90",
+                         movimento,
+                         "G91",
+                         "M400");
+}
+
+void Bico::viajar_para_esgoto() const {
+    gcode::executar_cmds("G90",
+                         "G0 F50000 Y60 X2",
+                         "G91",
+                         "M400");
 }
 
 void Bico::descartar_agua_ruim() const {
-    constexpr auto TEMP_IDEAL = 90.f;
-    constexpr auto MARGEM_ERRO_TEMP = 10.f;
+    constexpr auto TEMP_IDEAL = 70.f;
+    constexpr auto TEMPO_DESCARTE = 1000;
 
-    constexpr auto DESCARTE =
-        R"(G0 F50000 Y60 X10
-L1 P80 T10000
-M109 T0 R%s)";
-    // se a temperatura não é ideal (dentro da margem de erro) nós temos que regulariza-la antes de começarmos a receita
-    if (fabs(thermalManager.degHotend(0) - TEMP_IDEAL) >= MARGEM_ERRO_TEMP)
-        gcode::executarff(DESCARTE, TEMP_IDEAL);
+    if (thermalManager.degHotend(0) >= TEMP_IDEAL)
+        return;
+
+    viajar_para_esgoto();
+
+    auto tick = millis() - TEMPO_DESCARTE;
+    while (true) {
+        if (millis() - tick >= TEMPO_DESCARTE) {
+            tick = millis();
+            if (thermalManager.degHotend(0) < TEMP_IDEAL) {
+                LOG("jogando agua");
+                gcode::executar_fmt("L1 G1300 T%d", TEMPO_DESCARTE);
+            } else {
+                break;
+            }
+        } else {
+            idle();
+        }
+    }
 }
 
 void Bico::nivelar() const {
-    LOG("bico - executando rotina de nivelamento");
+    BICO_LOG("executando rotina de nivelamento");
     gcode::executar("G28 XY");
 #if LUCAS_ROTINA_TEMP
-    // gcode::executarff("M190 S%s", 30.f);
+    // gcode::executar_ff("M140 S%s", 93.f);
 #endif
-    LOG("bico - nivelamento finalizado");
+    BICO_LOG("nivelamento finalizado");
 }
 }

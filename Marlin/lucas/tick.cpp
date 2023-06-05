@@ -7,8 +7,6 @@
 
 namespace lucas {
 static void atualizar_estacoes(millis_t tick) {
-    constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
-
     for (auto& estacao : Estacao::lista()) {
         // absolutamente nada é atualizado se a estacao estiver bloqueada
         if (estacao.bloqueada())
@@ -30,6 +28,7 @@ static void atualizar_estacoes(millis_t tick) {
 
         // agora vemos se o usuario quer cancelar a receita
         {
+            constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
             if (apertado_agora && !estacao.receita().empty()) {
                 if (!estacao.tick_botao_segurado())
                     estacao.set_tick_botao_segurado(tick);
@@ -43,12 +42,13 @@ static void atualizar_estacoes(millis_t tick) {
 
         // o botão acabou de ser solto, temos varias opcoes
         if (!apertado_agora && apertado_antes) {
-            if (estacao.tick_botao_segurado())
+            if (estacao.tick_botao_segurado()) {
                 // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
                 estacao.set_tick_botao_segurado(0);
+            }
 
             if (estacao.receita_cancelada()) {
-                // se acabou de ser cancelada podemos voltar ao normal
+                // se a receita acabou de ser cancelada podemos voltar ao normal
                 // o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
                 estacao.set_receita_cancelada(false);
                 continue;
@@ -61,7 +61,7 @@ static void atualizar_estacoes(millis_t tick) {
             }
 
             if (estacao.aguardando_input()) {
-                // se estavamos aguardando input prosseguimos normalmente
+                // se estavamos aguardando input prosseguimos com a receita
                 estacao.disponibilizar_para_uso();
                 continue;
             }
@@ -81,7 +81,7 @@ static void atualizar_leds(millis_t tick) {
         if (estacao.esta_ativa() || estacao.disponivel_para_uso()) {
             WRITE(estacao.led(), true);
         } else if (estacao.aguardando_input()) {
-            // aguardando input do usuário, led piscando
+            // aguardando input do usuário - led piscando
             WRITE(estacao.led(), ultimo_estado);
         } else {
             // não somos a estacao ativa nem estamos na fila - led apagada

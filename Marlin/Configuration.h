@@ -640,7 +640,7 @@
     #define TEMP_BED_WINDOW \
         1 // (°C) Temperature proximity for the "temperature reached" timer
     #define TEMP_BED_HYSTERESIS \
-        1 // (°C) Temperature proximity considered "close enough" to the target
+        0 // (°C) Temperature proximity considered "close enough" to the target
 #endif
 
 #if TEMP_SENSOR_CHAMBER
@@ -721,7 +721,7 @@
 // Enable PIDTEMP for PID control or MPCTEMP for Predictive Model.
 // temperature control. Disable both for bang-bang heating.
 #define PIDTEMP // See the PID Tuning Guide at
-                // https://reprap.org/wiki/PID_Tuning
+// https://reprap.org/wiki/PID_Tuning
 // #define MPCTEMP        // ** EXPERIMENTAL **
 
 #define BANG_MAX \
@@ -845,7 +845,7 @@
  */
 // #define PIDTEMPBED
 
-// #define BED_LIMIT_SWITCHING
+#define BED_LIMIT_SWITCHING
 
 /**
  * Max Bed Power
@@ -863,9 +863,9 @@
     // 120V 250W silicone heater into 4mm borosilicate (MendelMax 1.5+)
     // from FOPDT model - kp=.39 Tp=405 Tdead=66, Tc set to 79.2, aggressive factor
     // of .15 (vs .1, 1, 10)
-    #define DEFAULT_bedKp 10.00
-    #define DEFAULT_bedKi .023
-    #define DEFAULT_bedKd 305.4
+    #define DEFAULT_bedKp 44.67
+    #define DEFAULT_bedKi 8.72
+    #define DEFAULT_bedKd 152.47
 
 // FIND YOUR OWN: "M303 E-1 C8 S90" to run autotune on the bed at 90 degreesC
 // for 8 cycles.
@@ -973,7 +973,7 @@
  * details can be tuned in Configuration_adv.h
  */
 
-#define THERMAL_PROTECTION_HOTENDS // Enable thermal protection for all
+// #define THERMAL_PROTECTION_HOTENDS // Enable thermal protection for all
 //  extruders
 #define THERMAL_PROTECTION_BED     // Enable thermal protection for the heated bed
 #define THERMAL_PROTECTION_CHAMBER // Enable thermal protection for the heated
@@ -1324,7 +1324,7 @@
  * E2...]]
  */
 #define DEFAULT_AXIS_STEPS_PER_UNIT \
-    { 22, 12, 400, 93 }
+    { 44.5, 26.5, 400, 93 }
 
 /**
  * Default Max Feed Rate (linear=mm/s, rotational=°/s)
@@ -1333,7 +1333,7 @@
  * E2...]]
  */
 #define DEFAULT_MAX_FEEDRATE \
-    { 100000, 100000, 4, 10 }
+    { 50000, 5000, 4, 10 }
 
 // #define LIMITED_MAX_FR_EDITING        // Limit edit via M203 or LCD to
 // DEFAULT_MAX_FEEDRATE * 2
@@ -1910,7 +1910,7 @@
 
 // @section homing
 
-#define NO_MOTION_BEFORE_HOMING // Inhibit movement until all axes have been
+// #define NO_MOTION_BEFORE_HOMING // Inhibit movement until all axes have been
 // homed. Also enable HOME_AFTER_DEACTIVATE for extra safety. #define
 // HOME_AFTER_DEACTIVATE   // Require rehoming after steppers are deactivated.
 // Also enable NO_MOTION_BEFORE_HOMING for extra safety.

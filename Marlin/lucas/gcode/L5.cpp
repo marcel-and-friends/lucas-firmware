@@ -4,8 +4,6 @@
 
 namespace lucas::gcode {
 void L5() {
-    constexpr auto MAX = static_cast<long>(Estacao::NUM_ESTACOES);
-    auto numero = std::clamp(parser.longval('N'), 1l, MAX);
-    Bico::the().viajar_para_estacao(numero);
+    Bico::the().viajar_para_estacao(parser.longval('N'));
 }
 }

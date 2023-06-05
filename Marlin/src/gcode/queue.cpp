@@ -404,9 +404,10 @@ inline bool process_line_done(uint8_t& sis, char (&buff)[MAX_CMD_SIZE], int& ind
     sis = PS_NORMAL;                  // "Normal" Serial Input State
     buff[ind] = '\0';                 // Of course, I'm a Terminator.
     const bool is_empty = (ind == 0); // An empty line?
-    if (is_empty)
+    if (is_empty) {
         thermalManager.task(); // Keep sensors satisfied
-    else
+        SERIAL_ECHOLNPGM(STR_OK);
+    } else
         ind = 0;     // Start a new line
     return is_empty; // Inform the caller
 }
@@ -465,11 +466,6 @@ void GCodeQueue::get_serial_commands() {
                 SERIAL_ERROR_MSG(STR_ERR_SERIAL_MISMATCH);
                 SERIAL_FLUSH();
                 continue;
-            }
-
-            static bool lendo_json = false;
-            if (c == '#') {
-                lendo_json = true;
             }
 
             const char serial_char = (char)c;
