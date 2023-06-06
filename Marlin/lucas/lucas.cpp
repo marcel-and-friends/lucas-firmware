@@ -7,8 +7,8 @@ namespace lucas {
 void setup() {
     LOG("iniciando lucas");
 
-    using Callback = void (*)(JsonVariantConst);
-    static constexpr std::array<Callback, 4> options_handler = {
+    // clang-format off
+    static constexpr auto options_handler = std::to_array<void (*)(JsonVariantConst)>({
         [](JsonVariantConst v) { // 0 - numero de estacoes
             if (!v.is<size_t>()) {
                 LOG("valor json invalido para numero de estacoes");
@@ -56,7 +56,8 @@ void setup() {
 
             Estacao::lista().at(index).cancelar_receita();
         }
-    };
+    });
+    // clang-format on
 
     serial::HookDelimitado::make('#', [](std::span<char> buffer) {
         StaticJsonDocument<serial::HookDelimitado::BUFFER_SIZE> doc;
