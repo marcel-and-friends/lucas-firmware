@@ -7,6 +7,7 @@
 namespace lucas {
 
 #define BICO_LOG(...) LOG("", "bico - ", __VA_ARGS__)
+
 namespace pino {
 constexpr auto ENABLE = PA3;
 constexpr auto SV = PA5;
@@ -52,7 +53,7 @@ void Bico::tick(millis_t tick) {
     }
 
     if (tick - m_tick >= m_tempo) {
-        BICO_LOG("finalizando [delta: ", tick - m_tick, "]");
+        BICO_LOG("finalizando despejo [delta: ", tick - m_tick, "]");
         desligar(tick);
     }
 }
@@ -79,7 +80,7 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     digitalWrite(pino::BREAK, HIGH); // libera o motor
     analogWrite(pino::SV, m_poder);  // aplica a força
 
-    BICO_LOG("iniciando [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
+    BICO_LOG("iniciando despejo [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
 }
 
 void Bico::desligar(millis_t tick_desligou) {
@@ -120,8 +121,8 @@ void Bico::viajar_para_estacao(Estacao& estacao) const {
 }
 
 void Bico::viajar_para_estacao(size_t numero) const {
-    BICO_LOG("indo para estacao #", numero);
-    auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(numero - 1));
+    BICO_LOG("indo para a estacao #", numero);
+    auto movimento = util::ff("G0 Y60 X%s", Estacao::posicao_absoluta(numero - 1));
     gcode::executar_cmds("G90",
                          movimento,
                          "G91",
@@ -129,8 +130,9 @@ void Bico::viajar_para_estacao(size_t numero) const {
 }
 
 void Bico::viajar_para_esgoto() const {
+    BICO_LOG("indo para o esgoto");
     gcode::executar_cmds("G90",
-                         "G0 F50000 Y60 X2",
+                         "G0 Y60 X5",
                          "G91",
                          "M400");
 }

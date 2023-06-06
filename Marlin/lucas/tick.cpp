@@ -7,66 +7,68 @@
 
 namespace lucas {
 static void atualizar_estacoes(millis_t tick) {
-    for (auto& estacao : Estacao::lista()) {
+    Estacao::for_each([tick](auto& estacao) {
         // absolutamente nada é atualizado se a estacao estiver bloqueada
         if (estacao.bloqueada())
-            continue;
+            return util::Iter::Continue;
 
         // atualizacao simples do estado do botao
-        bool apertado_antes = estacao.botao_apertado();
-        bool apertado_agora = util::apertado(estacao.botao());
-        estacao.set_botao_apertado(apertado_agora);
+        bool segurado_antes = estacao.botao_segurado();
+        bool segurado_agora = util::segurando(estacao.botao());
+        estacao.set_botao_segurado(segurado_agora);
 
         // primeiro cuidamos de estacoes pausadas
         {
             if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
                 estacao.despausar();
                 estacao.disponibilizar_para_uso();
-                continue;
+                return util::Iter::Continue;
             }
         }
 
         // agora vemos se o usuario quer cancelar a receita
         {
             constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
-            if (apertado_agora && !estacao.receita().empty()) {
+            if (segurado_agora && !estacao.receita().empty()) {
                 if (!estacao.tick_botao_segurado())
                     estacao.set_tick_botao_segurado(tick);
 
                 if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
                     estacao.cancelar_receita();
-                    continue;
+                    return util::Iter::Continue;
                 }
             }
         }
 
         // o botão acabou de ser solto, temos varias opcoes
-        if (!apertado_agora && apertado_antes) {
+        if (!segurado_agora && segurado_antes) {
             if (estacao.tick_botao_segurado()) {
                 // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
                 estacao.set_tick_botao_segurado(0);
             }
 
             if (estacao.receita_cancelada()) {
-                // se a receita acabou de ser cancelada podemos voltar ao normal
+                // se a receita acabou de ser cancelada, podemos voltar ao normal
                 // o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
                 estacao.set_receita_cancelada(false);
-                continue;
+                return util::Iter::Continue;
             }
 
             if (estacao.livre()) {
                 // se a boca estava livre e apertamos o botao enviamos a receita padrao
                 estacao.enviar_receita(gcode::RECEITA_PADRAO, gcode::RECEITA_PADRAO_ID);
-                continue;
+                return util::Iter::Continue;
             }
 
             if (estacao.aguardando_input()) {
                 // se estavamos aguardando input prosseguimos com a receita
                 estacao.disponibilizar_para_uso();
-                continue;
+                return util::Iter::Continue;
             }
         }
-    }
+
+        return util::Iter::Continue;
+    });
 }
 
 static void atualizar_leds(millis_t tick) {
@@ -77,7 +79,7 @@ static void atualizar_leds(millis_t tick) {
     static bool ultimo_estado = true;
     static millis_t ultimo_tick_atualizado = 0;
 
-    for (auto& estacao : Estacao::lista()) {
+    Estacao::for_each([tick](const auto& estacao) {
         if (estacao.esta_ativa() || estacao.disponivel_para_uso()) {
             WRITE(estacao.led(), true);
         } else if (estacao.aguardando_input()) {
@@ -87,7 +89,8 @@ static void atualizar_leds(millis_t tick) {
             // não somos a estacao ativa nem estamos na fila - led apagada
             WRITE(estacao.led(), false);
         }
-    }
+        return util::Iter::Continue;
+    });
 
     if (tick - ultimo_tick_atualizado >= TIMER_LEDS) {
         ultimo_estado = !ultimo_estado;

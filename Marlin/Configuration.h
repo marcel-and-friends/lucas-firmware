@@ -1333,7 +1333,7 @@
  * E2...]]
  */
 #define DEFAULT_MAX_FEEDRATE \
-    { 50000, 5000, 4, 10 }
+    { 50000, 50000, 50000, 10 }
 
 // #define LIMITED_MAX_FR_EDITING        // Limit edit via M203 or LCD to
 // DEFAULT_MAX_FEEDRATE * 2
@@ -1379,7 +1379,7 @@
  * When changing speed and direction, if the difference is less than the
  * value set here, it may happen instantaneously.
  */
-#define CLASSIC_JERK
+// #define CLASSIC_JERK
 #if ENABLED(CLASSIC_JERK)
     #define DEFAULT_XJERK 10.0
     #define DEFAULT_YJERK 10.0

@@ -27,10 +27,6 @@ L3 F7650 D7 N5 R1)";
 
 constexpr size_t RECEITA_PADRAO_ID = 0xF0DA;
 
-constexpr auto RECEITA_PADRAO_CABECALHO =
-    R"($infoAtaque0duracao:25000
-$infoAtaque0Intervalo:25000)";
-
 void injetar(const char* gcode);
 
 std::string_view proxima_instrucao(const char* gcode);
@@ -59,7 +55,7 @@ inline void executar_ff(const char* str, float value) {
 // L0 -> Pausa a estação ativa e aguarda input do usuário
 void L0();
 // L1 -> Controla o bico
-// P - Potência, [0-100], controla a força que a água é despejada
+// G - Fluxo de água em g/s
 // T - Tempo, em milisegundos, que o bico deve ficar ligado
 void L1();
 // L2 -> Pausa cronometrada
@@ -68,8 +64,8 @@ void L2();
 // L3 -> Espiral
 // D - Diâmetro máximo do circulo gerado
 // N - Número de espirais dentro desse diâmetro
-// R - Quantidade de vezes que o movimento deve ser repetido
-// B - Iniciar na borda
+// [R] - Quantidade de vezes que o movimento deve ser repetido
+// [B] - Iniciar na borda
 void L3();
 // L4 -> Enviar receita padrão para a primeira boca livre
 void L4();

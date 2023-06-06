@@ -4,11 +4,12 @@
 
 namespace lucas::gcode {
 void L4() {
-    for (auto& estacao : Estacao::lista()) {
+    Estacao::for_each([](auto& estacao) {
         if (estacao.livre()) {
             estacao.enviar_receita(gcode::RECEITA_PADRAO, gcode::RECEITA_PADRAO_ID);
-            return;
+            return util::Iter::Stop;
         }
-    }
+        return util::Iter::Continue;
+    });
 }
 }

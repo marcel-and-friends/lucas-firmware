@@ -8,8 +8,20 @@
 namespace lucas {
 class Estacao {
 public:
-    static constexpr size_t NUM_ESTACOES = 2;
-    using Lista = std::array<Estacao, NUM_ESTACOES>;
+    static constexpr size_t NUM_MAX_ESTACOES = 5;
+    using Lista = std::array<Estacao, NUM_MAX_ESTACOES>;
+
+    static void iniciar(size_t num);
+
+    template<typename FN>
+    static void for_each(FN&& callback) {
+        if (s_num_estacoes == 0)
+            return;
+
+        for (size_t i = 0; i < s_num_estacoes; ++i)
+            if (std::invoke(std::forward<FN>(callback), s_lista[i]) == util::Iter::Stop)
+                break;
+    }
 
     static void procurar_nova_ativa();
 
@@ -20,6 +32,8 @@ public:
     static Estacao* const ativa() { return s_estacao_ativa; }
 
     static float posicao_absoluta(size_t index);
+
+    static size_t num_estacoes() { return s_num_estacoes; }
 
 public:
     void enviar_receita(std::string receita, size_t id);
@@ -43,30 +57,34 @@ public:
 
     void atualizar_campo_gcode(CampoGcode, std::string_view str) const;
 
-    void atualizar_status(const char* str) const;
+    enum class Status {
+        FREE = 0,
+        WAITING_START,
+        SCALDING,
+        INITIALIZE_COFFEE,
+        MAKING_COFFEE,
+        NOTIFICATION_TIME,
+        IS_READY
+    };
+
+    void atualizar_status(Status) const;
 
     size_t numero() const;
 
     size_t index() const;
 
 public:
-    int botao() const { return m_pino_botao; }
-    void set_botao(int pino) {
-        m_pino_botao = pino;
-        SET_INPUT_PULLUP(pino);
-    }
+    pin_t botao() const { return m_pino_botao; }
+    void set_botao(pin_t pino);
+
+    pin_t led() const { return m_pino_led; }
+    void set_led(pin_t pino);
 
     bool aguardando_input() const { return m_aguardando_input; }
     void set_aguardando_input(bool);
 
-    bool botao_apertado() const { return m_botao_apertado; }
-    void set_botao_apertado(bool b) { m_botao_apertado = b; }
-
-    int led() const { return m_pino_led; }
-    void set_led(int pino) {
-        m_pino_led = pino;
-        SET_OUTPUT(pino);
-    }
+    bool botao_segurado() const { return m_botao_segurado; }
+    void set_botao_segurado(bool b) { m_botao_segurado = b; }
 
     const std::string& receita() const { return m_receita_gcode; }
     void set_receita(std::string receita, size_t id);
@@ -95,23 +113,14 @@ private:
 
     static inline Estacao* s_estacao_ativa = nullptr;
 
+    static inline size_t s_num_estacoes = 0;
+
 private:
     std::string_view proxima_instrucao() const;
 
     void reiniciar();
 
 private:
-    struct InfoAtaque {
-        millis_t duracao = 0;
-        millis_t intervalo = 0;
-        bool ultimo = false;
-    };
-    struct InfoReceita {
-        std::vector<InfoAtaque> ataques;
-    };
-
-    InfoReceita m_receita_info;
-
     // a receita inteira, contém todos os gcodes que vamos executar
     std::string m_receita_gcode;
 
@@ -119,17 +128,20 @@ private:
     ptrdiff_t m_receita_progresso = 0;
 
     // id dela para o app
-    size_t m_receita_id;
+    size_t m_receita_id = 0;
 
     // o pino físico do nosso botão
-    int m_pino_botao = 0;
+    pin_t m_pino_botao = 0;
 
     // o pino físico da nossa led
-    int m_pino_led = 0;
+    pin_t m_pino_led = 0;
 
     // o ultimo tick em que o botao foi apertado
     // usado para cancelar uma receita
     millis_t m_tick_botao_segurado = 0;
+
+    // usado como um debounce para ativar uma estacao somente quando o botão é solto
+    bool m_botao_segurado = false;
 
     // estacao aguardando input do usuário para prosseguir
     // ocorre no começo de uma receita, após o K0 e no final de uma receita
@@ -137,9 +149,6 @@ private:
 
     // estacao sem receita, livre para ser usada
     bool m_livre = false;
-
-    // usado como um debounce para ativar uma estacao somente quando o botão é solto
-    bool m_botao_apertado = false;
 
     // se a receita acabou de ser cancelada e o botao ainda nao foi solto
     bool m_receita_cancelada = false;

@@ -72,7 +72,8 @@
 		"ranges": "cpp",
 		"stop_token": "cpp",
 		"typeindex": "cpp",
-		"variant": "cpp"
+		"variant": "cpp",
+		"span": "cpp"
 	},
 	"C_Cpp.intelliSenseMemoryLimit": 16384
 }

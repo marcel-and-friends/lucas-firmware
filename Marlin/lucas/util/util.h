@@ -16,7 +16,7 @@ inline const char* ff(const char* str, float valor) {
     return fmt(str, buffer);
 }
 
-inline bool apertado(int pino) {
+inline bool segurando(int pino) {
     return READ(pino) == false;
 }
 

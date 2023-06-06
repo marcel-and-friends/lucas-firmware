@@ -1,15 +1,17 @@
 #include "HookDelimitado.h"
+#include <lucas/lucas.h>
 
 namespace lucas::serial {
 HookDelimitado::Lista HookDelimitado::s_hooks = {};
 
 void HookDelimitado::make(char delimitador, HookCallback callback) {
-    HookDelimitado hook;
-    hook.delimitador = delimitador;
-    hook.callback = std::move(callback);
-    hook.buffer.reserve(256);
+    if (index_atual >= s_hooks.size() - 1) {
+        LOG("muitos hooks!! aumenta a capacidade ou diminui a quantidade");
+        return;
+    }
 
-    static size_t index = 0;
-    s_hooks[index++] = std::move(hook);
+    auto& hook = s_hooks[index_atual++];
+    hook.delimitador = delimitador;
+    hook.callback = callback;
 }
 }

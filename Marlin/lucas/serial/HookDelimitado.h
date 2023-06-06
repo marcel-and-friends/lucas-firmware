@@ -7,28 +7,31 @@
 #include <lucas/util/util.h>
 
 namespace lucas::serial {
-using HookCallback = std::function<void(std::span<const char>)>;
+using HookCallback = void (*)(std::span<char>);
 
 struct HookDelimitado {
     static void make(char delimitador, HookCallback callback);
 
-    static void for_each(auto&& callback) {
-        for (auto& hook : s_hooks)
-            if (std::invoke(callback, hook) == util::Iter::Stop)
+    template<typename FN>
+    static void for_each(FN&& callback) {
+        for (size_t i = 0; i < index_atual; ++i)
+            if (std::invoke(std::forward<FN>(callback), s_hooks[i]) == util::Iter::Stop)
                 break;
     }
 
+    static constexpr inline size_t BUFFER_SIZE = 1024;
+    static inline size_t index_atual = 0;
+
+public:
     void reset() {
         counter = 0;
-        buffer.clear();
+        buffer_size = 0;
     }
-
-    HookDelimitado(HookDelimitado&&) = default;
-    HookDelimitado& operator=(HookDelimitado&&) = default;
 
     size_t counter = 0;
     HookCallback callback = nullptr;
-    std::string buffer = "";
+    char buffer[BUFFER_SIZE] = {};
+    size_t buffer_size = 0;
     char delimitador = 0;
 
     // isso aqui poderia ser um std::vector mas nao vale a pena pagar o preço de alocar

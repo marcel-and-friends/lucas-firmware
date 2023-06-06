@@ -18,7 +18,7 @@
 #define LUCAS_UPDATE_TEMP_TARGET_BOILER "tempTargetBoiler"
 #define LUCAS_UPDATE_POSICAO_X "posicaoX"
 #define LUCAS_UPDATE_POSICAO_Y "posicaoY"
-#define LUCAS_UPDATE_ESTACAO_ATIVA "ativa"
+#define LUCAS_UPDATE_ESTACAO_ATIVA "estacaoAtiva"
 #define LUCAS_UPDATE_NUM_ESTACOES "numEstacoes"
 /* ---- */
 /* ---------------- */
