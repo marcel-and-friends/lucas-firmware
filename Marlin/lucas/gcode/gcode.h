@@ -9,24 +9,6 @@
 #include <src/gcode/parser.h>
 
 namespace lucas::gcode {
-static constexpr auto RECEITA_PADRAO =
-    R"(L1 G1560 T6000
-L3 F10250 D9 N3 R1
-L0
-L1 G1560 T6000
-L3 F8250 D7 N3 R1
-L2 T24000
-L1 G1560 T9000
-L3 F8500 D7 N5 R1
-L2 T30000
-L1 G1560 T10000
-L3 F7650 D7 N5 R1
-L2 T35000
-L1 G1560 T10000
-L3 F7650 D7 N5 R1)";
-
-constexpr size_t RECEITA_PADRAO_ID = 0xF0DA;
-
 void injetar(const char* gcode);
 
 std::string_view proxima_instrucao(const char* gcode);

@@ -42,6 +42,103 @@ void Estacao::iniciar(size_t num) {
 
     LOG("maquina vai usar ", num, " estacoes");
 }
+
+void Estacao::tick(millis_t tick) {
+    // atualizacao dos estados das estacoes
+    {
+        for_each([tick](auto& estacao) {
+            // absolutamente nada é atualizado se a estacao estiver bloqueada
+            if (estacao.bloqueada())
+                return util::Iter::Continue;
+
+            // atualizacao simples do estado do botao
+            bool segurado_antes = estacao.botao_segurado();
+            bool segurado_agora = util::segurando(estacao.botao());
+            estacao.set_botao_segurado(segurado_agora);
+
+            // primeiro cuidamos de estacoes pausadas
+            {
+                if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
+                    estacao.despausar();
+                    estacao.disponibilizar_para_uso();
+                    return util::Iter::Continue;
+                }
+            }
+
+            // agora vemos se o usuario quer cancelar a receita
+            {
+                constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
+                if (segurado_agora && !estacao.receita().vazia()) {
+                    if (!estacao.tick_botao_segurado())
+                        estacao.set_tick_botao_segurado(tick);
+
+                    if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
+                        estacao.cancelar_receita();
+                        return util::Iter::Continue;
+                    }
+                }
+            }
+
+            // o botão acabou de ser solto, temos varias opcoes
+            if (!segurado_agora && segurado_antes) {
+                if (estacao.tick_botao_segurado()) {
+                    // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
+                    estacao.set_tick_botao_segurado(0);
+                }
+
+                if (estacao.receita_cancelada()) {
+                    // se a receita acabou de ser cancelada, podemos voltar ao normal
+                    // o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
+                    estacao.set_receita_cancelada(false);
+                    return util::Iter::Continue;
+                }
+
+                if (estacao.livre()) {
+                    // se a boca estava livre e apertamos o botao enviamos a receita padrao
+                    estacao.enviar_receita(Receita::padrao());
+                    return util::Iter::Continue;
+                }
+
+                if (estacao.aguardando_input()) {
+                    // se estavamos aguardando input prosseguimos com a receita
+                    estacao.disponibilizar_para_uso();
+                    return util::Iter::Continue;
+                }
+            }
+
+            return util::Iter::Continue;
+        });
+    }
+
+    // atualizacao das leds
+    {
+        constexpr auto TIMER_LEDS = 650; // 650ms
+        // é necessario manter um estado geral para que as leds pisquem juntas.
+        // poderiamos simplificar essa funcao substituindo o 'WRITE(estacao.led(), ultimo_estado)' por 'TOGGLE(estacao.led())'
+        // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
+        static bool ultimo_estado = true;
+        static millis_t ultimo_tick_atualizado = 0;
+
+        for_each([tick](const auto& estacao) {
+            if (estacao.esta_ativa() || estacao.disponivel_para_uso()) {
+                WRITE(estacao.led(), true);
+            } else if (estacao.aguardando_input()) {
+                // aguardando input do usuário - led piscando
+                WRITE(estacao.led(), ultimo_estado);
+            } else {
+                // não somos a estacao ativa nem estamos na fila - led apagada
+                WRITE(estacao.led(), false);
+            }
+            return util::Iter::Continue;
+        });
+
+        if (tick - ultimo_tick_atualizado >= TIMER_LEDS) {
+            ultimo_estado = !ultimo_estado;
+            ultimo_tick_atualizado = tick;
+        }
+    }
+}
+
 // TODO: desenvolver um algoritmo legal pra isso...
 void Estacao::procurar_nova_ativa() {
     LOG("procurando nova estacao ativa...");
@@ -70,16 +167,12 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
     s_estacao_ativa = estacao;
     if (s_estacao_ativa) {
         auto& estacao = *s_estacao_ativa;
-        estacao.atualizar_status(Status::MAKING_COFFEE);
+        estacao.set_status(Status::MAKING_COFFEE);
 
         auto& bico = Bico::the();
         // bico.descartar_agua_ruim();
         bico.viajar_para_estacao(estacao);
 
-#if LUCAS_DEBUG_GCODE
-        LOG("-------- receita --------\n", estacao.receita().c_str() + estacao.progresso_receita());
-        LOG("-------------------------");
-#endif
         LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
         UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, estacao.numero());
     } else {
@@ -94,14 +187,14 @@ float Estacao::posicao_absoluta(size_t index) {
     return DISTANCIA_PRIMEIRA_ESTACAO + index * DISTANCIA_ENTRE_ESTACOES;
 }
 
-void Estacao::enviar_receita(std::string receita, size_t id) {
-    set_receita(std::move(receita), id);
+void Estacao::enviar_receita(Receita receita) {
+    set_receita(receita);
     set_livre(false);
     set_aguardando_input(true);
 }
 
 void Estacao::prosseguir_receita() {
-    auto instrucao = proxima_instrucao();
+    auto instrucao = m_receita.proxima_instrucao();
     atualizar_campo_gcode(CampoGcode::Atual, instrucao);
     if (gcode::ultima_instrucao(instrucao.data())) {
         atualizar_campo_gcode(CampoGcode::Proximo, "-");
@@ -111,22 +204,18 @@ void Estacao::prosseguir_receita() {
         ESTACAO_LOG("receita finalizada");
         atualizar_campo_gcode(CampoGcode::Atual, "-");
     } else {
-        gcode::injetar(instrucao.data());
-        m_receita_progresso += instrucao.size() + 1;
-        atualizar_campo_gcode(CampoGcode::Proximo, proxima_instrucao());
+        m_receita.prosseguir();
+        atualizar_campo_gcode(CampoGcode::Proximo, m_receita.proxima_instrucao());
     }
 }
 
 void Estacao::disponibilizar_para_uso() {
-    if (m_receita_gcode.empty())
-        return;
-
     set_livre(false);
     set_aguardando_input(false);
     if (!Estacao::ativa())
         Estacao::set_estacao_ativa(this);
     else
-        atualizar_status(Status::IS_READY);
+        set_status(Status::IS_READY);
     ESTACAO_LOG("disponibilizada para uso");
 }
 
@@ -142,7 +231,7 @@ void Estacao::pausar(millis_t duracao) {
     m_pausada = true;
     m_comeco_pausa = millis();
     m_duracao_pausa = duracao;
-    atualizar_status(Status::FREE);
+    set_status(Status::FREE);
     if (esta_ativa())
         procurar_nova_ativa();
     ESTACAO_LOG("pausando por ", duracao, "ms");
@@ -180,18 +269,27 @@ void Estacao::atualizar_campo_gcode(CampoGcode qual, std::string_view valor) con
     UPDATE(nome_buffer, valor_buffer);
 }
 
-void Estacao::atualizar_status(Status status) const {
-    static char nome_buffer[] = "statusE?";
-    nome_buffer[7] = numero() + '0';
-    UPDATE(nome_buffer, static_cast<int>(status));
-}
-
 size_t Estacao::numero() const {
     return index() + 1;
 }
 
 size_t Estacao::index() const {
     return ((uintptr_t)this - (uintptr_t)&s_lista) / sizeof(Estacao);
+}
+
+void Estacao::gerar_info(JsonObject& obj) const {
+    obj["index"] = index();
+    obj["status"] = static_cast<int>(status());
+    {
+        auto receita = obj.createNestedObject("receita");
+        receita["id"] = m_receita.id();
+        receita["tempo"] = 0;
+    }
+    {
+        auto passo = obj.createNestedObject("passo");
+        passo["numero"] = "uwu";
+        passo["tempo"] = "blaaaa";
+    }
 }
 
 void Estacao::set_led(pin_t pino) {
@@ -209,19 +307,13 @@ void Estacao::set_botao(pin_t pino) {
 void Estacao::set_aguardando_input(bool b) {
     m_aguardando_input = b;
     if (m_aguardando_input)
-        atualizar_status(Status::WAITING_START);
-}
-
-void Estacao::set_receita(std::string gcode, size_t id) {
-    m_receita_gcode = std::move(gcode);
-    m_receita_progresso = 0;
-    m_receita_id = id;
+        set_status(Status::WAITING_START);
 }
 
 void Estacao::set_livre(bool b) {
     m_livre = b;
     if (m_livre)
-        atualizar_status(Status::FREE);
+        set_status(Status::FREE);
 }
 
 void Estacao::set_bloqueada(bool b) {
@@ -233,14 +325,8 @@ void Estacao::set_bloqueada(bool b) {
     }
 }
 
-std::string_view Estacao::proxima_instrucao() const {
-    return gcode::proxima_instrucao(m_receita_gcode.data() + m_receita_progresso);
-}
-
 void Estacao::reiniciar() {
-    m_receita_gcode.clear();
-    m_receita_progresso = 0;
-    m_receita_id = 0;
+    m_receita.reiniciar();
     m_tick_botao_segurado = 0;
     m_botao_segurado = false;
     m_receita_cancelada = false;
@@ -248,7 +334,7 @@ void Estacao::reiniciar() {
     m_pausada = false;
     m_comeco_pausa = 0;
     m_duracao_pausa = 0;
-    set_livre(true);
+    set_livre(true); // hmmm
     if (esta_ativa())
         procurar_nova_ativa();
 }

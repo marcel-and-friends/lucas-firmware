@@ -6,7 +6,7 @@ namespace lucas::gcode {
 void L4() {
     Estacao::for_each([](auto& estacao) {
         if (estacao.livre()) {
-            estacao.enviar_receita(gcode::RECEITA_PADRAO, gcode::RECEITA_PADRAO_ID);
+            estacao.enviar_receita(Receita::padrao());
             return util::Iter::Stop;
         }
         return util::Iter::Continue;

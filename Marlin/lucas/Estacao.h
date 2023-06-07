@@ -4,6 +4,8 @@
 #include <string>
 #include <string_view>
 #include <lucas/lucas.h>
+#include <lucas/Receita.h>
+#include <ArduinoJson.h>
 
 namespace lucas {
 class Estacao {
@@ -23,6 +25,8 @@ public:
                 break;
     }
 
+    static void tick(millis_t tick);
+
     static void procurar_nova_ativa();
 
     static void set_estacao_ativa(Estacao* estacao);
@@ -36,7 +40,7 @@ public:
     static size_t num_estacoes() { return s_num_estacoes; }
 
 public:
-    void enviar_receita(std::string receita, size_t id);
+    void enviar_receita(Receita);
 
     void prosseguir_receita();
 
@@ -67,13 +71,16 @@ public:
         IS_READY
     };
 
-    void atualizar_status(Status) const;
-
     size_t numero() const;
 
     size_t index() const;
 
+    void gerar_info(JsonObject&) const;
+
 public:
+    const Receita& receita() const { return m_receita; }
+    void set_receita(Receita receita) { m_receita = receita; }
+
     pin_t botao() const { return m_pino_botao; }
     void set_botao(pin_t pino);
 
@@ -86,12 +93,6 @@ public:
     bool botao_segurado() const { return m_botao_segurado; }
     void set_botao_segurado(bool b) { m_botao_segurado = b; }
 
-    const std::string& receita() const { return m_receita_gcode; }
-    void set_receita(std::string receita, size_t id);
-
-    ptrdiff_t progresso_receita() const { return m_receita_progresso; }
-    void reiniciar_receita() { m_receita_progresso = 0; }
-
     millis_t tick_botao_segurado() const { return m_tick_botao_segurado; }
     void set_tick_botao_segurado(millis_t t) { m_tick_botao_segurado = t; }
 
@@ -101,12 +102,15 @@ public:
     bool receita_cancelada() const { return m_receita_cancelada; }
     void set_receita_cancelada(bool b) { m_receita_cancelada = b; }
 
+    bool pausada() const { return m_pausada; }
     void pausar(millis_t duracao);
     void despausar();
-    bool pausada() const { return m_pausada; }
 
-    void set_bloqueada(bool);
     bool bloqueada() const { return m_bloqueada; }
+    void set_bloqueada(bool);
+
+    Status status() const { return m_status; }
+    void set_status(Status status) { m_status = status; }
 
 private:
     static Lista s_lista;
@@ -116,19 +120,10 @@ private:
     static inline size_t s_num_estacoes = 0;
 
 private:
-    std::string_view proxima_instrucao() const;
-
     void reiniciar();
 
 private:
-    // a receita inteira, contém todos os gcodes que vamos executar
-    std::string m_receita_gcode;
-
-    // a posição dentro da receita que estamos
-    ptrdiff_t m_receita_progresso = 0;
-
-    // id dela para o app
-    size_t m_receita_id = 0;
+    Receita m_receita;
 
     // o pino físico do nosso botão
     pin_t m_pino_botao = 0;
@@ -162,5 +157,7 @@ private:
     millis_t m_comeco_pausa = 0;
 
     millis_t m_duracao_pausa = 0;
+
+    Status m_status = Status::FREE;
 };
 }
