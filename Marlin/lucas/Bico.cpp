@@ -166,7 +166,7 @@ void Bico::nivelar() const {
     BICO_LOG("executando rotina de nivelamento");
     gcode::executar("G28 XY");
 #if LUCAS_ROTINA_TEMP
-    // gcode::executar_ff("M140 S%s", 93.f);
+    gcode::executar_ff("M140 S%s", 93.f);
 #endif
     BICO_LOG("nivelamento finalizado");
 }

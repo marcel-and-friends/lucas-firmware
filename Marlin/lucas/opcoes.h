@@ -5,23 +5,8 @@
 /* ----- */
 
 /* rotinas */
-#define LUCAS_ROTINA_TEMP true
+#define LUCAS_ROTINA_TEMP false
 /* ------- */
-
-/* update de serial */
-#define LUCAS_INTERVALO_UPDATE_TEMP 5000
-#define LUCAS_INTERVALO_UPDATE_POS 100
-/* nomes */
-#define LUCAS_UPDATE_TEMP_ATUAL_BICO "tempAtualBico"
-#define LUCAS_UPDATE_TEMP_TARGET_BICO "tempTargetBico"
-#define LUCAS_UPDATE_TEMP_ATUAL_BOILER "tempAtualBoiler"
-#define LUCAS_UPDATE_TEMP_TARGET_BOILER "tempTargetBoiler"
-#define LUCAS_UPDATE_POSICAO_X "posicaoX"
-#define LUCAS_UPDATE_POSICAO_Y "posicaoY"
-#define LUCAS_UPDATE_ESTACAO_ATIVA "estacaoAtiva"
-#define LUCAS_UPDATE_NUM_ESTACOES "numEstacoes"
-/* ---- */
-/* ---------------- */
 
 /* wifi */
 #define LUCAS_CONECTAR_WIFI true

@@ -174,9 +174,7 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         bico.viajar_para_estacao(estacao);
 
         LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
-        UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, estacao.numero());
     } else {
-        UPDATE(LUCAS_UPDATE_ESTACAO_ATIVA, "-");
         gcode::parar_fila();
     }
 }
@@ -265,8 +263,6 @@ void Estacao::atualizar_campo_gcode(CampoGcode qual, std::string_view valor) con
 
     memcpy(valor_buffer, valor.data(), valor.size());
     valor_buffer[valor.size()] = '\0';
-
-    UPDATE(nome_buffer, valor_buffer);
 }
 
 size_t Estacao::numero() const {

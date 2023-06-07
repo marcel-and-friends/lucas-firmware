@@ -10,7 +10,6 @@
 
 namespace lucas {
 #define LOG SERIAL_ECHOLNPGM
-#define UPDATE(tipo, valor) LOG("$", tipo, ":", valor);
 
 void setup();
 
