@@ -12,8 +12,8 @@ enum Intervalos : size_t {
 };
 
 void tick(millis_t tick) {
-    StaticJsonDocument<1024> doc;
     // gostaria de nao alocar 2 bagui mas nao sei komo
+    StaticJsonDocument<1024> doc;
     char output[1024] = {};
     bool atualizou = false;
 
