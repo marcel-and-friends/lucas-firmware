@@ -42,18 +42,18 @@ constexpr auto TEMPO_PARA_DESLIGAR_O_BREAK = 2000; // 2s
 
 void Bico::tick(millis_t tick) {
     if (!m_ativo) {
-        if (m_tick_desligou) {
+        if (m_tick_final) {
             // após desligar o motor deixamos o break ativo por um tempinho e depois liberamos
-            if (tick - m_tick_desligou >= util::TEMPO_PARA_DESLIGAR_O_BREAK) {
+            if (tick - m_tick_final >= util::TEMPO_PARA_DESLIGAR_O_BREAK) {
                 digitalWrite(pino::BREAK, HIGH);
-                m_tick_desligou = 0;
+                m_tick_final = 0;
             }
         }
         return;
     }
 
-    if (tick - m_tick >= m_tempo) {
-        BICO_LOG("finalizando despejo [delta: ", tick - m_tick, "]");
+    if (tick - m_tick_comeco >= m_duracao) {
+        BICO_LOG("finalizando despejo [delta: ", tick - m_tick_comeco, "]");
         desligar(tick);
     }
 }
@@ -71,24 +71,23 @@ void Bico::ativar(millis_t tick, millis_t tempo, float gramas) {
     const auto valor_final = static_cast<uint32_t>(std::clamp(valor_digital, 0, 4095));
     const auto valor_final_owo = static_cast<uint32_t>(std::clamp(gramas, 0.f, 4095.f));
 
-    m_poder = valor_final_owo;
     m_ativo = true;
-    m_tick = tick;
-    m_tempo = tempo;
-    m_tick_ligou = tick;
+    m_forca = valor_final_owo;
+    m_tick_comeco = tick;
+    m_duracao = tempo;
 
     digitalWrite(pino::BREAK, HIGH); // libera o motor
-    analogWrite(pino::SV, m_poder);  // aplica a força
+    analogWrite(pino::SV, m_forca);  // aplica a força
 
-    BICO_LOG("iniciando despejo [T: ", m_tempo, " - P: ", m_poder, " - tick: ", m_tick, "]");
+    BICO_LOG("iniciando despejo [T: ", m_duracao, " - P: ", m_forca, " - tick: ", m_tick_comeco, "]");
 }
 
 void Bico::desligar(millis_t tick_desligou) {
     m_ativo = false;
-    m_poder = 0;
-    m_tick = 0;
-    m_tempo = 0;
-    m_tick_desligou = tick_desligou;
+    m_forca = 0;
+    m_tick_comeco = 0;
+    m_duracao = 0;
+    m_tick_final = tick_desligou;
 
     digitalWrite(pino::BREAK, LOW); // breca o motor
     analogWrite(pino::SV, LOW);     // zera a força

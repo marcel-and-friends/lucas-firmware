@@ -4,15 +4,16 @@
 #include <lucas/Estacao.h>
 #include <src/module/temperature.h>
 #include <lucas/serial/serial.h>
+#include <lucas/Fila.h>
 
 namespace lucas::info {
-enum Intervalos : size_t {
+enum Intervalos : millis_t {
     Temp = 5000,
     EstacaoAtiva = 500
 };
 
 void tick(millis_t tick) {
-    // gostaria de nao alocar 2 bagui mas nao sei komo
+    // gostaria de nao alocar 2 bagui de 1kb mas nao sei komo
     StaticJsonDocument<1024> doc;
     char output[1024] = {};
     bool atualizou = false;
@@ -100,8 +101,10 @@ void interpretar_json(std::span<char> buffer) {
 
             Estacao::lista().at(index).cancelar_receita();
         } break;
-        case 4: {
-            Estacao::lista().at(v.as<size_t>()).disponibilizar_para_uso();
+        case 4: { // enviar uma receita para uma estacao
+            const auto obj = v.as<JsonObjectConst>();
+            const auto estacao = obj["estacao"].as<size_t>();
+            Fila::the().agendar_receita(estacao, Receita::from_json(obj));
         } break;
         default:
             LOG("opcao invalida - [", opcao, "]");

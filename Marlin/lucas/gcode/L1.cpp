@@ -5,9 +5,9 @@
 
 namespace lucas::gcode {
 void L1() {
-    if (Bico::the().ativo())
-        return;
-
     Bico::the().ativar(millis(), parser.ulongval('T'), parser.floatval('G'));
+
+    while (Bico::the().ativo())
+        idle();
 }
 }

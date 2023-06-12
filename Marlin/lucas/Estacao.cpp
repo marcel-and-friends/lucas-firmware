@@ -2,6 +2,7 @@
 #include <memory>
 #include <src/module/temperature.h>
 #include <lucas/Bico.h>
+#include <lucas/Fila.h>
 
 #define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", "", __VA_ARGS__)
 
@@ -61,6 +62,7 @@ void Estacao::tick(millis_t tick) {
                 if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
                     estacao.despausar();
                     estacao.disponibilizar_para_uso();
+                    // TODO avisar a fila
                     return util::Iter::Continue;
                 }
             }
@@ -68,12 +70,12 @@ void Estacao::tick(millis_t tick) {
             // agora vemos se o usuario quer cancelar a receita
             {
                 constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
-                if (segurado_agora && !estacao.receita().vazia()) {
+                if (segurado_agora) {
                     if (!estacao.tick_botao_segurado())
                         estacao.set_tick_botao_segurado(tick);
 
                     if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
-                        estacao.cancelar_receita();
+                        Fila::the().cancelar_receita(estacao.index());
                         return util::Iter::Continue;
                     }
                 }
@@ -95,12 +97,13 @@ void Estacao::tick(millis_t tick) {
 
                 if (estacao.livre()) {
                     // se a boca estava livre e apertamos o botao enviamos a receita padrao
-                    estacao.enviar_receita(Receita::padrao());
+                    Fila::the().agendar_receita(estacao.index(), Receita::padrao());
                     return util::Iter::Continue;
                 }
 
                 if (estacao.aguardando_input()) {
                     // se estavamos aguardando input prosseguimos com a receita
+                    // TODO avisar a fila
                     estacao.disponibilizar_para_uso();
                     return util::Iter::Continue;
                 }
@@ -185,26 +188,27 @@ float Estacao::posicao_absoluta(size_t index) {
     return DISTANCIA_PRIMEIRA_ESTACAO + index * DISTANCIA_ENTRE_ESTACOES;
 }
 
-void Estacao::enviar_receita(Receita receita) {
-    set_receita(receita);
+void Estacao::receber_receita(JsonObjectConst json) {
+    auto maybe_receita = Receita::from_json(json);
+    // set_receita(receita);
     set_livre(false);
     set_aguardando_input(true);
 }
 
 void Estacao::prosseguir_receita() {
-    auto instrucao = m_receita.proxima_instrucao();
-    atualizar_campo_gcode(CampoGcode::Atual, instrucao);
-    if (gcode::ultima_instrucao(instrucao.data())) {
-        atualizar_campo_gcode(CampoGcode::Proximo, "-");
-        // podemos 'executar()' aqui pois, como é a ultima instrucao, a string é null-terminated
-        gcode::executar(instrucao.data());
-        reiniciar();
-        ESTACAO_LOG("receita finalizada");
-        atualizar_campo_gcode(CampoGcode::Atual, "-");
-    } else {
-        m_receita.prosseguir();
-        atualizar_campo_gcode(CampoGcode::Proximo, m_receita.proxima_instrucao());
-    }
+    // auto instrucao = m_receita.proxima_instrucao();
+    // atualizar_campo_gcode(CampoGcode::Atual, instrucao);
+    // if (gcode::ultima_instrucao(instrucao.data())) {
+    //     atualizar_campo_gcode(CampoGcode::Proximo, "-");
+    //     // podemos 'executar()' aqui pois, como é a ultima instrucao, a string é null-terminated
+    //     gcode::executar(instrucao.data());
+    //     reiniciar();
+    //     ESTACAO_LOG("receita finalizada");
+    //     atualizar_campo_gcode(CampoGcode::Atual, "-");
+    // } else {
+    //     m_receita.prosseguir();
+    //     atualizar_campo_gcode(CampoGcode::Proximo, m_receita.proxima_instrucao());
+    // }
 }
 
 void Estacao::disponibilizar_para_uso() {
@@ -269,7 +273,8 @@ size_t Estacao::numero() const {
     return index() + 1;
 }
 
-size_t Estacao::index() const {
+Estacao::Index Estacao::index() const {
+    // cute
     return ((uintptr_t)this - (uintptr_t)&s_lista) / sizeof(Estacao);
 }
 
@@ -278,7 +283,9 @@ void Estacao::gerar_info(JsonObject& obj) const {
     obj["status"] = static_cast<int>(status());
     {
         auto receita = obj.createNestedObject("receita");
-        receita["id"] = m_receita.id();
+        // come back to this
+        if (m_receita)
+            receita["id"] = m_receita->id();
         receita["tempo"] = 0;
     }
     {
@@ -322,7 +329,6 @@ void Estacao::set_bloqueada(bool b) {
 }
 
 void Estacao::reiniciar() {
-    m_receita.reiniciar();
     m_tick_botao_segurado = 0;
     m_botao_segurado = false;
     m_receita_cancelada = false;

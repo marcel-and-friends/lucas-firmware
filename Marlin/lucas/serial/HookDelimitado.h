@@ -12,10 +12,9 @@ using HookCallback = void (*)(std::span<char>);
 struct HookDelimitado {
     static void make(char delimitador, HookCallback callback);
 
-    template<typename FN>
-    static void for_each(FN&& callback) {
+    static void for_each(auto&& callback) {
         for (size_t i = 0; i < index_atual; ++i)
-            if (std::invoke(std::forward<FN>(callback), s_hooks[i]) == util::Iter::Stop)
+            if (std::invoke(callback, s_hooks[i]) == util::Iter::Stop)
                 break;
     }
 

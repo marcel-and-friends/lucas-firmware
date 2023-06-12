@@ -17,6 +17,8 @@ bool ultima_instrucao(const char* gcode);
 
 void parar_fila();
 
+bool comandos_pendentes();
+
 inline void executar(const char* gcode) {
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);

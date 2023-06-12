@@ -10,18 +10,19 @@
 namespace lucas {
 class Estacao {
 public:
+    using Index = size_t;
+
     static constexpr size_t NUM_MAX_ESTACOES = 5;
     using Lista = std::array<Estacao, NUM_MAX_ESTACOES>;
 
     static void iniciar(size_t num);
 
-    template<typename FN>
-    static void for_each(FN&& callback) {
+    static void for_each(auto&& callback) {
         if (s_num_estacoes == 0)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
-            if (std::invoke(std::forward<FN>(callback), s_lista[i]) == util::Iter::Stop)
+            if (std::invoke(callback, s_lista[i]) == util::Iter::Stop)
                 break;
     }
 
@@ -40,7 +41,7 @@ public:
     static size_t num_estacoes() { return s_num_estacoes; }
 
 public:
-    void enviar_receita(Receita);
+    void receber_receita(JsonObjectConst json);
 
     void prosseguir_receita();
 
@@ -73,14 +74,11 @@ public:
 
     size_t numero() const;
 
-    size_t index() const;
+    Index index() const;
 
     void gerar_info(JsonObject&) const;
 
 public:
-    const Receita& receita() const { return m_receita; }
-    void set_receita(Receita receita) { m_receita = receita; }
-
     pin_t botao() const { return m_pino_botao; }
     void set_botao(pin_t pino);
 
@@ -123,7 +121,10 @@ private:
     void reiniciar();
 
 private:
-    Receita m_receita;
+    Receita* m_receita = nullptr;
+
+    // status, usado pelo app
+    Status m_status = Status::FREE;
 
     // o pino físico do nosso botão
     pin_t m_pino_botao = 0;
@@ -153,11 +154,7 @@ private:
 
     // pausada (pelo L2)
     bool m_pausada = false;
-
     millis_t m_comeco_pausa = 0;
-
     millis_t m_duracao_pausa = 0;
-
-    Status m_status = Status::FREE;
 };
 }

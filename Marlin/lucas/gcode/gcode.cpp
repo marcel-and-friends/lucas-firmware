@@ -28,4 +28,8 @@ bool ultima_instrucao(const char* gcode) {
 void parar_fila() {
     queue.injected_commands_P = nullptr;
 }
+
+bool comandos_pendentes() {
+    return queue.injected_commands_P;
+}
 }

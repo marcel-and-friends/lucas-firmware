@@ -2,6 +2,7 @@
 #include <lucas/Estacao.h>
 #include <lucas/serial/HookDelimitado.h>
 #include <lucas/info/info.h>
+#include <lucas/Fila.h>
 #include <ArduinoJson.h>
 
 namespace lucas {
@@ -25,9 +26,8 @@ void pos_execucao_gcode() {
         return;
     }
 
-    if (!Estacao::ativa())
-        return;
-
-    Estacao::ativa()->prosseguir_receita();
+    if (!gcode::comandos_pendentes() && Fila::the().executando()) {
+        Fila::the().prosseguir();
+    }
 }
 }

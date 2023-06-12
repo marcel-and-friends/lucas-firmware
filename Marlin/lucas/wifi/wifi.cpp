@@ -8,7 +8,7 @@
 
 namespace lucas::wifi {
 
-enum class Mensagem : byte {
+enum class Protocolo : byte {
     /*
      * +--------------------------+--------------------------+----------------------------------------------------+
      * | Segmento                 | Tamanho (bytes)          | Significado                                        |
@@ -51,7 +51,7 @@ concept Iterator = requires(It it) {
 };
 
 template<Iterator It>
-static void enviar_protocolo(Mensagem tipo, It&& it) {
+static void enviar_protocolo(Protocolo tipo, It&& it) {
     /*
      * - Comunicação com o módulo WiFi da MakerBase -
      *
@@ -61,13 +61,13 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
      * | Segmento | Tamanho (bytes) | Descrição                                                          |
      * +----------+-----------------+--------------------------------------------------------------------+
      * | Início   | 1 (uint8_t)     | Início do protocolo - sempre 0xA5                                  |
-     * | Tipo     | 1 (uint8_t)     | Tipo da mensagem - veja o enum 'Mensagem'                          |
+     * | Tipo     | 1 (uint8_t)     | Tipo da mensagem - veja o enum 'Protocolo'                          |
      * | Tamanho  | 2 (uint16_t)    | Tamanho da mensagem - máximo de 1024 - 5 (bytes reservados) = 1019 |
-     * | Mensagem | Tamanho         | Mensagem em sí                                                     |
+     * | Protocolo | Tamanho         | Protocolo em sí                                                     |
      * | Fim      | 1 (uint8_t)     | Fim do protocolo - sempre 0xFC                                     |
      * +----------+-----------------+--------------------------------------------------------------------+
      *
-     * Cada mensagem possui uma estrutura interna, documentadas no enum 'Mensagem'
+     * Cada mensagem possui uma estrutura interna, documentadas no enum 'Protocolo'
      */
     constexpr byte INICIO = 0xA5;
     constexpr byte FIM = 0xFC;
@@ -84,7 +84,7 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
     // Tamanho (16 bytes divididos em 2)
     buffer.push_back(tamanho_msg & 0xFF);
     buffer.push_back((tamanho_msg >> 8) & 0xFF);
-    // Mensagem
+    // Protocolo
     buffer.insert(buffer.end(), it.begin(), it.end());
     // Fim
     buffer.push_back(FIM);
@@ -95,7 +95,7 @@ static void enviar_protocolo(Mensagem tipo, It&& it) {
 }
 
 template<typename... Bytes>
-static void enviar_protocolo(Mensagem tipo, Bytes... bytes) {
+static void enviar_protocolo(Protocolo tipo, Bytes... bytes) {
     std::array msg = { static_cast<byte>(bytes)... };
     enviar_protocolo(tipo, msg);
 }
@@ -119,8 +119,8 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
     // Senha da rede
     config_msg.insert(config_msg.end(), senha_rede.begin(), senha_rede.end());
 
-    enviar_protocolo(Mensagem::Config, config_msg);
-    enviar_protocolo(Mensagem::Conectar, Operacao::Conectar);
+    enviar_protocolo(Protocolo::Config, config_msg);
+    enviar_protocolo(Protocolo::Conectar, Operacao::Conectar);
 
     LOG("conectando wifi na rede '", nome_rede.data(), " - ", senha_rede.data(), "'");
     g_conectando = true;

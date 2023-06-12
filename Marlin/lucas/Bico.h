@@ -7,8 +7,8 @@ class Estacao;
 class Bico {
 public:
     static Bico& the() {
-        static Bico the;
-        return the;
+        static Bico instance;
+        return instance;
     }
 
     void tick(millis_t tick);
@@ -34,16 +34,14 @@ public:
 private:
     void desligar(millis_t tick_desligou);
 
-    millis_t m_tempo = 0;
-
-    millis_t m_tick_desligou = 0;
-
-    millis_t m_tick_ligou = 0;
-
-    millis_t m_tick = 0;
-
-    uint32_t m_poder = 0;
-
+    // duracao do despejo
+    millis_t m_duracao = 0;
+    // instante onde o despejo comeca/acaba
+    millis_t m_tick_comeco = 0;
+    millis_t m_tick_final = 0;
+    // valor digital enviado para o driver do motor
+    uint32_t m_forca = 0;
+    // se estamos despejando ou nao
     bool m_ativo = false;
 };
 
