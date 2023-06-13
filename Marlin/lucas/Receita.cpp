@@ -17,10 +17,10 @@ std::unique_ptr<Receita> Receita::padrao() {
 
     { // ataques
         constexpr auto passos = std::array{
-            Passo{ .comeco = 0, .duracao = 6000, .intervalo = 24000 },
-            Passo{ .comeco = 30000, .duracao = 9000, .intervalo = 30000 },
-            Passo{ .comeco = 69000, .duracao = 10000, .intervalo = 35000 },
-            Passo{ .comeco = 114000, .duracao = 10000 }
+            Passo{ .comeco_rel = 0, .duracao = 6000, .intervalo = 24000 },
+            Passo{ .comeco_rel = 30000, .duracao = 9000, .intervalo = 30000 },
+            Passo{ .comeco_rel = 69000, .duracao = 10000, .intervalo = 35000 },
+            Passo{ .comeco_rel = 114000, .duracao = 10000 }
         };
         constexpr auto gcodes = std::array{
             "L3 F8250 D7 N3 R1 T6000 A1560",
@@ -81,7 +81,7 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
         for (size_t i = 0; i < ataques_obj.size(); ++i) {
             auto ataque_obj = ataques_obj[i];
             auto& ataque = rec->m_ataques[i];
-            ataque.comeco = ataque_obj["comeco"].as<millis_t>();
+            ataque.comeco_rel = ataque_obj["comeco"].as<millis_t>();
             ataque.duracao = ataque_obj["duracao"].as<millis_t>();
             strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
             if (ataque_obj.containsKey("intervalo")) {
@@ -98,20 +98,29 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
 }
 
 bool Receita::terminou() const {
-    return m_passo >= m_num_ataques;
+    return m_ataque_atual >= m_num_ataques;
 }
 
 void Receita::prosseguir() {
-    if (m_passo >= m_num_ataques) {
+    if (m_ataque_atual >= m_num_ataques) {
         // logic bug!! logic bug!!!!!
         LOG("receita::prosseguir() chamado quando a receita ja terminou");
         return;
     }
 
-    gcode::injetar(m_ataques[m_passo++].gcode);
+    gcode::injetar(m_ataques[m_ataque_atual++].gcode);
 }
 
-Receita::Passo& Receita::passo_atual() {
-    return m_ataques[m_passo];
+const Receita::Passo& Receita::ataque_atual() const {
+    return m_ataques[m_ataque_atual];
+}
+
+void Receita::executar_escaldo() {
+    GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
+}
+
+void Receita::executar_ataque() {
+    GcodeSuite::process_subcommands_now(F(ataque_atual().gcode));
+    m_ataque_atual++;
 }
 }

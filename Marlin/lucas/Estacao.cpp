@@ -57,16 +57,6 @@ void Estacao::tick(millis_t tick) {
             bool segurado_agora = util::segurando(estacao.botao());
             estacao.set_botao_segurado(segurado_agora);
 
-            // primeiro cuidamos de estacoes pausadas
-            {
-                if (estacao.pausada() && estacao.tempo_de_pausa_atingido(tick)) {
-                    estacao.despausar();
-                    estacao.disponibilizar_para_uso();
-                    // TODO avisar a fila
-                    return util::Iter::Continue;
-                }
-            }
-
             // agora vemos se o usuario quer cancelar a receita
             {
                 constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
@@ -103,8 +93,7 @@ void Estacao::tick(millis_t tick) {
 
                 if (estacao.aguardando_input()) {
                     // se estavamos aguardando input prosseguimos com a receita
-                    // TODO avisar a fila
-                    estacao.disponibilizar_para_uso();
+                    Fila::the().mapear_receita(estacao.index());
                     return util::Iter::Continue;
                 }
             }

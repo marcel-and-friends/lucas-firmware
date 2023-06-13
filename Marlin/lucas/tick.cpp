@@ -1,6 +1,7 @@
 #include "tick.h"
 #include <lucas/lucas.h>
 #include <lucas/Estacao.h>
+#include <lucas/Fila.h>
 #include <lucas/info/info.h>
 
 namespace lucas {
@@ -13,6 +14,7 @@ void tick() {
         return;
 
     Bico::the().tick(tick);
+    Fila::the().tick(tick);
     Estacao::tick(tick);
     info::tick(tick);
 

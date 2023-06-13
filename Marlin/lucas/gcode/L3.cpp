@@ -31,6 +31,13 @@ void L3() {
     auto comeco = millis();
     LOG("comecando L3 - ", comeco);
 
+    while (millis() - comeco < tempo)
+        idle();
+
+    LOG("terminando L3 - delta = ", millis() - comeco);
+
+    return;
+
     if (comecar_na_borda)
         executar_ff("G0 F5000 X%s", -raio);
 

@@ -25,9 +25,5 @@ void pos_execucao_gcode() {
             wifi::informar_sobre_rede();
         return;
     }
-
-    if (!gcode::comandos_pendentes() && Fila::the().executando()) {
-        Fila::the().prosseguir();
-    }
 }
 }
