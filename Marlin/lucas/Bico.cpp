@@ -120,7 +120,7 @@ void Bico::viajar_para_estacao(Estacao& estacao) const {
 }
 
 void Bico::viajar_para_estacao(size_t numero) const {
-    BICO_LOG("indo para a estacao #", numero);
+    // BICO_LOG("indo para a estacao #", numero);
     auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(numero - 1));
     gcode::executar_cmds("G90",
                          movimento,

@@ -15,22 +15,19 @@ public:
 
     void tick(millis_t tick);
 
-    bool executando() const;
-
     void agendar_receita(Estacao::Index, std::unique_ptr<Receita> receita);
 
     void mapear_receita(Estacao::Index);
 
     void cancelar_receita(Estacao::Index);
 
-    void for_each_receita(auto&& callback) {
-        for (auto& [estacao_idx, receita] : m_receitas)
-            if (std::invoke(callback, estacao_idx, *receita) == util::Iter::Stop)
-                break;
-    }
+
+    static constexpr millis_t MARGEM_DE_VIAGEM = 2000;
 
 private:
-    void mapear_escaldo(Estacao::Index);
+    void mapear_receita(Estacao::Index, Receita&);
+
+    bool possui_colisoes_com_outras_receitas(Receita& receita);
 
     size_t m_index_horizontal = 0;
 
@@ -38,6 +35,6 @@ private:
 
     Receita* m_receita_ativa = nullptr;
 
-    std::unordered_map<Estacao::Index, std::unique_ptr<Receita>> m_receitas;
+    std::unordered_map<Estacao::Index, std::unique_ptr<Receita>> m_fila;
 };
 }

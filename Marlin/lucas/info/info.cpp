@@ -106,6 +106,15 @@ void interpretar_json(std::span<char> buffer) {
             const auto estacao = obj["estacao"].as<size_t>();
             Fila::the().agendar_receita(estacao, Receita::from_json(obj));
         } break;
+        case 5: { // enviar uma receita para uma estacao
+            if (v.is<size_t>()) {
+                Fila::the().agendar_receita(v.as<size_t>(), Receita::padrao());
+            } else if (v.is<JsonArrayConst>()) {
+                for (auto idx : v.as<JsonArrayConst>()) {
+                    Fila::the().agendar_receita(idx.as<size_t>(), Receita::padrao());
+                }
+            }
+        } break;
         default:
             LOG("opcao invalida - [", opcao, "]");
         }

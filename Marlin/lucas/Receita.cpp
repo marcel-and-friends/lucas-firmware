@@ -1,6 +1,7 @@
 #include "Receita.h"
 #include <lucas/gcode/gcode.h>
 #include <lucas/lucas.h>
+#include <lucas/Fila.h>
 #include <numeric>
 
 namespace lucas {
@@ -117,10 +118,26 @@ const Receita::Passo& Receita::ataque_atual() const {
 
 void Receita::executar_escaldo() {
     GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
+    m_escaldou = true;
 }
 
 void Receita::executar_ataque() {
     GcodeSuite::process_subcommands_now(F(ataque_atual().gcode));
     m_ataque_atual++;
+}
+
+void Receita::mapear_ataques(millis_t tick_inicial) {
+    std::accumulate(ataques().begin(), ataques().end(), tick_inicial, [](millis_t tick_acumulado, Receita::Passo& ataque) {
+        ataque.comeco_abs = tick_acumulado;
+        LOG("ataque.comeco_abs = ", ataque.comeco_abs, " | tick_acumulado = ", tick_acumulado, " [duracao = ", ataque.duracao, " | intervalo = ", ataque.intervalo, "]");
+        return tick_acumulado + ataque.duracao + ataque.intervalo + (Fila::MARGEM_DE_VIAGEM * 2);
+    });
+}
+
+void Receita::reiniciar_ataques() {
+    for_each_ataque([](auto& ataque) {
+        ataque.comeco_abs = 0;
+        return util::Iter::Continue;
+    });
 }
 }

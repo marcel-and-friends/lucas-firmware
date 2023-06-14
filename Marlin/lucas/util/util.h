@@ -24,4 +24,9 @@ enum class Iter {
     Continue = 0,
     Stop
 };
+
+template<typename FN, typename... Args>
+concept IterCallback = std::invocable<FN, Args...> && std::same_as<std::invoke_result_t<FN, Args...>, Iter>;
+
+#define FWD(x) std::forward<decltype(x)>(x)
 }

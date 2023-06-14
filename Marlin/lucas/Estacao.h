@@ -17,12 +17,12 @@ public:
 
     static void iniciar(size_t num);
 
-    static void for_each(auto&& callback) {
+    static void for_each(util::IterCallback<Estacao&> auto&& callback) {
         if (s_num_estacoes == 0)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
-            if (std::invoke(callback, s_lista[i]) == util::Iter::Stop)
+            if (std::invoke(FWD(callback), s_lista[i]) == util::Iter::Stop)
                 break;
     }
 
