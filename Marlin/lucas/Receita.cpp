@@ -8,7 +8,7 @@ namespace lucas {
 // FIXME isso seria melhor sendo uma referencia unica ao inves de inicializar um objeto novo toda vez que essa função é chamada
 std::unique_ptr<Receita> Receita::padrao() {
     auto receita_padrao = std::make_unique<Receita>();
-    receita_padrao->m_finalizacao = 60000;
+    receita_padrao->m_tempo_de_notificacao = 60000;
     receita_padrao->m_id = 0xF0F0; // >.<
 
     { // escaldo
@@ -51,7 +51,7 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
     if (!json.containsKey("estacao") ||
         !json.containsKey("id") ||
         !json.containsKey("tempoTotal") ||
-        !json.containsKey("finalizacao") ||
+        !json.containsKey("notificacao") ||
         !json.containsKey("ataques")) {
         LOG("ERRO - json de receita nao possui todos os campos obrigatorios");
         return nullptr;
@@ -63,7 +63,7 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
     { // informacoes gerais (e obrigatorias)
         rec->m_id = json["id"].as<size_t>();
         rec->m_tempo_total = json["tempoTotal"].as<millis_t>();
-        rec->m_finalizacao = json["finalizacao"].as<millis_t>();
+        rec->m_tempo_de_notificacao = json["notificacao"].as<millis_t>();
     }
 
     { // escaldo
@@ -133,7 +133,7 @@ bool Receita::passos_pendentes_estao_mapeados() {
     for_each_passo_pendente([&](auto& passo) {
         if (passo.comeco_abs == 0) {
             estao = false;
-            return util::Iter::Stop;
+            return util::Iter::Break;
         }
         return util::Iter::Continue;
     });

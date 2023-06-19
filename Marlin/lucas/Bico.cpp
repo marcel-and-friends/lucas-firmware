@@ -41,7 +41,8 @@ inline float fluxo_atual() {
 constexpr auto TEMPO_PARA_DESLIGAR_O_BREAK = 2000; // 2s
 }
 
-void Bico::tick(millis_t tick) {
+void Bico::tick() {
+    const auto tick = millis();
     if (!m_ativo) {
         if (m_tick_final) {
             // após desligar o motor deixamos o break ativo por um tempinho e depois liberamos
@@ -121,22 +122,24 @@ void Bico::viajar_para_estacao(Estacao& estacao) const {
 }
 
 void Bico::viajar_para_estacao(Estacao::Index index) const {
-    BICO_LOG("indo para a estacao #", index + 1);
-    auto comeco = millis();
-    auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(index));
+    BICO_LOG("viajando para a estacao #", index);
+    const auto comeco = millis();
+    const auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(index));
     cmd::executar_cmds("G90",
                        movimento,
                        "G91",
                        "M400");
-    BICO_LOG("demorou ", millis() - comeco, "ms");
+    BICO_LOG("chegou em ", millis() - comeco, "ms");
 }
 
 void Bico::viajar_para_esgoto() const {
     BICO_LOG("indo para o esgoto");
+    const auto comeco = millis();
     cmd::executar_cmds("G90",
                        "G0 F50000 Y60 X5",
                        "G91",
                        "M400");
+    BICO_LOG("chegou em ", millis() - comeco, "ms");
 }
 
 bool Bico::esta_na_estacao(Estacao::Index index) const {

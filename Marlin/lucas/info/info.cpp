@@ -1,42 +1,41 @@
 #include "info.h"
-#include <ArduinoJson.h>
 #include <lucas/lucas.h>
 #include <lucas/Estacao.h>
 #include <lucas/cmd/cmd.h>
-#include <src/module/temperature.h>
 #include <lucas/serial/serial.h>
 #include <lucas/Fila.h>
 
 namespace lucas::info {
-enum Intervalos : millis_t {
-    Temp = 5000,
-    EstacaoAtiva = 500
-};
 
-void tick(millis_t tick) {
+void tick() {
     // gostaria de nao alocar 2 bagui de 1kb mas nao sei komo
-    StaticJsonDocument<1024> doc;
-    char output[1024] = {};
+    DocumentoJson doc;
+    char output[BUFFER_SIZE] = {};
     bool atualizou = false;
+    Report::for_each([&](Report& report) {
+        const auto tick = millis();
+        const auto delta = report.delta(tick);
+        if (delta < report.intervalo || !report.callback)
+            return util::Iter::Continue;
 
-    if ((tick % Intervalos::Temp) == 0) {
-        doc["tempAtualBoiler"] = thermalManager.degBed();
-        atualizou = true;
-    }
+        if (report.condicao && !report.condicao())
+            return util::Iter::Continue;
 
-    if ((tick % Intervalos::EstacaoAtiva) == 0 && Fila::the().executando()) {
-        auto estacao = doc.createNestedObject("estacaoAtiva");
-        Fila::the().gerar_info(estacao);
+        report.callback(tick, doc.createNestedObject(report.nome));
+        report.ultimo_tick_reportado = tick;
         atualizou = true;
-    }
+
+        return util::Iter::Continue;
+    });
 
     if (atualizou) {
         serializeJson(doc, output);
+        LOG("json:\n", output);
     }
 }
 
 void interpretar_json(std::span<char> buffer) {
-    StaticJsonDocument<serial::HookDelimitado::BUFFER_SIZE> doc;
+    DocumentoJson doc;
     const auto err = deserializeJson(doc, buffer.data(), buffer.size());
     if (err) {
         LOG("desserializacao json falhou - [", err.c_str(), "]");
@@ -99,14 +98,14 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            Estacao::lista().at(index).cancelar_receita();
+            Fila::the().cancelar_receita(index);
         } break;
         case 4: { // enviar uma receita para uma estacao
             const auto obj = v.as<JsonObjectConst>();
             const auto estacao = obj["estacao"].as<size_t>();
             Fila::the().agendar_receita(estacao, Receita::from_json(obj));
         } break;
-        case 5: { // enviar uma receita para uma estacao
+        case 5: { // enviar a receita padrao para uma ou mais estacoes
             if (v.is<size_t>()) {
                 Fila::the().agendar_receita(v.as<size_t>(), Receita::padrao());
             } else if (v.is<JsonArrayConst>()) {

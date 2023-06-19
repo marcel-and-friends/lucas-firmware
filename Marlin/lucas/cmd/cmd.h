@@ -33,23 +33,16 @@ inline void executar_ff(const char* str, float value) {
     executar_fmt(util::ff(str, value));
 }
 
-// L0 -> Pausa a estação ativa e aguarda input do usuário
-void L0();
 // L1 -> Controla o bico
 // G - Fluxo de água em g/s
 // T - Tempo, em milisegundos, que o bico deve ficar ligado
 void L1();
-// L2 -> Pausa cronometrada
-// T - Tempo, em milisegundos, que a estação ativa vai ficar pausada
-void L2();
 // L3 -> Espiral
 // D - Diâmetro máximo do circulo gerado
 // N - Número de espirais dentro desse diâmetro
 // [R] - Quantidade de vezes que o movimento deve ser repetido
 // [B] - Iniciar na borda
 void L3();
-// L4 -> Enviar receita padrão para a primeira boca livre
-void L4();
 // L5 -> Viajar para uma estacao (pelo numero)
 // N - Número da estação
 void L5();

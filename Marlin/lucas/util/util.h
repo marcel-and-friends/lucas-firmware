@@ -31,7 +31,7 @@ inline float step_ratio() {
 
 enum class Iter {
     Continue = 0,
-    Stop
+    Break
 };
 
 static constexpr millis_t MARGEM_DE_VIAGEM = 1000;

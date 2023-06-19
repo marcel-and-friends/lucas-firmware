@@ -33,7 +33,7 @@ bool hooks() {
                     SERIAL_IMPL.read();
                     hook_ativo = &hook;
                     hook_ativo->counter = 1;
-                    return util::Iter::Stop;
+                    return util::Iter::Break;
                 }
                 return util::Iter::Continue;
             });

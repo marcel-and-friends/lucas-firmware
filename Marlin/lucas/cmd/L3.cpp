@@ -28,6 +28,12 @@ void L3() {
     // TODO: movimento controlado pelo tempo
     const auto tempo = parser.ulongval('T');
     const auto despejar_agua = parser.intval('A');
+    size_t total_a_ser_percorrido = 0;
+    if (series % 2 != comecar_na_borda)
+        total_a_ser_percorrido += raio;
+
+    for (auto i = 0; i < series; i++) {
+    }
 
     auto comeco = millis();
     LOG("comecando L3 - ", comeco);
@@ -38,7 +44,7 @@ void L3() {
 
     return;
 
-    static char buffer_raio[16] = {};
+    char buffer_raio[16] = {};
     dtostrf(raio, 0, 2, buffer_raio);
 
     if (comecar_na_borda)
@@ -65,9 +71,9 @@ void L3() {
             const auto offset_centro = offset_x / 2;
 
             // que BOSTA
-            static char buffer_offset_x[16] = {};
+            char buffer_offset_x[16] = {};
             dtostrf(offset_x, 0, 2, buffer_offset_x);
-            static char buffer_offset_centro[16] = {};
+            char buffer_offset_centro[16] = {};
             dtostrf(offset_centro, 0, 2, buffer_offset_centro);
 
             executar_fmt("G2 F%d X%s I%s", velocidade, buffer_offset_x, buffer_offset_centro);

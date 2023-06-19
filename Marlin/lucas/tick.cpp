@@ -14,11 +14,11 @@ void tick() {
     if (ultimo_tick == tick)
         return;
 
-    Bico::the().tick(tick);
-    Fila::the().tick(tick);
-    Estacao::tick(tick);
-    info::tick(tick);
-
     ultimo_tick = tick;
+
+    Fila::the().tick();
+    Estacao::tick();
+    Bico::the().tick();
+    info::tick();
 }
 }

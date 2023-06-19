@@ -5,6 +5,7 @@
 #include <functional>
 #include <span>
 #include <lucas/util/util.h>
+#include <lucas/info/info.h>
 
 namespace lucas::serial {
 using HookCallback = void (*)(std::span<char>);
@@ -13,13 +14,13 @@ struct HookDelimitado {
     static void make(char delimitador, HookCallback callback);
 
     static void for_each(auto&& callback) {
-        for (size_t i = 0; i < index_atual; ++i)
-            if (std::invoke(FWD(callback), s_hooks[i]) == util::Iter::Stop)
+        if (!s_num_hooks)
+            return;
+
+        for (size_t i = 0; i < s_num_hooks; ++i)
+            if (std::invoke(FWD(callback), s_hooks[i]) == util::Iter::Break)
                 break;
     }
-
-    static constexpr inline size_t BUFFER_SIZE = 1024;
-    static inline size_t index_atual = 0;
 
 public:
     void reset() {
@@ -29,7 +30,7 @@ public:
 
     size_t counter = 0;
     HookCallback callback = nullptr;
-    char buffer[BUFFER_SIZE] = {};
+    char buffer[info::BUFFER_SIZE] = {};
     size_t buffer_size = 0;
     char delimitador = 0;
 
@@ -38,6 +39,7 @@ public:
 
 private:
     static Lista s_hooks;
+    static inline size_t s_num_hooks = 0;
     HookDelimitado() = default;
 };
 

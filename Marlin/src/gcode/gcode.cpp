@@ -363,20 +363,11 @@ void GcodeSuite::process_parsed_command(const bool no_ok /*=false*/) {
     switch (parser.command_letter) {
     case 'L':
         switch (parser.codenum) {
-        case 0:
-            lucas::cmd::L0();
-            break;
         case 1:
             lucas::cmd::L1();
             break;
-        case 2:
-            lucas::cmd::L2();
-            break;
         case 3:
             lucas::cmd::L3();
-            break;
-        case 4:
-            lucas::cmd::L4();
             break;
         case 5:
             lucas::cmd::L5();

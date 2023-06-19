@@ -1,11 +1,13 @@
 #pragma once
 
-#include <string_view>
-#include <src/MarlinCore.h>
+#include <lucas/info/Report.h>
 #include <span>
 
 namespace lucas::info {
-void tick(millis_t tick);
+constexpr size_t BUFFER_SIZE = 1024;
+using DocumentoJson = StaticJsonDocument<BUFFER_SIZE>;
+
+void tick();
 
 void interpretar_json(std::span<char> buffer);
 }

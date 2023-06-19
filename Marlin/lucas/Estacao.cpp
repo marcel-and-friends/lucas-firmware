@@ -37,7 +37,7 @@ void Estacao::iniciar(size_t num) {
         estacao.set_botao(info.pino_botao);
         estacao.set_led(info.pino_led);
         // todas as maquinas começam livres
-        estacao.set_livre(true);
+        estacao.set_status(Status::FREE);
     }
 
     s_num_estacoes = num;
@@ -45,10 +45,11 @@ void Estacao::iniciar(size_t num) {
     LOG("maquina vai usar ", num, " estacoes");
 }
 
-void Estacao::tick(millis_t tick) {
+void Estacao::tick() {
     // atualizacao dos estados das estacoes
     {
-        for_each([tick](auto& estacao) {
+        for_each([](Estacao& estacao) {
+            const auto tick = millis();
             // absolutamente nada é atualizado se a estacao estiver bloqueada
             if (estacao.bloqueada())
                 return util::Iter::Continue;
@@ -67,6 +68,7 @@ void Estacao::tick(millis_t tick) {
 
                     if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
                         Fila::the().cancelar_receita(estacao.index());
+                        estacao.set_receita_cancelada(true);
                         return util::Iter::Continue;
                     }
                 }
@@ -86,16 +88,20 @@ void Estacao::tick(millis_t tick) {
                     return util::Iter::Continue;
                 }
 
-                if (estacao.livre()) {
-                    // se a boca estava livre e apertamos o botao enviamos a receita padrao
+                switch (estacao.status()) {
+                case Status::FREE:
+                    // isso aqui é so qnd nao tiver conectado no app
                     Fila::the().agendar_receita(estacao.index(), Receita::padrao());
-                    return util::Iter::Continue;
-                }
-
-                if (estacao.aguardando_input()) {
-                    // se estavamos aguardando input prosseguimos com a receita
+                    break;
+                case Status::WAITING_START:
+                case Status::INITIALIZE_COFFEE:
                     Fila::the().mapear_receita(estacao.index());
-                    return util::Iter::Continue;
+                    break;
+                case Status::IS_READY:
+                    estacao.set_status(Status::FREE);
+                    break;
+                default:
+                    break;
                 }
             }
 
@@ -105,70 +111,22 @@ void Estacao::tick(millis_t tick) {
 
     // atualizacao das leds
     {
-        constexpr auto TIMER_LEDS = 650; // 650ms
+        constexpr auto TIMER_LEDS = 500;
         // é necessario manter um estado geral para que as leds pisquem juntas.
         // poderiamos simplificar essa funcao substituindo o 'WRITE(estacao.led(), ultimo_estado)' por 'TOGGLE(estacao.led())'
         // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
         static bool ultimo_estado = true;
         static millis_t ultimo_tick_atualizado = 0;
-
-        for_each([tick](const auto& estacao) {
-            if (estacao.esta_ativa() || estacao.disponivel_para_uso()) {
-                WRITE(estacao.led(), true);
-            } else if (estacao.aguardando_input()) {
-                // aguardando input do usuário - led piscando
-                WRITE(estacao.led(), ultimo_estado);
-            } else {
-                // não somos a estacao ativa nem estamos na fila - led apagada
-                WRITE(estacao.led(), false);
-            }
-            return util::Iter::Continue;
-        });
-
+        const auto tick = millis();
         if (tick - ultimo_tick_atualizado >= TIMER_LEDS) {
             ultimo_estado = !ultimo_estado;
             ultimo_tick_atualizado = tick;
+            for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
+                // aguardando input do usuário - led piscando
+                WRITE(estacao.led(), ultimo_estado);
+                return util::Iter::Continue;
+            });
         }
-    }
-}
-
-// TODO: desenvolver um algoritmo legal pra isso...
-void Estacao::procurar_nova_ativa() {
-    LOG("procurando nova estacao ativa...");
-
-    bool achou = false;
-    for_each([&achou](auto& estacao) {
-        if (estacao.disponivel_para_uso()) {
-            achou = true;
-            set_estacao_ativa(&estacao);
-            return util::Iter::Stop;
-        }
-        return util::Iter::Continue;
-    });
-
-    if (achou)
-        return;
-
-    LOG("nenhuma estacao esta disponivel :(");
-    set_estacao_ativa(nullptr);
-}
-
-void Estacao::set_estacao_ativa(Estacao* estacao) {
-    if (estacao == s_estacao_ativa)
-        return;
-
-    s_estacao_ativa = estacao;
-    if (s_estacao_ativa) {
-        auto& estacao = *s_estacao_ativa;
-        estacao.set_status(Status::MAKING_COFFEE);
-
-        auto& bico = Bico::the();
-        // bico.descartar_agua_ruim();
-        bico.viajar_para_estacao(estacao);
-
-        LOG("ESTACAO #", estacao.numero(), ": escolhida como nova estacao ativa");
-    } else {
-        cmd::parar_fila();
     }
 }
 
@@ -176,87 +134,6 @@ float Estacao::posicao_absoluta(size_t index) {
     auto distancia_primeira_estacao = 80.f / util::step_ratio();
     auto distancia_entre_estacoes = 160.f / util::step_ratio();
     return distancia_primeira_estacao + index * distancia_entre_estacoes;
-}
-
-void Estacao::receber_receita(JsonObjectConst json) {
-    auto maybe_receita = Receita::from_json(json);
-    // set_receita(receita);
-    set_livre(false);
-    set_aguardando_input(true);
-}
-
-void Estacao::prosseguir_receita() {
-    // auto instrucao = m_receita.proxima_instrucao();
-    // atualizar_campo_gcode(CampoGcode::Atual, instrucao);
-    // if (cmd::ultima_instrucao(instrucao.data())) {
-    //     atualizar_campo_gcode(CampoGcode::Proximo, "-");
-    //     // podemos 'executar()' aqui pois, como é a ultima instrucao, a string é null-terminated
-    //     cmd::executar(instrucao.data());
-    //     reiniciar();
-    //     ESTACAO_LOG("receita finalizada");
-    //     atualizar_campo_gcode(CampoGcode::Atual, "-");
-    // } else {
-    //     m_receita.prosseguir();
-    //     atualizar_campo_gcode(CampoGcode::Proximo, m_receita.proxima_instrucao());
-    // }
-}
-
-void Estacao::disponibilizar_para_uso() {
-    set_livre(false);
-    set_aguardando_input(false);
-    if (!Estacao::ativa())
-        Estacao::set_estacao_ativa(this);
-    else
-        set_status(Status::IS_READY);
-    ESTACAO_LOG("disponibilizada para uso");
-}
-
-void Estacao::cancelar_receita() {
-    reiniciar();
-    set_receita_cancelada(true);
-    atualizar_campo_gcode(CampoGcode::Atual, "-");
-    atualizar_campo_gcode(CampoGcode::Proximo, "-");
-    ESTACAO_LOG("receita cancelada");
-}
-
-void Estacao::pausar(millis_t duracao) {
-    m_pausada = true;
-    m_comeco_pausa = millis();
-    m_duracao_pausa = duracao;
-    set_status(Status::FREE);
-    if (esta_ativa())
-        procurar_nova_ativa();
-    ESTACAO_LOG("pausando por ", duracao, "ms");
-}
-
-void Estacao::despausar() {
-    m_pausada = false;
-    m_comeco_pausa = 0;
-    m_duracao_pausa = 0;
-}
-
-bool Estacao::tempo_de_pausa_atingido(millis_t tick) const {
-    return tick - m_comeco_pausa >= m_duracao_pausa;
-}
-
-// isso aqui vai mudar quando tiver a fila
-bool Estacao::disponivel_para_uso() const {
-    return !bloqueada() && !esta_ativa() && !livre() && !aguardando_input() && !pausada();
-}
-
-bool Estacao::esta_ativa() const {
-    return Estacao::ativa() == this;
-}
-
-void Estacao::atualizar_campo_gcode(CampoGcode qual, std::string_view valor) const {
-    static char valor_buffer[64] = {};
-    static char nome_buffer[] = "gCode?E?";
-
-    nome_buffer[5] = static_cast<char>(qual) + '0';
-    nome_buffer[7] = static_cast<char>(numero()) + '0';
-
-    memcpy(valor_buffer, valor.data(), valor.size());
-    valor_buffer[valor.size()] = '\0';
 }
 
 size_t Estacao::numero() const {
@@ -280,37 +157,26 @@ void Estacao::set_botao(pin_t pino) {
     WRITE(m_pino_botao, HIGH);
 }
 
-void Estacao::set_aguardando_input(bool b) {
-    m_aguardando_input = b;
-    if (m_aguardando_input)
-        set_status(Status::WAITING_START);
-}
-
-void Estacao::set_livre(bool b) {
-    m_livre = b;
-    if (m_livre)
-        set_status(Status::FREE);
-}
-
 void Estacao::set_bloqueada(bool b) {
     auto antigo = m_bloqueada;
     m_bloqueada = b;
-    if (antigo != m_bloqueada) {
+    if (antigo != m_bloqueada)
         ESTACAO_LOG(m_bloqueada ? "" : "des", "bloqueada");
-        reiniciar();
-    }
 }
 
-void Estacao::reiniciar() {
-    m_tick_botao_segurado = 0;
-    m_botao_segurado = false;
-    m_receita_cancelada = false;
-    m_aguardando_input = false;
-    m_pausada = false;
-    m_comeco_pausa = 0;
-    m_duracao_pausa = 0;
-    set_livre(true); // hmmm
-    if (esta_ativa())
-        procurar_nova_ativa();
+void Estacao::set_status(Status status) {
+    m_status = status;
+    switch (m_status) {
+    case Status::FREE:
+        WRITE(m_pino_led, LOW);
+        break;
+    case Status::SCALDING:
+    case Status::MAKING_COFFEE:
+    case Status::NOTIFICATION_TIME:
+        WRITE(m_pino_led, HIGH);
+        break;
+    default:
+        break;
+    }
 }
 }

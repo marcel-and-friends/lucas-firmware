@@ -91,7 +91,10 @@ public:
             return;
         }
 
-        for_each_ataque_pendente(FWD(callback));
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
+            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
+                break;
+        }
     }
 
     void for_each_passo_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
@@ -100,19 +103,22 @@ public:
             return;
         }
 
-        for_each_ataque_pendente(FWD(callback));
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
+            if (std::invoke(FWD(callback), m_ataques[i], i + 1) == util::Iter::Break)
+                break;
+        }
     }
 
     void for_each_ataque_pendente(util::IterCallback<Passo&> auto&& callback) {
         for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
-            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Stop)
+            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
                 break;
         }
     }
 
     void for_each_ataque_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
         for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
-            if (std::invoke(FWD(callback), m_ataques[i], i) == util::Iter::Stop)
+            if (std::invoke(FWD(callback), m_ataques[i], i) == util::Iter::Break)
                 break;
         }
     }
@@ -121,6 +127,11 @@ public:
     bool possui_escaldo() const { return m_escaldo.has_value(); }
     const Passo& escaldo() const { return m_escaldo.value(); }
     Passo& escaldo() { return m_escaldo.value(); }
+
+    millis_t tempo_de_notificacao() const { return m_tempo_de_notificacao; }
+
+    millis_t inicio_tempo_de_notificacao() const { return m_inicio_tempo_notificacao; }
+    void set_inicio_tempo_notificacao(millis_t tick) { m_inicio_tempo_notificacao = tick; }
 
     size_t id() const { return m_id; }
 
@@ -147,7 +158,8 @@ private:
     millis_t m_tempo_total = 0;
 
     // o tempo de finalização dessa receita
-    millis_t m_finalizacao = 0;
+    millis_t m_tempo_de_notificacao = 0;
+    millis_t m_inicio_tempo_notificacao = 0;
 
     static constexpr auto MAX_ATAQUES = 10; // foi decidido por marcel
 

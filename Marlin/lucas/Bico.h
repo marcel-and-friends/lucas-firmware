@@ -11,9 +11,11 @@ public:
         return instance;
     }
 
-    void tick(millis_t tick);
+    void tick();
 
     void ativar(millis_t tick, millis_t tempo, float gramas);
+
+    void desligar(millis_t tick_desligou);
 
     void setup();
 
@@ -34,8 +36,6 @@ public:
     }
 
 private:
-    void desligar(millis_t tick_desligou);
-
     // duracao do despejo
     millis_t m_duracao = 0;
     // instante onde o despejo comeca/acaba
