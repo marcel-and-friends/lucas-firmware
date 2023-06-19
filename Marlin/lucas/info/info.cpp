@@ -2,7 +2,7 @@
 #include <ArduinoJson.h>
 #include <lucas/lucas.h>
 #include <lucas/Estacao.h>
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <src/module/temperature.h>
 #include <lucas/serial/serial.h>
 #include <lucas/Fila.h>

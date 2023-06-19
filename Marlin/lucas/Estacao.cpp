@@ -3,7 +3,7 @@
 #include <src/module/temperature.h>
 #include <lucas/Bico.h>
 #include <lucas/Fila.h>
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 
 #define ESTACAO_LOG(...) LOG("ESTACAO #", this->numero(), ": ", "", __VA_ARGS__)
 

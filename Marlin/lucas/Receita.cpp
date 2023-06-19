@@ -1,5 +1,5 @@
 #include "Receita.h"
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <lucas/lucas.h>
 #include <lucas/Fila.h>
 #include <numeric>

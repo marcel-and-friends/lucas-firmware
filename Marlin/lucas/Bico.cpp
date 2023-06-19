@@ -1,6 +1,6 @@
 #include "Bico.h"
 #include <lucas/lucas.h>
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
 #include <cmath>

@@ -328,7 +328,7 @@ void GcodeSuite::G29_with_retry() {
 
 #endif // G29_RETRY_AND_RECOVER
 
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 
 /**
  * Process the parsed command and dispatch it to its handler

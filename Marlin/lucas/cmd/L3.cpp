@@ -2,7 +2,7 @@
 #include <lucas/Bico.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <src/module/planner.h>
 
 namespace lucas::cmd {

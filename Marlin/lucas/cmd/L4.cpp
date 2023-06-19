@@ -1,5 +1,5 @@
 
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <lucas/Estacao.h>
 #include <lucas/Fila.h>
 

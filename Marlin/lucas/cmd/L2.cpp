@@ -1,4 +1,4 @@
-#include <lucas/gcode/gcode.h>
+#include <lucas/cmd/cmd.h>
 #include <lucas/Estacao.h>
 #include <src/gcode/parser.h>
 
