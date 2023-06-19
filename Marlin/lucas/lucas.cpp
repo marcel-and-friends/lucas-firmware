@@ -1,9 +1,10 @@
 #include "lucas.h"
-#include <lucas/Estacao.h>
 #include <lucas/serial/HookDelimitado.h>
 #include <lucas/info/info.h>
+#include <lucas/wifi/wifi.h>
+#include <lucas/Bico.h>
+#include <lucas/Estacao.h>
 #include <lucas/Fila.h>
-#include <ArduinoJson.h>
 
 namespace lucas {
 void setup() {

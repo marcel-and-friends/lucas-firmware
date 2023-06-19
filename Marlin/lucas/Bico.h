@@ -1,9 +1,9 @@
 #pragma once
 
 #include <src/MarlinCore.h>
+#include <lucas/Estacao.h>
 
 namespace lucas {
-class Estacao;
 class Bico {
 public:
     static Bico& the() {
@@ -19,7 +19,9 @@ public:
 
     void viajar_para_estacao(Estacao&) const;
 
-    void viajar_para_estacao(size_t numero) const;
+    void viajar_para_estacao(Estacao::Index) const;
+
+    bool esta_na_estacao(Estacao::Index) const;
 
     void viajar_para_esgoto() const;
 

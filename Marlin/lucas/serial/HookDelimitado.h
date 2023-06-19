@@ -14,7 +14,7 @@ struct HookDelimitado {
 
     static void for_each(auto&& callback) {
         for (size_t i = 0; i < index_atual; ++i)
-            if (std::invoke(callback, s_hooks[i]) == util::Iter::Stop)
+            if (std::invoke(FWD(callback), s_hooks[i]) == util::Iter::Stop)
                 break;
     }
 

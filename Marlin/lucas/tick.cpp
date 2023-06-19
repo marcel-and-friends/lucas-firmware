@@ -2,6 +2,7 @@
 #include <lucas/lucas.h>
 #include <lucas/Estacao.h>
 #include <lucas/Fila.h>
+#include <lucas/Bico.h>
 #include <lucas/info/info.h>
 
 namespace lucas {

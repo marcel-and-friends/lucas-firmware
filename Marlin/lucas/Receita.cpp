@@ -53,7 +53,7 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
         !json.containsKey("tempoTotal") ||
         !json.containsKey("finalizacao") ||
         !json.containsKey("ataques")) {
-        LOG("json da receita invalido - nao possui todos os campos");
+        LOG("ERRO - json de receita nao possui todos os campos obrigatorios");
         return nullptr;
     }
 
@@ -98,46 +98,59 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
     return rec;
 }
 
-bool Receita::terminou() const {
-    return m_ataque_atual >= m_num_ataques;
-}
+Receita::Acabou Receita::executar_passo() {
+    auto& estacao = Estacao::lista().at(Fila::the().estacao_ativa());
 
-void Receita::prosseguir() {
-    if (m_ataque_atual >= m_num_ataques) {
-        // logic bug!! logic bug!!!!!
-        LOG("receita::prosseguir() chamado quando a receita ja terminou");
-        return;
+    if (m_escaldo.has_value() && !m_escaldou) {
+        estacao.set_status(Estacao::Status::SCALDING);
+        GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
+        estacao.set_status(Estacao::Status::INITIALIZE_COFFEE);
+
+        m_escaldou = true;
+        return Acabou::Nao;
     }
 
-    gcode::injetar(m_ataques[m_ataque_atual++].gcode);
+    estacao.set_status(Estacao::Status::MAKING_COFFEE);
+    GcodeSuite::process_subcommands_now(F(passo_atual().gcode));
+
+    return ++m_ataque_atual >= m_num_ataques ? Acabou::Sim : Acabou::Nao;
 }
 
-const Receita::Passo& Receita::ataque_atual() const {
+void Receita::mapear_passos_pendentes(millis_t tick) {
+    for_each_passo_pendente([&](auto& passo) {
+        passo.comeco_abs = tick;
+        tick += passo.duracao + passo.intervalo;
+        return util::Iter::Continue;
+    });
+}
+
+bool Receita::passos_pendentes_estao_mapeados() {
+    bool estao = true;
+    for_each_passo_pendente([&](auto& passo) {
+        if (passo.comeco_abs == 0) {
+            estao = false;
+            return util::Iter::Stop;
+        }
+        return util::Iter::Continue;
+    });
+    return estao;
+}
+
+const Receita::Passo& Receita::passo_atual() const {
+    if (m_escaldo.has_value() && !m_escaldou)
+        return m_escaldo.value();
     return m_ataques[m_ataque_atual];
 }
 
-void Receita::executar_escaldo() {
-    GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
-    m_escaldou = true;
+Receita::Passo& Receita::passo_atual() {
+    if (m_escaldo.has_value() && !m_escaldou)
+        return m_escaldo.value();
+    return m_ataques[m_ataque_atual];
 }
 
-void Receita::executar_ataque() {
-    GcodeSuite::process_subcommands_now(F(ataque_atual().gcode));
-    m_ataque_atual++;
-}
-
-void Receita::mapear_ataques(millis_t tick_inicial) {
-    std::accumulate(ataques().begin(), ataques().end(), tick_inicial, [](millis_t tick_acumulado, Receita::Passo& ataque) {
-        ataque.comeco_abs = tick_acumulado;
-        LOG("ataque.comeco_abs = ", ataque.comeco_abs, " | tick_acumulado = ", tick_acumulado, " [duracao = ", ataque.duracao, " | intervalo = ", ataque.intervalo, "]");
-        return tick_acumulado + ataque.duracao + ataque.intervalo + (Fila::MARGEM_DE_VIAGEM * 2);
-    });
-}
-
-void Receita::reiniciar_ataques() {
-    for_each_ataque([](auto& ataque) {
-        ataque.comeco_abs = 0;
-        return util::Iter::Continue;
-    });
+size_t Receita::passo_atual_idx() const {
+    if (m_escaldo.has_value() && !m_escaldou)
+        return 0;
+    return m_ataque_atual + 1;
 }
 }

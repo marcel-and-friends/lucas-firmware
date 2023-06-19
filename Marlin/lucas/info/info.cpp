@@ -2,6 +2,7 @@
 #include <ArduinoJson.h>
 #include <lucas/lucas.h>
 #include <lucas/Estacao.h>
+#include <lucas/gcode/gcode.h>
 #include <src/module/temperature.h>
 #include <lucas/serial/serial.h>
 #include <lucas/Fila.h>
@@ -23,15 +24,14 @@ void tick(millis_t tick) {
         atualizou = true;
     }
 
-    if ((tick % Intervalos::EstacaoAtiva) == 0 && Estacao::ativa()) {
+    if ((tick % Intervalos::EstacaoAtiva) == 0 && Fila::the().executando()) {
         auto estacao = doc.createNestedObject("estacaoAtiva");
-        Estacao::ativa()->gerar_info(estacao);
+        Fila::the().gerar_info(estacao);
         atualizou = true;
     }
 
     if (atualizou) {
         serializeJson(doc, output);
-        LOG("#", output, "#");
     }
 }
 
@@ -68,7 +68,7 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            gcode::executar_fmt("M140 S%s", v.as<const char*>());
+            cmd::executar_fmt("M140 S%s", v.as<const char*>());
         } break;
         case 2: { // estacoes bloqueadas
             if (!v.is<JsonArrayConst>()) {
@@ -112,6 +112,15 @@ void interpretar_json(std::span<char> buffer) {
             } else if (v.is<JsonArrayConst>()) {
                 for (auto idx : v.as<JsonArrayConst>()) {
                     Fila::the().agendar_receita(idx.as<size_t>(), Receita::padrao());
+                }
+            }
+        } break;
+        case 6: {
+            if (v.is<size_t>()) {
+                Fila::the().mapear_receita(v.as<size_t>());
+            } else if (v.is<JsonArrayConst>()) {
+                for (auto idx : v.as<JsonArrayConst>()) {
+                    Fila::the().mapear_receita(idx.as<size_t>());
                 }
             }
         } break;

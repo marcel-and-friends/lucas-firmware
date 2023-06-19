@@ -1,14 +1,11 @@
 #pragma once
 
 #include <lucas/lucas.h>
-#include <lucas/util/util.h>
 #include <string_view>
-#include <avr/dtostrf.h>
-#include <string>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
 
-namespace lucas::gcode {
+namespace lucas::cmd {
 void injetar(const char* gcode);
 
 std::string_view proxima_instrucao(const char* gcode);

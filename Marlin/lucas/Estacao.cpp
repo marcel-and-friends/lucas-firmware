@@ -3,8 +3,9 @@
 #include <src/module/temperature.h>
 #include <lucas/Bico.h>
 #include <lucas/Fila.h>
+#include <lucas/gcode/gcode.h>
 
-#define ESTACAO_LOG(...) LOG("estacao #", this->numero(), " - ", "", __VA_ARGS__)
+#define ESTACAO_LOG(...) LOG("ESTACAO #", this->numero(), ": ", "", __VA_ARGS__)
 
 namespace lucas {
 Estacao::Lista Estacao::s_lista = {};
@@ -165,16 +166,16 @@ void Estacao::set_estacao_ativa(Estacao* estacao) {
         // bico.descartar_agua_ruim();
         bico.viajar_para_estacao(estacao);
 
-        LOG("estacao #", estacao.numero(), " - escolhida como nova estacao ativa");
+        LOG("ESTACAO #", estacao.numero(), ": escolhida como nova estacao ativa");
     } else {
-        gcode::parar_fila();
+        cmd::parar_fila();
     }
 }
 
 float Estacao::posicao_absoluta(size_t index) {
-    constexpr auto DISTANCIA_PRIMEIRA_ESTACAO = 80.f;
-    constexpr auto DISTANCIA_ENTRE_ESTACOES = 160.f;
-    return DISTANCIA_PRIMEIRA_ESTACAO + index * DISTANCIA_ENTRE_ESTACOES;
+    auto distancia_primeira_estacao = 80.f / util::step_ratio();
+    auto distancia_entre_estacoes = 160.f / util::step_ratio();
+    return distancia_primeira_estacao + index * distancia_entre_estacoes;
 }
 
 void Estacao::receber_receita(JsonObjectConst json) {
@@ -187,10 +188,10 @@ void Estacao::receber_receita(JsonObjectConst json) {
 void Estacao::prosseguir_receita() {
     // auto instrucao = m_receita.proxima_instrucao();
     // atualizar_campo_gcode(CampoGcode::Atual, instrucao);
-    // if (gcode::ultima_instrucao(instrucao.data())) {
+    // if (cmd::ultima_instrucao(instrucao.data())) {
     //     atualizar_campo_gcode(CampoGcode::Proximo, "-");
     //     // podemos 'executar()' aqui pois, como é a ultima instrucao, a string é null-terminated
-    //     gcode::executar(instrucao.data());
+    //     cmd::executar(instrucao.data());
     //     reiniciar();
     //     ESTACAO_LOG("receita finalizada");
     //     atualizar_campo_gcode(CampoGcode::Atual, "-");
@@ -265,23 +266,6 @@ size_t Estacao::numero() const {
 Estacao::Index Estacao::index() const {
     // cute
     return ((uintptr_t)this - (uintptr_t)&s_lista) / sizeof(Estacao);
-}
-
-void Estacao::gerar_info(JsonObject& obj) const {
-    obj["index"] = index();
-    obj["status"] = static_cast<int>(status());
-    {
-        auto receita = obj.createNestedObject("receita");
-        // come back to this
-        if (m_receita)
-            receita["id"] = m_receita->id();
-        receita["tempo"] = 0;
-    }
-    {
-        auto passo = obj.createNestedObject("passo");
-        passo["numero"] = "uwu";
-        passo["tempo"] = "blaaaa";
-    }
 }
 
 void Estacao::set_led(pin_t pino) {

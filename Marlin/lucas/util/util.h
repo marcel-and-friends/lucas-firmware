@@ -1,6 +1,10 @@
 #pragma once
 
 #include <src/MarlinCore.h>
+#include <src/module/planner.h>
+#include <avr/dtostrf.h>
+#include <type_traits>
+#include <concepts>
 
 namespace lucas::util {
 inline const char* fmt(const char* fmt, auto... args) {
@@ -20,10 +24,17 @@ inline bool segurando(int pino) {
     return READ(pino) == false;
 }
 
+inline float step_ratio() {
+    constexpr float steps_per_mm = 44.5f;
+    return planner.settings.axis_steps_per_mm[X_AXIS] / steps_per_mm;
+}
+
 enum class Iter {
     Continue = 0,
     Stop
 };
+
+static constexpr millis_t MARGEM_DE_VIAGEM = 1000;
 
 template<typename FN, typename... Args>
 concept IterCallback = std::invocable<FN, Args...> && std::same_as<std::invoke_result_t<FN, Args...>, Iter>;

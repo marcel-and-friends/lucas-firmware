@@ -1,13 +1,14 @@
-
 #include <lucas/Estacao.h>
+#include <lucas/Bico.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
+#include <lucas/gcode/gcode.h>
 #include <src/module/planner.h>
 
-namespace lucas::gcode {
+namespace lucas::cmd {
 void L3() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    const auto diametro = parser.floatval('D') * 10.f;
+    const auto diametro = (parser.floatval('D') / util::step_ratio()) * 10.f;
     if (diametro == 0.f)
         return;
 
@@ -30,7 +31,6 @@ void L3() {
 
     auto comeco = millis();
     LOG("comecando L3 - ", comeco);
-
     while (millis() - comeco < tempo)
         idle();
 
@@ -38,8 +38,11 @@ void L3() {
 
     return;
 
+    static char buffer_raio[16] = {};
+    dtostrf(raio, 0, 2, buffer_raio);
+
     if (comecar_na_borda)
-        executar_ff("G0 F5000 X%s", -raio);
+        executar_fmt("G0 F%d X-%s", velocidade, buffer_raio);
 
     planner.synchronize();
 
@@ -72,14 +75,18 @@ void L3() {
     }
 
     if (series % 2 != comecar_na_borda)
-        executar_ff("G0 F5000 X%s", raio);
+        executar_fmt("G0 F%d X%s", velocidade, buffer_raio);
 
     planner.synchronize();
 
-    // teoricamente isso aqui não deve acontecer, mas caso aconteca...
-    while (Bico::the().ativo())
-        idle();
-
     LOG("terminando L3 - delta = ", millis() - comeco);
+
+    // teoricamente isso aqui não deve acontecer, mas caso aconteca...
+    if (despejar_agua) {
+        while (Bico::the().ativo())
+            idle();
+    }
+
+    return;
 }
 }

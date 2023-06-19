@@ -37,6 +37,28 @@ public:
                 return 0;
             return comeco_abs + duracao;
         }
+
+        bool colide_com(const Passo& outro) const {
+            // dois ataques colidem se:
+
+            // 1. um comeca dentro do outro
+            if (this->comeco_abs >= outro.comeco_abs && this->comeco_abs <= outro.fim())
+                return true;
+
+            // 2. um termina dentro do outro
+            if (this->fim() >= outro.comeco_abs && this->fim() <= outro.fim())
+                return true;
+
+            // 3. a distancia entre o comeco de um e o fim do outro é menor que o tempo de viagem de uma estacao à outra
+            if (this->comeco_abs > outro.fim() && this->comeco_abs - outro.fim() < util::MARGEM_DE_VIAGEM)
+                return true;
+
+            // 4. a distancia entre o fim de um e o comeco do outro é menor que o tempo de viagem de uma estacao à outra
+            if (this->fim() < outro.comeco_abs && outro.comeco_abs - this->fim() < util::MARGEM_DE_VIAGEM)
+                return true;
+
+            return false;
+        }
     };
 
 public:
@@ -52,26 +74,33 @@ public:
     Receita& operator=(Receita&&) = delete;
 
 public:
-    bool terminou() const;
+    enum class Acabou {
+        Sim = 0,
+        Nao
+    };
+    Acabou executar_passo();
 
-    void prosseguir();
+    void mapear_passos_pendentes(millis_t tick_inicial);
 
-    const Passo& ataque_atual() const;
-
-    void executar_escaldo();
-
-    void executar_ataque();
-
-    void mapear_ataques(millis_t tick_inicial);
-
-    void reiniciar_ataques();
+    bool passos_pendentes_estao_mapeados();
 
 public:
-    void for_each_ataque(util::IterCallback<Passo&> auto&& callback) {
-        for (size_t i = 0; i < m_num_ataques; ++i) {
-            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Stop)
-                break;
+    void for_each_passo_pendente(util::IterCallback<Passo&> auto&& callback) {
+        if (m_escaldo.has_value() && !m_escaldou) {
+            std::invoke(FWD(callback), m_escaldo.value());
+            return;
         }
+
+        for_each_ataque_pendente(FWD(callback));
+    }
+
+    void for_each_passo_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
+        if (m_escaldo.has_value() && !m_escaldou) {
+            std::invoke(FWD(callback), m_escaldo.value(), 0);
+            return;
+        }
+
+        for_each_ataque_pendente(FWD(callback));
     }
 
     void for_each_ataque_pendente(util::IterCallback<Passo&> auto&& callback) {
@@ -99,6 +128,11 @@ public:
 
     std::span<const Passo> ataques() const { return { m_ataques.begin(), m_num_ataques }; }
     std::span<Passo> ataques() { return { m_ataques.begin(), m_num_ataques }; }
+
+    const Passo& passo_atual() const;
+    Passo& passo_atual();
+
+    size_t passo_atual_idx() const;
 
 private:
     // id da receita, usado pelo app

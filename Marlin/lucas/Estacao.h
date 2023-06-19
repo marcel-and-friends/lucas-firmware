@@ -11,6 +11,7 @@ namespace lucas {
 class Estacao {
 public:
     using Index = size_t;
+    static constexpr size_t INVALIDA = static_cast<size_t>(-1);
 
     static constexpr size_t NUM_MAX_ESTACOES = 5;
     using Lista = std::array<Estacao, NUM_MAX_ESTACOES>;
@@ -76,8 +77,6 @@ public:
 
     Index index() const;
 
-    void gerar_info(JsonObject&) const;
-
 public:
     pin_t botao() const { return m_pino_botao; }
     void set_botao(pin_t pino);
@@ -109,6 +108,9 @@ public:
 
     Status status() const { return m_status; }
     void set_status(Status status) { m_status = status; }
+
+    Receita* receita() const { return m_receita; }
+    void set_receita(Receita* receita) { m_receita = receita; }
 
 private:
     static Lista s_lista;

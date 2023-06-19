@@ -1,12 +1,13 @@
 #include "Bico.h"
 #include <lucas/lucas.h>
-#include <lucas/Estacao.h>
+#include <lucas/gcode/gcode.h>
 #include <src/module/temperature.h>
+#include <src/module/planner.h>
 #include <cmath>
 
 namespace lucas {
 
-#define BICO_LOG(...) LOG("", "bico - ", __VA_ARGS__)
+#define BICO_LOG(...) LOG("", "BICO: ", __VA_ARGS__)
 
 namespace pino {
 constexpr auto ENABLE = PA3;
@@ -116,24 +117,30 @@ void Bico::setup() {
 }
 
 void Bico::viajar_para_estacao(Estacao& estacao) const {
-    viajar_para_estacao(estacao.numero());
+    viajar_para_estacao(estacao.index());
 }
 
-void Bico::viajar_para_estacao(size_t numero) const {
-    // BICO_LOG("indo para a estacao #", numero);
-    auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(numero - 1));
-    gcode::executar_cmds("G90",
-                         movimento,
-                         "G91",
-                         "M400");
+void Bico::viajar_para_estacao(Estacao::Index index) const {
+    BICO_LOG("indo para a estacao #", index + 1);
+    auto comeco = millis();
+    auto movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(index));
+    cmd::executar_cmds("G90",
+                       movimento,
+                       "G91",
+                       "M400");
+    BICO_LOG("demorou ", millis() - comeco, "ms");
 }
 
 void Bico::viajar_para_esgoto() const {
     BICO_LOG("indo para o esgoto");
-    gcode::executar_cmds("G90",
-                         "G0 F50000 Y60 X5",
-                         "G91",
-                         "M400");
+    cmd::executar_cmds("G90",
+                       "G0 F50000 Y60 X5",
+                       "G91",
+                       "M400");
+}
+
+bool Bico::esta_na_estacao(Estacao::Index index) const {
+    return planner.get_axis_position_mm(X_AXIS) == Estacao::posicao_absoluta(index);
 }
 
 void Bico::descartar_agua_ruim() const {
@@ -151,7 +158,7 @@ void Bico::descartar_agua_ruim() const {
             tick = millis();
             if (thermalManager.degHotend(0) < TEMP_IDEAL) {
                 LOG("jogando agua");
-                gcode::executar_fmt("L1 G1300 T%d", TEMPO_DESCARTE);
+                cmd::executar_fmt("L1 G1300 T%d", TEMPO_DESCARTE);
             } else {
                 break;
             }
@@ -163,9 +170,9 @@ void Bico::descartar_agua_ruim() const {
 
 void Bico::nivelar() const {
     BICO_LOG("executando rotina de nivelamento");
-    gcode::executar("G28 XY");
+    cmd::executar("G28 XY");
 #if LUCAS_ROTINA_TEMP
-    gcode::executar_ff("M140 S%s", 93.f);
+    cmd::executar_ff("M140 S%s", 93.f);
 #endif
     BICO_LOG("nivelamento finalizado");
 }

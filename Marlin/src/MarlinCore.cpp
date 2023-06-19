@@ -418,6 +418,7 @@ inline void finishSDPrinting() {
  */
 #include <StreamUtils.h>
 #include <lucas/lucas.h>
+#include <lucas/serial/serial.h>
 inline void manage_inactivity(const bool no_stepper_sleep = false) {
     bool hook_ativo = lucas::serial::hooks();
     if (!hook_ativo)

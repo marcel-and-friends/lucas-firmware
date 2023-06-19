@@ -1,6 +1,6 @@
 #include <lucas/Estacao.h>
 
-namespace lucas::gcode {
+namespace lucas::cmd {
 void L0() {
     if (!Estacao::ativa())
         return;

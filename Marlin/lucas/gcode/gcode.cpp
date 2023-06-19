@@ -5,7 +5,7 @@
 #include <src/gcode/gcode.h>
 #include <lucas/Estacao.h>
 
-namespace lucas::gcode {
+namespace lucas::cmd {
 void injetar(const char* gcode) {
     queue.injected_commands_P = gcode;
 }
