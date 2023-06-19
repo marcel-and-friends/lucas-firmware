@@ -26,7 +26,7 @@ void L3() {
 
     // controle do bico junto com o L3
     // TODO: movimento controlado pelo tempo
-    const auto tempo = parser.intval('T');
+    const auto tempo = parser.ulongval('T');
     const auto despejar_agua = parser.intval('A');
 
     auto comeco = millis();

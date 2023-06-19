@@ -99,8 +99,12 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
 }
 
 Receita::Acabou Receita::executar_passo() {
-    auto& estacao = Estacao::lista().at(Fila::the().estacao_ativa());
+    if (Fila::the().estacao_ativa() == Estacao::INVALIDA) {
+        LOG("ERRO - tentando executar o passo de uma receita sem uma estacao ativa");
+        return Acabou::Nao;
+    }
 
+    auto& estacao = Estacao::lista().at(Fila::the().estacao_ativa());
     if (m_escaldo.has_value() && !m_escaldou) {
         estacao.set_status(Estacao::Status::SCALDING);
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));

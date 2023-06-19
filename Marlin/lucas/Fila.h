@@ -57,11 +57,10 @@ private:
 
     bool possui_colisoes_com_outras_receitas(Receita& receita);
 
-    size_t m_index_horizontal = 0;
-
-    size_t m_index_vertical = 0;
-
     Estacao::Index m_estacao_ativa = Estacao::INVALIDA;
+
+    // para quando não há receita ativa mas não queremos executar a fila
+    bool m_ocupado = false;
 
     std::unordered_map<Estacao::Index, std::unique_ptr<Receita>> m_fila;
 };

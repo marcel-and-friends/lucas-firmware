@@ -21,6 +21,9 @@ void Fila::agendar_receita(Estacao::Index estacao_idx, std::unique_ptr<Receita> 
 }
 
 void Fila::tick(millis_t tick) {
+    if (m_ocupado)
+        return;
+
     if (m_estacao_ativa != Estacao::INVALIDA) {
         auto it = m_fila.find(m_estacao_ativa);
         if (it == m_fila.end()) {
@@ -58,7 +61,9 @@ void Fila::tick(millis_t tick) {
         // mas se acontecer, vamos tentar recuperar o mais rápido possível
         else if (comeco < tick) {
             // primeiro viajamos para a receita atrasada
+            m_ocupado = true;
             Bico::the().viajar_para_estacao(estacao_idx);
+            m_ocupado = false;
             const auto tick_inicial = millis() + MARGEM_CALCULO;
             const auto delta = tick_inicial - comeco;
             FILA_LOG("ERRO - perdemos um tick, deslocando todas as receitas! - [delta =  ", delta, "ms]");
@@ -139,28 +144,24 @@ void Fila::mapear_receita(Estacao::Index estacao_idx, Receita& receita) {
 // esse algoritmo é basicamente um hit-test 2d de cada passo da receita nova com cada passo das receitas já mapeadas
 bool Fila::possui_colisoes_com_outras_receitas(Receita& receita_nova) {
     bool colide = false;
-    receita_nova.for_each_passo_pendente([&](Receita::Passo& passo) {
+    receita_nova.for_each_passo_pendente([&](Receita::Passo& passo_novo) {
         for_each_receita_mapeada(
-            [&](Receita& receita) {
-                receita.for_each_passo_pendente([&](Receita::Passo& passo_mapeado) {
+            [&](Receita& receita_mapeada) {
+                receita_mapeada.for_each_passo_pendente([&](Receita::Passo& passo_mapeado) {
                     // se o passo comeca antes do nosso comecar uma colisao é impossivel
-                    if (passo_mapeado.comeco_abs > (passo.fim() + util::MARGEM_DE_VIAGEM))
+                    if (passo_mapeado.comeco_abs > (passo_novo.fim() + util::MARGEM_DE_VIAGEM))
                         // como todos os passos sao feitos em sequencia linear podemos parar de procurar nessa receita
                         // ja que todos os passos subsequentes também serão depois desse
                         return util::Iter::Stop;
 
-                    if (passo.colide_com(passo_mapeado)) {
-                        colide = true;
-                        return util::Iter::Stop;
-                    }
-                    return util::Iter::Continue;
+                    colide = passo_novo.colide_com(passo_mapeado);
+
+                    return colide ? util::Iter::Stop : util::Iter::Continue;
                 });
-                return util::Iter::Continue;
+                return colide ? util::Iter::Stop : util::Iter::Continue;
             },
             &receita_nova);
-
-        if (colide)
-            return util::Iter::Stop;
+        return colide ? util::Iter::Stop : util::Iter::Continue;
     });
     return colide;
 }
