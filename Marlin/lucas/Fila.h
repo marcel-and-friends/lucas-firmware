@@ -69,6 +69,8 @@ private:
 
     void adicionar_receita(std::unique_ptr<Receita>, Estacao::Index);
 
+    void finalizar_receitas_em_notificacao();
+
     Estacao::Index m_estacao_ativa = Estacao::INVALIDA;
 
     // para quando não há receita ativa mas não queremos executar a fila

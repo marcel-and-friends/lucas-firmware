@@ -29,6 +29,12 @@ inline float step_ratio() {
     return planner.settings.axis_steps_per_mm[X_AXIS] / steps_per_mm;
 }
 
+inline void aguardar_por(millis_t tempo) {
+	const auto comeco = millis();
+	while (millis() - comeco < tempo)
+		idle();
+}
+
 enum class Iter {
     Continue = 0,
     Break

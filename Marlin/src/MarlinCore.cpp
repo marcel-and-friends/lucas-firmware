@@ -939,6 +939,12 @@ void idle(bool no_stepper_sleep /*=false*/) {
     // Update the LVGL interface
     TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
+    static bool setup = false;
+    if (!setup) {
+        setup = true;
+        lucas::setup();
+    }
+
     lucas::tick();
 
 IDLE_DONE:
@@ -1732,8 +1738,6 @@ void setup() {
     marlin_state = MF_RUNNING;
 
     SETUP_LOG("setup() completed.");
-
-    lucas::setup();
 
     TERN_(MARLIN_TEST_BUILD, runStartupTests());
 }

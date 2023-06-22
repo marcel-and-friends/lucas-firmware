@@ -30,7 +30,7 @@ void tick() {
 
     if (atualizou) {
         serializeJson(doc, output);
-        LOG("json:\n", output);
+        // LOG("info: ", output);
     }
 }
 

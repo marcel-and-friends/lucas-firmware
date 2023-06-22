@@ -89,6 +89,7 @@ void Estacao::tick() {
                 }
 
                 switch (estacao.status()) {
+                // TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
                 case Status::FREE:
                     // isso aqui é so qnd nao tiver conectado no app
                     Fila::the().agendar_receita(estacao.index(), Receita::padrao());

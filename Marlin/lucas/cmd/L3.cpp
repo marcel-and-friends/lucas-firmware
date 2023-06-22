@@ -53,7 +53,7 @@ void L3() {
     planner.synchronize();
 
     if (despejar_agua && tempo)
-        Bico::the().ativar(millis(), tempo, despejar_agua);
+        Bico::the().ativar(tempo, despejar_agua);
 
     for (auto i = 0; i < series; i++) {
         const bool fora_pra_dentro = i % 2 != comecar_na_borda;
