@@ -24,15 +24,22 @@ inline bool segurando(int pino) {
     return READ(pino) == false;
 }
 
-inline float step_ratio() {
-    constexpr float steps_per_mm = 44.5f;
-    return planner.settings.axis_steps_per_mm[X_AXIS] / steps_per_mm;
+constexpr float MS_POR_MM = 12.41f;
+constexpr float DEFAULT_STEPS_POR_MM_X = 44.5f;
+constexpr float DEFAULT_STEPS_POR_MM_Y = 26.5f;
+
+inline float step_ratio_x() {
+    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_POR_MM_X;
+}
+
+inline float step_ratio_y() {
+    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_POR_MM_Y;
 }
 
 inline void aguardar_por(millis_t tempo) {
-	const auto comeco = millis();
-	while (millis() - comeco < tempo)
-		idle();
+    const auto comeco = millis();
+    while (millis() - comeco < tempo)
+        idle();
 }
 
 enum class Iter {
@@ -40,7 +47,7 @@ enum class Iter {
     Break
 };
 
-static constexpr millis_t MARGEM_DE_VIAGEM = 1000;
+static constexpr millis_t MARGEM_DE_VIAGEM = 1500;
 
 template<typename FN, typename... Args>
 concept IterCallback = std::invocable<FN, Args...> && std::same_as<std::invoke_result_t<FN, Args...>, Iter>;

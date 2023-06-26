@@ -22,7 +22,7 @@ void Bico::tick() {
     if (m_ativo) {
         m_tempo_decorrido = tick - m_tick_comeco;
         if (m_tempo_decorrido >= m_duracao) {
-            desligar(tick);
+            desligar();
             return;
         }
         if (m_tempo_decorrido > 1000) {
@@ -32,8 +32,7 @@ void Bico::tick() {
             if ((m_tempo_decorrido % 1000) == 0) {
                 const auto pulsos = s_contador_de_pulsos - m_pulsos_no_inicio_da_analise;
                 m_pulsos_no_inicio_da_analise = s_contador_de_pulsos;
-                m_forca = ControladorFluxo::the().analisar_e_melhorar_fluxo(m_forca, m_fluxo_desejado, pulsos);
-                aplicar_forca(m_forca);
+                aplicar_forca(ControladorFluxo::the().analisar_e_melhorar_fluxo(m_forca, m_fluxo_desejado, pulsos));
             }
         }
     } else {
@@ -56,15 +55,13 @@ void Bico::ativar(millis_t tempo, float fluxo_desejado) {
     m_tick_comeco = millis();
     m_duracao = tempo;
     m_fluxo_desejado = fluxo_desejado;
-    m_forca = ControladorFluxo::the().melhor_valor_digital(fluxo_desejado);
-
-    aplicar_forca(m_forca);
+    aplicar_forca(ControladorFluxo::the().melhor_valor_digital(fluxo_desejado));
 }
 
-void Bico::desligar(millis_t tick_final) {
+void Bico::desligar() {
     m_ativo = false;
     m_forca = 0;
-    m_tick_final = tick_final;
+    m_tick_final = millis();
 
     m_duracao = 0;
     m_tempo_decorrido = 0;
@@ -168,13 +165,13 @@ void Bico::nivelar() const {
 
 void Bico::aplicar_forca(uint32_t v) {
     m_forca = v;
-    digitalWrite(pino::BREAK, !!v);
+    digitalWrite(pino::BREAK, !!m_forca);
     analogWrite(pino::SV, m_forca);
 }
 
 void Bico::ControladorFluxo::montar_tabela() {
-    constexpr auto VALOR_DIGITAL_INICIAL = 900;
-    constexpr auto INCREMENTO_INICIAL = 100;
+    constexpr auto VALOR_DIGITAL_INICIAL = 800;
+    constexpr auto INCREMENTO_INICIAL = 50;
     constexpr auto TEMPO_DE_ESTABILIZAR_FLUXO = 2000;
 
     Bico::the().viajar_para_esgoto();
@@ -190,15 +187,15 @@ void Bico::ControladorFluxo::montar_tabela() {
     int valor_digital = VALOR_DIGITAL_INICIAL;
     while (true) {
         LOG("aplicando força de ", valor_digital);
-
         Bico::the().aplicar_forca(valor_digital);
         util::aguardar_por(TEMPO_DE_ESTABILIZAR_FLUXO);
         LOG("fluxo estabilizou, vamos analisar");
 
         const auto contador_comeco = s_contador_de_pulsos;
-        util::aguardar_por(1000);
-        const auto pulsos = static_cast<uint32_t>(s_contador_de_pulsos - contador_comeco);
 
+        util::aguardar_por(1000);
+
+        const auto pulsos = static_cast<uint32_t>(s_contador_de_pulsos - contador_comeco);
         const auto volume_despejado = static_cast<float>(pulsos) * ML_POR_PULSO;
 
         if (ultimo_volume_despejado) {
@@ -218,6 +215,7 @@ void Bico::ControladorFluxo::montar_tabela() {
             LOG("ainda nao temos fluxo o suficiente");
             continue;
         }
+
         if (volume_despejado > FLUXO_MAX) {
             LOG("fluxo demais");
             break;
@@ -226,12 +224,10 @@ void Bico::ControladorFluxo::montar_tabela() {
         ultimo_volume_despejado = volume_despejado;
         ultimo_valor_digital = valor_digital;
 
-        const auto volume_inteiro = static_cast<int>(volume_despejado);
-        const auto casa_decimal = casa_decimal_apropriada(volume_despejado);
-
+        const auto [volume_inteiro, casa_decimal] = decompor_fluxo(volume_despejado);
         LOG("volume_despejado = ", volume_despejado, " | casa_decimal = ", casa_decimal);
 
-        auto& valor_digital_salvo = valor_digital_para_fluxo(volume_despejado);
+        auto& valor_digital_salvo = valor_na_tabela(volume_despejado);
         if (valor_digital_salvo == VALOR_DIGITAL_INVALIDO) {
             valor_digital_salvo = valor_digital;
             LOG("valor digital salvo - tabela[", volume_inteiro - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
@@ -260,10 +256,8 @@ void Bico::ControladorFluxo::montar_tabela() {
 }
 
 uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
-    const auto volume_inteiro = static_cast<int>(fluxo);
-    const auto casa_decimal = casa_decimal_apropriada(fluxo);
-
-    const auto fluxo_index = volume_inteiro - FLUXO_MIN;
+    const auto [fluxo_inteiro, casa_decimal] = decompor_fluxo(fluxo);
+    const auto fluxo_index = fluxo_inteiro - FLUXO_MIN;
     // se tivermos um valor digital salvo, vamos usá-lo
     auto& valores_digitais = tabela[fluxo_index];
     if (valores_digitais[casa_decimal] != VALOR_DIGITAL_INVALIDO)
@@ -288,41 +282,36 @@ uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
 uint32_t Bico::ControladorFluxo::analisar_e_melhorar_fluxo(uint32_t valor_digital, float fluxo_desejado, uint64_t pulsos) {
     LOG("iniciando analise");
 
+    if (valor_na_tabela(fluxo_desejado) != VALOR_DIGITAL_INVALIDO)
+        return valor_na_tabela(fluxo_desejado);
+
     const auto volume_despejado = static_cast<float>(pulsos) * ML_POR_PULSO;
     LOG("volume despejado = ", volume_despejado);
-    auto& valor_salvo = valor_digital_para_fluxo(volume_despejado);
-    const auto fluxo_index = static_cast<int>(volume_despejado);
-    const auto casa_decimal = casa_decimal_apropriada(volume_despejado);
-    if (valor_salvo == VALOR_DIGITAL_INVALIDO) {
-        LOG("adicionando valor na tabela - tabela[", fluxo_index - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
-        valor_salvo = valor_digital;
-    }
+    valor_na_tabela(volume_despejado) = valor_digital;
+
+    auto melhor = melhor_valor_digital(fluxo_desejado);
+    if (melhor != valor_digital)
+        LOG("novo valor digital = ", melhor, " | antigo = ", valor_digital);
+
+    return melhor;
 
     const auto [desejado_index, desejado_decimal] = decompor_fluxo(fluxo_desejado);
     LOG("fluxo decomposto = ", desejado_index, ".", desejado_decimal, "g/s");
     const auto delta = std::abs(fluxo_desejado - volume_despejado);
-    // TEM QUE ARRUMAR ESSA MERDA DE CODIGO PQP DA PRA LER PORRA NENHUMA
-    if (volume_despejado < fluxo_desejado) {
-        const auto [fluxo_acima, valor_digital_acima] = primeiro_fluxo_acima(desejado_index, desejado_decimal);
-        LOG("fluxo_acima = ", fluxo_acima, " | valor_digital_acima = ", valor_digital_acima);
-        const auto normalizado = (delta - volume_despejado) / (fluxo_acima - volume_despejado);
-        const auto interp = std::lerp(static_cast<float>(valor_digital), static_cast<float>(valor_digital_acima), normalizado);
-        const auto valor_digital = static_cast<uint32_t>(std::round(interp));
-        LOG("RESULTANTE DA ANALISE = ", valor_digital);
-        LOG("finalizando analise");
-        return valor_digital;
-    } else if (volume_despejado > fluxo_desejado) {
-        const auto [fluxo_abaixo, valor_digital_abaixo] = primeiro_fluxo_abaixo(desejado_index, desejado_decimal);
-        LOG("fluxo_abaixo = ", fluxo_abaixo, " | valor_digital_abaixo = ", valor_digital_abaixo);
-        const auto normalizado = (delta - fluxo_abaixo) / (volume_despejado - fluxo_abaixo);
-        const auto interp = std::lerp(static_cast<float>(valor_digital_abaixo), static_cast<float>(valor_digital), normalizado);
-        const auto valor_digital = static_cast<uint32_t>(std::round(interp));
-        LOG("RESULTANTE DA ANALISE = ", valor_digital);
-        LOG("finalizando analise");
-        return valor_digital;
-    } else {
-        return valor_digital;
-    }
+    const auto [fluxo_proximo, valor_digital_proximo] =
+        volume_despejado < fluxo_desejado
+            ? primeiro_fluxo_acima(desejado_index, desejado_decimal)
+            : primeiro_fluxo_abaixo(desejado_index, desejado_decimal);
+
+    LOG("fluxo_proximo = ", fluxo_proximo, " | valor_digital_proximo = ", valor_digital_proximo);
+
+    const auto normalizado = (delta - std::min(volume_despejado, fluxo_proximo)) / (std::max(volume_despejado, fluxo_proximo) - std::min(volume_despejado, fluxo_proximo));
+    const auto interp = std::lerp(std::min<float>(valor_digital, valor_digital_proximo), std::max<float>(valor_digital, valor_digital_proximo), normalizado);
+    const auto resultado = static_cast<uint32_t>(std::round(interp));
+
+    LOG("RESULTANTE DA ANALISE = ", resultado);
+    LOG("finalizando analise");
+    return resultado;
 }
 
 std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) {
@@ -369,17 +358,13 @@ int Bico::ControladorFluxo::casa_decimal_apropriada(float fluxo) {
     return casa_decimal;
 }
 
-std::tuple<float, uint32_t> Bico::ControladorFluxo::decompor_fluxo(float fluxo) {
-    const auto volume_inteiro = static_cast<int>(fluxo);
-    const auto casa_decimal = casa_decimal_apropriada(fluxo);
-
-    return { volume_inteiro + static_cast<float>(casa_decimal) / 10.f, valor_digital_para_fluxo(fluxo) };
+std::tuple<int, uint32_t> Bico::ControladorFluxo::decompor_fluxo(float fluxo) {
+    return { static_cast<int>(fluxo), casa_decimal_apropriada(fluxo) };
 }
 
-uint32_t& Bico::ControladorFluxo::valor_digital_para_fluxo(float fluxo) {
+uint32_t& Bico::ControladorFluxo::valor_na_tabela(float fluxo) {
     const auto volume_inteiro = static_cast<int>(fluxo);
     const auto casa_decimal = casa_decimal_apropriada(fluxo);
-
     return tabela[volume_inteiro - FLUXO_MIN][casa_decimal];
 }
 }

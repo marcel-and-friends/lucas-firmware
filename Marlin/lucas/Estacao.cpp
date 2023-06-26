@@ -132,8 +132,8 @@ void Estacao::tick() {
 }
 
 float Estacao::posicao_absoluta(size_t index) {
-    auto distancia_primeira_estacao = 80.f / util::step_ratio();
-    auto distancia_entre_estacoes = 160.f / util::step_ratio();
+    auto distancia_primeira_estacao = 80.f / util::step_ratio_x();
+    auto distancia_entre_estacoes = 160.f / util::step_ratio_x();
     return distancia_primeira_estacao + index * distancia_entre_estacoes;
 }
 

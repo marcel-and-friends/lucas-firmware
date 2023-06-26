@@ -200,7 +200,7 @@ void Fila::cancelar_receita(Estacao::Index estacao_idx) {
     if (estacao_idx == m_estacao_ativa) {
         m_estacao_ativa = Estacao::INVALIDA;
         // desligamos o bico para evitar vazamentos
-        Bico::the().desligar(millis());
+        Bico::the().desligar();
         // limpamos o planejador e centralizamos o bico na estacao que estava
         planner.clear_block_buffer();
         Bico::the().viajar_para_estacao(estacao_idx);

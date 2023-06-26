@@ -15,7 +15,7 @@ public:
 
     void ativar(millis_t tempo, float fluxo_desejado);
 
-    void desligar(millis_t tick_final);
+    void desligar();
 
     void setup();
 
@@ -63,9 +63,9 @@ private:
 
         int casa_decimal_apropriada(float fluxo);
 
-        std::tuple<float, uint32_t> decompor_fluxo(float fluxo);
+        std::tuple<int, uint32_t> decompor_fluxo(float fluxo);
 
-        uint32_t& valor_digital_para_fluxo(float fluxo);
+        uint32_t& valor_na_tabela(float fluxo);
 
         std::array<std::array<uint32_t, 10>, RANGE_FLUXO> tabela = { {} };
     };
