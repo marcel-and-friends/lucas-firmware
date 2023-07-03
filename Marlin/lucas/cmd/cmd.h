@@ -46,4 +46,6 @@ void L3();
 // L5 -> Viajar para uma estacao (pelo numero)
 // N - Número da estação
 void L5();
+
+void L6();
 }

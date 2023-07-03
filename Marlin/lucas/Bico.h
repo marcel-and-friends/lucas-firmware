@@ -13,7 +13,9 @@ public:
 
     void tick();
 
-    void ativar(millis_t tempo, float fluxo_desejado);
+    void despejar_volume(millis_t duracao, float volume_desejado);
+
+    void desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital);
 
     void desligar();
 
@@ -31,6 +33,8 @@ public:
 
     void nivelar() const;
 
+    void preencher_tabela_de_controle_de_fluxo() const;
+
     bool ativo() const {
         return m_ativo;
     }
@@ -42,20 +46,20 @@ private:
         static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
 
         static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0;
-        static constexpr auto ML_POR_PULSO = 0.57f;
+        static constexpr auto ML_POR_PULSO = 0.55f;
 
         static ControladorFluxo& the() {
             static ControladorFluxo instance;
             return instance;
         }
-        void montar_tabela();
+        void preencher_tabela();
 
         uint32_t melhor_valor_digital(float fluxo);
 
-        uint32_t analisar_e_melhorar_fluxo(uint32_t valor_digital, float fluxo_desejado, uint64_t pulsos);
-
     private:
         ControladorFluxo() = default;
+
+        void limpar_tabela();
 
         std::tuple<float, uint32_t> primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal);
 
@@ -67,20 +71,24 @@ private:
 
         uint32_t& valor_na_tabela(float fluxo);
 
-        std::array<std::array<uint32_t, 10>, RANGE_FLUXO> tabela = { {} };
+        std::array<std::array<uint32_t, 10>, RANGE_FLUXO> m_tabela = { {} };
     };
 
     void aplicar_forca(uint32_t);
+
+    void iniciar_despejo(millis_t duracao);
 
     static inline uint64_t s_contador_de_pulsos = 0;
 
     millis_t m_duracao = 0;
 
-    float m_fluxo_desejado = 0.f;
+    float m_volume_total_desejado = 0.f;
 
     millis_t m_tempo_decorrido = 0;
 
-    uint64_t m_pulsos_no_inicio_da_analise = 0;
+    uint64_t m_pulsos_no_inicio_do_despejo = 0;
+
+    uint64_t m_pulsos_no_final_do_despejo = 0;
 
     // instante onde o despejo comeca/acaba
     millis_t m_tick_comeco = 0;

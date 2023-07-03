@@ -5,9 +5,12 @@
 
 namespace lucas::cmd {
 void L1() {
-    Bico::the().ativar(parser.ulongval('T'), parser.floatval('G'));
-    while (Bico::the().ativo()) {
+    if (parser.seenval('D'))
+        Bico::the().desepejar_com_valor_digital(parser.ulongval('T'), parser.ulongval('D'));
+    else
+        Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'));
+
+    while (Bico::the().ativo())
         idle();
-    }
 }
 }

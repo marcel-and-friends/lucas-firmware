@@ -5,6 +5,7 @@
 #include <string_view>
 #include <lucas/lucas.h>
 #include <lucas/Receita.h>
+#include <lucas/info/evento.h>
 #include <ArduinoJson.h>
 
 namespace lucas {
@@ -84,6 +85,18 @@ public:
 
     Status status() const { return m_status; }
     void set_status(Status);
+
+public:
+    class NovoStatus : public info::Evento<NovoStatus, "novoStatus"> {
+    public:
+        void gerar_json_impl(JsonObject o) const {
+            o["estacao"] = estacao;
+            o["status"] = static_cast<int>(novo_status);
+        }
+
+        size_t estacao;
+        Status novo_status;
+    };
 
 private:
     static Lista s_lista;

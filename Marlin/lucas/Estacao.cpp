@@ -1,6 +1,7 @@
 #include "Estacao.h"
 #include <memory>
 #include <src/module/temperature.h>
+#include <lucas/info/info.h>
 #include <lucas/Bico.h>
 #include <lucas/Fila.h>
 #include <lucas/cmd/cmd.h>
@@ -75,6 +76,7 @@ void Estacao::tick() {
             }
 
             // o botão acabou de ser solto, temos varias opcoes
+            // TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
             if (!segurado_agora && segurado_antes) {
                 if (estacao.tick_botao_segurado()) {
                     // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
@@ -89,7 +91,6 @@ void Estacao::tick() {
                 }
 
                 switch (estacao.status()) {
-                // TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
                 case Status::FREE:
                     // isso aqui é so qnd nao tiver conectado no app
                     Fila::the().agendar_receita(estacao.index(), Receita::padrao());
@@ -166,7 +167,13 @@ void Estacao::set_bloqueada(bool b) {
 }
 
 void Estacao::set_status(Status status) {
+    if (m_status == status)
+        return;
+
     m_status = status;
+    info::evento(NovoStatus{
+        .estacao = index(),
+        .novo_status = m_status });
     switch (m_status) {
     case Status::FREE:
         WRITE(m_pino_led, LOW);

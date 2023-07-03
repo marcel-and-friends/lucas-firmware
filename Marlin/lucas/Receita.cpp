@@ -7,13 +7,13 @@
 namespace lucas {
 // FIXME isso seria melhor sendo uma referencia unica ao inves de inicializar um objeto novo toda vez que essa função é chamada
 std::unique_ptr<Receita> Receita::padrao() {
-    auto receita_padrao = std::make_unique<Receita>();
+    auto receita_padrao = std::unique_ptr<Receita>(new Receita);
     receita_padrao->m_tempo_de_notificacao = 60000;
     receita_padrao->m_id = 0xF0F0; // >.<
 
     { // escaldo
         receita_padrao->m_escaldo = Passo{ .duracao = 6000 };
-        strcpy(receita_padrao->m_escaldo->gcode, "L3 F10250 D9 N3 R1 T6000 A1560");
+        strcpy(receita_padrao->m_escaldo->gcode, "L3 D9 N3 R1 T6000 G80");
     }
 
     { // ataques
@@ -24,10 +24,10 @@ std::unique_ptr<Receita> Receita::padrao() {
             Passo{ .comeco_rel = 114000, .duracao = 10000 }
         };
         constexpr auto gcodes = std::array{
-            "L3 F8250 D7 N3 R1 T6000 A1560",
-            "L3 F8500 D7 N5 R1 T9000 A1560",
-            "L3 F7650 D7 N5 R1 T10000 A1560",
-            "L3 F7650 D7 N5 R1 T10000 A1560"
+            "L3 D7 N3 R1 T6000 G60",
+            "L3 D7 N5 R1 T9000 G90",
+            "L3 D7 N5 R1 T10000 G100",
+            "L3 D7 N5 R1 T10000 G100"
         };
         static_assert(passos.size() == gcodes.size());
 
@@ -39,31 +39,26 @@ std::unique_ptr<Receita> Receita::padrao() {
         }
 
         receita_padrao->m_num_ataques = passos.size();
-        receita_padrao->m_tempo_total = std::accumulate(passos.begin(), passos.end(), 0, [](auto acc, auto passo) {
-            return acc + passo.duracao + passo.intervalo;
-        });
     }
 
     return receita_padrao;
 }
 
+// TODO: alocar as receitas estaticamente no array da Fila e só modificar os dados quando necessario
 std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
-    if (!json.containsKey("estacao") ||
-        !json.containsKey("id") ||
-        !json.containsKey("tempoTotal") ||
-        !json.containsKey("notificacao") ||
+    if (!json.containsKey("id") ||
+        !json.containsKey("tempoNotificacao") ||
         !json.containsKey("ataques")) {
         LOG("ERRO - json de receita nao possui todos os campos obrigatorios");
         return nullptr;
     }
 
     // yum have, a problem  in yum brain
-    auto rec = std::make_unique<Receita>();
+    auto rec = std::unique_ptr<Receita>(new Receita);
 
     { // informacoes gerais (e obrigatorias)
         rec->m_id = json["id"].as<size_t>();
-        rec->m_tempo_total = json["tempoTotal"].as<millis_t>();
-        rec->m_tempo_de_notificacao = json["notificacao"].as<millis_t>();
+        rec->m_tempo_de_notificacao = json["tempoNotificacao"].as<millis_t>();
     }
 
     { // escaldo
@@ -89,7 +84,7 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
                 ataque.intervalo = ataque_obj["intervalo"].as<millis_t>();
             } else {
                 // um numero "invalido", significa que esse ataque é o ultimo
-                ataque.intervalo = static_cast<std::uint32_t>(-1);
+                ataque.intervalo = 0;
             }
         }
         rec->m_num_ataques = ataques_obj.size();
@@ -98,26 +93,14 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
     return rec;
 }
 
-Receita::Acabou Receita::executar_passo() {
-    if (Fila::the().estacao_ativa() == Estacao::INVALIDA) {
-        LOG("ERRO - tentando executar o passo de uma receita sem uma estacao ativa");
-        return Acabou::Nao;
-    }
-
-    auto& estacao = Estacao::lista().at(Fila::the().estacao_ativa());
+bool Receita::executar_passo() {
     if (m_escaldo.has_value() && !m_escaldou) {
-        estacao.set_status(Estacao::Status::SCALDING);
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
-        estacao.set_status(Estacao::Status::INITIALIZE_COFFEE);
-
         m_escaldou = true;
-        return Acabou::Nao;
+        return false;
     }
-
-    estacao.set_status(Estacao::Status::MAKING_COFFEE);
     GcodeSuite::process_subcommands_now(F(passo_atual().gcode));
-
-    return ++m_ataque_atual >= m_num_ataques ? Acabou::Sim : Acabou::Nao;
+    return ++m_ataque_atual >= m_num_ataques;
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
@@ -129,10 +112,10 @@ void Receita::mapear_passos_pendentes(millis_t tick) {
 }
 
 bool Receita::passos_pendentes_estao_mapeados() {
-    bool estao = true;
+    bool estao = false;
     for_each_passo_pendente([&](auto& passo) {
-        if (passo.comeco_abs == 0) {
-            estao = false;
+        if (passo.comeco_abs != 0) {
+            estao = true;
             return util::Iter::Break;
         }
         return util::Iter::Continue;
@@ -153,8 +136,6 @@ Receita::Passo& Receita::passo_atual() {
 }
 
 size_t Receita::passo_atual_idx() const {
-    if (m_escaldo.has_value() && !m_escaldou)
-        return 0;
-    return m_ataque_atual + 1;
+    return m_ataque_atual + (m_escaldo.has_value() && m_escaldou);
 }
 }

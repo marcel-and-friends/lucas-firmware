@@ -7,7 +7,10 @@
 namespace lucas::cmd {
 void L5() {
     constexpr auto max = static_cast<long>(Estacao::NUM_MAX_ESTACOES);
-    auto num = std::clamp(parser.longval('N'), 0L, max);
-    Bico::the().viajar_para_estacao(num);
+    auto num = parser.longval('N');
+    if (num == -1)
+        Bico::the().viajar_para_esgoto();
+    else
+        Bico::the().viajar_para_estacao(std::clamp(num, 0L, max));
 }
 }

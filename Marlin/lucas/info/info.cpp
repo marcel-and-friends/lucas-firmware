@@ -6,11 +6,9 @@
 #include <lucas/Fila.h>
 
 namespace lucas::info {
-
 void tick() {
     // gostaria de nao alocar 2 bagui de 1kb mas nao sei komo
     DocumentoJson doc;
-    char output[BUFFER_SIZE] = {};
     bool atualizou = false;
     Report::for_each([&](Report& report) {
         const auto tick = millis();
@@ -28,10 +26,8 @@ void tick() {
         return util::Iter::Continue;
     });
 
-    if (atualizou) {
-        serializeJson(doc, output);
-        // LOG("info: ", output);
-    }
+    if (atualizou)
+        print_json(doc);
 }
 
 void interpretar_json(std::span<char> buffer) {
@@ -102,10 +98,12 @@ void interpretar_json(std::span<char> buffer) {
         } break;
         case 4: { // enviar uma receita para uma estacao
             const auto obj = v.as<JsonObjectConst>();
-            const auto estacao = obj["estacao"].as<size_t>();
-            Fila::the().agendar_receita(estacao, Receita::from_json(obj));
+            Fila::the().agendar_receita(Receita::from_json(obj));
         } break;
-        case 5: { // enviar a receita padrao para uma ou mais estacoes
+        case 5: { // requisicao de informacao de todas as estacoes
+            Fila::the().printar_informacoes();
+        } break;
+        case 6: { // enviar a receita padrao para uma ou mais estacoes
             if (v.is<size_t>()) {
                 Fila::the().agendar_receita(v.as<size_t>(), Receita::padrao());
             } else if (v.is<JsonArrayConst>()) {
@@ -114,7 +112,7 @@ void interpretar_json(std::span<char> buffer) {
                 }
             }
         } break;
-        case 6: {
+        case 7: {
             if (v.is<size_t>()) {
                 Fila::the().mapear_receita(v.as<size_t>());
             } else if (v.is<JsonArrayConst>()) {
@@ -127,5 +125,11 @@ void interpretar_json(std::span<char> buffer) {
             LOG("opcao invalida - [", opcao, "]");
         }
     }
+}
+
+void print_json(const DocumentoJson& doc) {
+    SERIAL_ECHOPGM("#");
+    serializeJson(doc, SERIAL_IMPL);
+    SERIAL_ECHOPGM("#\n");
 }
 }

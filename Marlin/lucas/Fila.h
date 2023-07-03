@@ -16,23 +16,19 @@ public:
 
     void tick();
 
+    void agendar_receita(std::unique_ptr<Receita> receita);
+
     void agendar_receita(Estacao::Index, std::unique_ptr<Receita> receita);
 
     void mapear_receita(Estacao::Index);
 
     void cancelar_receita(Estacao::Index);
 
-    bool receita_esta_mapeada(const Estacao& estacao) const {
-        return !m_fila[estacao.index()].inativa &&
-               m_fila[estacao.index()].receita &&
-               m_fila[estacao.index()].receita->passos_pendentes_estao_mapeados();
-    }
+    void printar_informacoes();
 
     Estacao::Index estacao_ativa() const { return m_estacao_ativa; }
 
     bool executando() const { return m_estacao_ativa != Estacao::INVALIDA; }
-
-    void gerar_info(millis_t tick, JsonObject obj) const;
 
 public:
     void for_each_receita_mapeada(util::IterCallback<Receita&> auto&& callback, Receita* excecao = nullptr) {
@@ -61,6 +57,42 @@ public:
                 return;
         }
     };
+
+    void for_each_receita_mapeada(util::IterCallback<Receita&, Estacao::Index> auto&& callback, Receita* excecao = nullptr) const {
+        if (!m_num_receitas)
+            return;
+
+        for (size_t i = 0; i < m_fila.size(); ++i) {
+            auto& info = m_fila[i];
+            if (!info.valida() || (excecao && info.receita.get() == excecao) || !(info.receita->passos_pendentes_estao_mapeados()))
+                continue;
+
+            if (std::invoke(FWD(callback), *info.receita, i) == util::Iter::Break)
+                return;
+        }
+    };
+
+public:
+    class NovoPasso : public info::Evento<NovoPasso, "novoPasso"> {
+    public:
+        void gerar_json_impl(JsonObject o) const {
+            o["estacao"] = estacao;
+            o["receitaId"] = receita_id;
+            o["passo"] = novo_passo;
+        }
+
+        size_t estacao;
+        size_t novo_passo;
+        size_t receita_id;
+    };
+
+    class InfoEstacoes : public info::Evento<InfoEstacoes, "infoEstacoes"> {
+    public:
+        void gerar_json_impl(JsonObject obj) const;
+        Fila& fila;
+    };
+
+    friend class InfoEstacoes;
 
 private:
     bool possui_colisoes_com_outras_receitas(Receita&);

@@ -30,7 +30,7 @@ public:
         millis_t progresso = 0;
 
         // o gcode desse passo
-        char gcode[64] = {};
+        char gcode[48] = {};
 
         millis_t fim() const {
             if (!comeco_abs)
@@ -66,19 +66,13 @@ public:
 
     static std::unique_ptr<Receita> from_json(JsonObjectConst json);
 
-    Receita() = default;
-
     Receita(const Receita&) = delete;
     Receita& operator=(const Receita&) = delete;
     Receita(Receita&&) = delete;
     Receita& operator=(Receita&&) = delete;
 
 public:
-    enum class Acabou {
-        Sim = 0,
-        Nao
-    };
-    Acabou executar_passo();
+    bool executar_passo();
 
     void mapear_passos_pendentes(millis_t tick_inicial);
 
@@ -128,6 +122,10 @@ public:
     const Passo& escaldo() const { return m_escaldo.value(); }
     Passo& escaldo() { return m_escaldo.value(); }
 
+    const Passo& primeiro_passo() const {
+        return possui_escaldo() ? escaldo() : m_ataques.front();
+    }
+
     millis_t tempo_de_notificacao() const { return m_tempo_de_notificacao; }
 
     millis_t inicio_tempo_de_notificacao() const { return m_inicio_tempo_notificacao; }
@@ -146,6 +144,8 @@ public:
     size_t passo_atual_idx() const;
 
 private:
+    Receita() = default;
+
     // id da receita, usado pelo app
     size_t m_id = 0;
 
@@ -153,9 +153,6 @@ private:
     std::optional<Passo> m_escaldo;
 
     bool m_escaldou = false;
-
-    // o tempo total que essa receita consumirá
-    millis_t m_tempo_total = 0;
 
     // o tempo de finalização dessa receita
     millis_t m_tempo_de_notificacao = 0;

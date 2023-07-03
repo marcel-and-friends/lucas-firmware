@@ -31,16 +31,6 @@ void setup() {
             obj["tempAtual"] = thermalManager.degBed();
         });
 
-    info::Report::make(
-        "infoFila",
-        Intervalos::EstacaoAtiva,
-        [](millis_t tick, JsonObject obj) {
-            Fila::the().gerar_info(tick, obj);
-        },
-        [] {
-            return Fila::the().executando();
-        });
-
 #if LUCAS_CONECTAR_WIFI
     wifi::conectar(LUCAS_WIFI_NOME_SENHA);
 #endif
