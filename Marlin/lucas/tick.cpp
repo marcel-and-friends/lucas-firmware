@@ -8,13 +8,12 @@
 namespace lucas {
 void tick() {
     static millis_t ultimo_tick = 0;
-    auto tick = millis();
     //  a 'idle' pode ser chamada mais de uma vez em um milésimo
     //  precisamos fitrar esses casos para nao mudarmos o estado das estacoes/leds mais de uma vez por ms
-    if (ultimo_tick == tick)
+    if (ultimo_tick == millis())
         return;
 
-    ultimo_tick = tick;
+    ultimo_tick = millis();
 
     Fila::the().tick();
     Estacao::tick();

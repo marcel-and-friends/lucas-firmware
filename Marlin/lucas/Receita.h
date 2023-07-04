@@ -131,7 +131,7 @@ public:
     millis_t inicio_tempo_de_notificacao() const { return m_inicio_tempo_notificacao; }
     void set_inicio_tempo_notificacao(millis_t tick) { m_inicio_tempo_notificacao = tick; }
 
-    size_t id() const { return m_id; }
+    uint32_t id() const { return m_id; }
 
     bool escaldou() const { return m_escaldou; }
 
@@ -147,7 +147,7 @@ private:
     Receita() = default;
 
     // id da receita, usado pelo app
-    size_t m_id = 0;
+    uint32_t m_id = 0;
 
     // o passo do escaldo, caso a receita possua um
     std::optional<Passo> m_escaldo;

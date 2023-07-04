@@ -1,6 +1,7 @@
 #include "Fila.h"
 #include <lucas/Bico.h>
 #include <lucas/info/info.h>
+#include <src/module/motion.h>
 #include <src/module/planner.h>
 #include <numeric>
 #include <ranges>
@@ -8,7 +9,7 @@
 namespace lucas {
 #define FILA_LOG(...) LOG("", "FILA: ", __VA_ARGS__);
 
-// 2s de "margem de erro" pra dar tempo da placa calcular tudo
+// tempo de "margem de erro" pra dar tempo da placa calcular tudo
 constexpr auto MARGEM_CALCULO = 1000;
 
 void Fila::tick() {
@@ -21,64 +22,79 @@ void Fila::tick() {
         if (!m_fila[m_estacao_ativa].valida()) {
             FILA_LOG("ERRO - estacao ativa nao esta na fila - [estacao = ", m_estacao_ativa, "]");
             m_estacao_ativa = Estacao::INVALIDA;
+            return;
         }
+
+        auto& receita = *m_fila[m_estacao_ativa].receita;
+        auto& estacao = Estacao::lista().at(m_estacao_ativa);
+        const auto comeco = receita.passo_atual().comeco_abs;
+        if (comeco < millis()) {
+            LOG("perdeu passo buceta - [estacao = ", m_estacao_ativa, " | delta = ", millis() - comeco, "]");
+            m_estacao_ativa = Estacao::INVALIDA;
+            return;
+        }
+
+        if (comeco != millis())
+            return;
+
+        FILA_LOG("executando passo - [tick = ", millis(), " | estacao = ", m_estacao_ativa, " | passo = ", receita.passo_atual_idx(), "]");
+
+        info::evento(NovoPasso{
+            .estacao = m_estacao_ativa,
+            .novo_passo = receita.passo_atual_idx(),
+            .receita_id = receita.id() });
+
+        const bool escaldando = receita.possui_escaldo() && !receita.escaldou();
+        m_ocupado = true;
+        bool acabou = receita.executar_passo();
+        m_ocupado = false;
+
+        FILA_LOG("passo acabou - [duracao = ", millis() - comeco, "]");
+        if (m_estacao_ativa == Estacao::INVALIDA)
+            // a receita foi cancelada durante a execucao de um passo
+            return;
+
+        if (escaldando)
+            estacao.set_status(Estacao::Status::INITIALIZE_COFFEE, receita.id());
+
+        if (acabou) {
+            if (receita.tempo_de_notificacao()) {
+                estacao.set_status(Estacao::Status::NOTIFICATION_TIME, receita.id());
+                receita.set_inicio_tempo_notificacao(millis());
+                FILA_LOG("receita acabou, iniciando notificacao - [estacao = ", m_estacao_ativa, " | tempo de notificacao = ", receita.tempo_de_notificacao(), "]");
+            } else { // isso aqui nao tem como acontecer mas caso aconteca ne ..
+                estacao.set_status(Estacao::Status::IS_READY, receita.id());
+                remover_receita(m_estacao_ativa);
+                FILA_LOG("receita acabou, removendo da fila - [estacao = ", m_estacao_ativa, "]");
+            }
+        }
+
+        m_estacao_ativa = Estacao::INVALIDA;
         return;
     }
 
     for_each_receita_mapeada([this](Receita& receita, Estacao::Index estacao_idx) {
-        auto& estacao = Estacao::lista().at(estacao_idx);
         const auto comeco = receita.passo_atual().comeco_abs;
-
         const auto tick = millis();
         // - aviso - a ordem desses ifs importa! tome cuideido...
-        // o passo chegou!
-        if (comeco == tick) {
-            FILA_LOG("executando passo - [tick = ", tick, " | estacao = ", estacao_idx, " | passo = ", receita.passo_atual_idx(), "]");
-
-            const bool escaldando = receita.possui_escaldo() && !receita.escaldou();
-            estacao.set_status(escaldando ? Estacao::Status::SCALDING : Estacao::Status::MAKING_COFFEE);
-            info::evento(NovoPasso{
-                .estacao = estacao_idx,
-                .novo_passo = receita.passo_atual_idx(),
-                .receita_id = receita.id() });
-
-            m_estacao_ativa = estacao_idx;
-            const bool acabou = receita.executar_passo();
-            m_estacao_ativa = Estacao::INVALIDA;
-
-            if (escaldando)
-                estacao.set_status(Estacao::Status::INITIALIZE_COFFEE);
-
-            if (acabou) {
-                if (receita.tempo_de_notificacao()) {
-                    estacao.set_status(Estacao::Status::NOTIFICATION_TIME);
-                    receita.set_inicio_tempo_notificacao(tick);
-                    FILA_LOG("receita acabou, iniciando notificacao - [estacao = ", estacao_idx, " | tempo de notificacao = ", receita.tempo_de_notificacao(), "]");
-                } else { // isso aqui nao tem como acontecer mas caso aconteca ne ..
-                    estacao.set_status(Estacao::Status::IS_READY);
-                    remover_receita(estacao_idx);
-                    FILA_LOG("receita acabou, removendo da fila - [estacao = ", estacao_idx, "]");
-                }
-            }
-            return util::Iter::Break;
-        }
         // perdemos o passo :(
         // isso é um caso raro que, em teoria, nunca deve acontecer
         // mas se acontecer, vamos tentar recuperar o mais rápido possível
-        else if (comeco < tick) {
+        if (comeco < tick) {
             // primeiro viajamos para a estacao atrasada e ocupamos a fila para nao ter perigo de comecarmos alguma outra receita nesse meio tempo
             m_ocupado = true;
             Bico::the().viajar_para_estacao(estacao_idx);
             m_ocupado = false;
 
-            const auto tick_inicial = tick + MARGEM_CALCULO;
+            const auto tick_inicial = millis() + 50;
             const auto delta = tick_inicial - comeco;
-            FILA_LOG("ERRO - perdemos um tick, deslocando todas as receitas - [estacao = ", estacao_idx, " | tick = ", tick, " | delta =  ", delta, "ms]");
+            FILA_LOG("ERRO - perdemos um tick, deslocando todas as receitas - [estacao = ", estacao_idx, " | tick = ", tick, " comeco = ", comeco, "| delta =  ", delta, "ms]");
             receita.mapear_passos_pendentes(tick_inicial);
+            m_estacao_ativa = estacao_idx;
 
             for_each_receita_mapeada(
-                [delta](Receita& outra_receita) {
-                    outra_receita.for_each_passo_pendente([delta](Receita::Passo& passo) {
+                [&delta](Receita& outra_receita) {
+                    outra_receita.for_each_passo_pendente([&delta](Receita::Passo& passo) {
                         // e adicionamos um offset em todos os passos restantes
                         // é melhor atrasarmos todas as receitas um pouquinho do que atrasarmos *muito* uma unica receita
                         passo.comeco_abs += delta;
@@ -87,12 +103,17 @@ void Fila::tick() {
                     return util::Iter::Continue;
                 },
                 &receita);
+
+            return util::Iter::Break;
         }
         // o passo está chegando...
         else if (comeco - tick <= util::MARGEM_DE_VIAGEM) {
-            if (!Bico::the().esta_na_estacao(estacao_idx) && !planner.busy())
+            if (!Bico::the().esta_na_estacao(estacao_idx) && !planner.busy()) {
+                m_estacao_ativa = estacao_idx;
                 // colocamos o bico na estacao antes do passo chegar
                 Bico::the().viajar_para_estacao(estacao_idx);
+            }
+            return util::Iter::Break;
         }
         return util::Iter::Continue;
     });
@@ -124,9 +145,10 @@ void Fila::agendar_receita(Estacao::Index estacao_idx, std::unique_ptr<Receita> 
         return;
     }
 
+    auto& receita = *receita_ptr;
     adicionar_receita(std::move(receita_ptr), estacao_idx);
     FILA_LOG("receita agendada, aguardando input - [estacao = ", estacao_idx, "]");
-    estacao.set_status(Estacao::Status::WAITING_START);
+    estacao.set_status(Estacao::Status::WAITING_START, receita.id());
 }
 
 void Fila::mapear_receita(Estacao::Index estacao_idx) {
@@ -178,6 +200,8 @@ void Fila::mapear_receita(Estacao::Index estacao_idx) {
         },
         &receita);
 
+    const auto status_atual = static_cast<int>(estacao.status());
+    estacao.set_status(Estacao::Status(status_atual + 1), receita.id());
     if (num_candidatos) {
         LOG("receita adicionada na fila - [estacao = ", estacao_idx, " | candidatos = ", num_candidatos, "]");
         // pegamos o menor valor da lista de candidatos, para que a receita comece o mais cedo possível
@@ -187,11 +211,11 @@ void Fila::mapear_receita(Estacao::Index estacao_idx) {
     } else {
         // garantimos que o bico já estará na estação antes de comecarmos
         Bico::the().viajar_para_estacao(estacao_idx);
-
         const auto tick_inicial = millis() + MARGEM_CALCULO;
         FILA_LOG("receita sendo executada imediatamente - [estacao = ", estacao_idx, " | tick_inicial = ", tick_inicial, "]");
         // ...com uma margem pra dar tempo da placa calcular tudo x)
         receita.mapear_passos_pendentes(tick_inicial);
+        m_estacao_ativa = estacao_idx;
     }
 }
 
@@ -219,15 +243,13 @@ bool Fila::possui_colisoes_com_outras_receitas(Receita& receita_nova) {
 }
 
 void Fila::cancelar_receita(Estacao::Index estacao_idx) {
-    remover_receita(estacao_idx);
     if (estacao_idx == m_estacao_ativa) {
         m_estacao_ativa = Estacao::INVALIDA;
         // desligamos o bico para evitar vazamentos
         Bico::the().desligar();
-        // limpamos o planejador e centralizamos o bico na estacao que estava
-        planner.clear_block_buffer();
-        Bico::the().viajar_para_estacao(estacao_idx);
+        Estacao::lista().at(estacao_idx).set_status(Estacao::Status::FREE);
     }
+    remover_receita(estacao_idx);
 }
 
 void Fila::printar_informacoes() {
@@ -295,7 +317,7 @@ void Fila::finalizar_receitas_em_notificacao() {
         if (estacao.status() == Estacao::Status::NOTIFICATION_TIME) {
             if (const auto tick = millis(); tick - receita->inicio_tempo_de_notificacao() >= receita->tempo_de_notificacao()) {
                 FILA_LOG("tempo de finalizacao acabou - [estacao = ", i, " | delta = ", tick - receita->inicio_tempo_de_notificacao(), "ms]");
-                estacao.set_status(Estacao::Status::IS_READY);
+                estacao.set_status(Estacao::Status::IS_READY, receita->id());
                 remover_receita(i);
             }
         }

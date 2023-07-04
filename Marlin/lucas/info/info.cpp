@@ -83,7 +83,7 @@ void interpretar_json(std::span<char> buffer) {
             });
         } break;
         case 3: { // cancelar receita da estacao
-            if (!v.is<size_t>()) {
+            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
                 LOG("valor json invalido para cancelamento de receita");
                 break;
             }
@@ -94,9 +94,20 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            Fila::the().cancelar_receita(index);
+            if (v.is<size_t>()) {
+                Fila::the().cancelar_receita(v.as<size_t>());
+            } else if (v.is<JsonArrayConst>()) {
+                for (auto idx : v.as<JsonArrayConst>()) {
+                    Fila::the().cancelar_receita(idx.as<size_t>());
+                }
+            }
         } break;
         case 4: { // enviar uma receita para uma estacao
+            if (!v.is<JsonObjectConst>()) {
+                LOG("valor json invalido para envio de uma receita");
+                break;
+            }
+
             const auto obj = v.as<JsonObjectConst>();
             Fila::the().agendar_receita(Receita::from_json(obj));
         } break;
@@ -104,6 +115,11 @@ void interpretar_json(std::span<char> buffer) {
             Fila::the().printar_informacoes();
         } break;
         case 6: { // enviar a receita padrao para uma ou mais estacoes
+            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
+                LOG("valor json invalido para envio da receita padrao");
+                break;
+            }
+
             if (v.is<size_t>()) {
                 Fila::the().agendar_receita(v.as<size_t>(), Receita::padrao());
             } else if (v.is<JsonArrayConst>()) {
@@ -113,6 +129,11 @@ void interpretar_json(std::span<char> buffer) {
             }
         } break;
         case 7: {
+            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
+                LOG("valor json invalido para mapear uma receita");
+                break;
+            }
+
             if (v.is<size_t>()) {
                 Fila::the().mapear_receita(v.as<size_t>());
             } else if (v.is<JsonArrayConst>()) {

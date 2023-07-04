@@ -1,5 +1,6 @@
 #include <lucas/Estacao.h>
 #include <lucas/Bico.h>
+#include <lucas/Fila.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
 #include <lucas/cmd/cmd.h>
@@ -28,7 +29,10 @@ void L3() {
     const auto volume_agua = parser.floatval('G');
     const auto despejar_agua = duracao && volume_agua;
 
-    auto for_each_arco = [&](auto&& callback) {
+    const bool associado_a_estacao = Fila::the().executando();
+    bool vaza = false;
+
+    auto for_each_arco = [&](util::IterCallback<float, float> auto&& callback) {
         for (auto serie = 0; serie < series; serie++) {
             const bool fora_pra_dentro = serie % 2 != comecar_na_borda;
             for (auto arco = 0; arco < num_arcos; arco++) {
@@ -45,7 +49,8 @@ void L3() {
 
                 const auto raio_arco = diametro_arco / 2.f;
 
-                callback(diametro_arco, raio_arco);
+                if (callback(diametro_arco, raio_arco) == util::Iter::Break)
+                    return;
             }
         }
     };
@@ -63,11 +68,10 @@ void L3() {
     float total_percorrido = 0.f;
     for_each_arco([&total_percorrido](float, float raio) {
         total_percorrido += (2.f * std::numbers::pi_v<float> * std::abs(raio)) / 2.f;
+        return util::Iter::Continue;
     });
-    LOG("total percorrido = ", total_percorrido);
 
     const auto steps_por_mm_ratio = util::MS_POR_MM / (duracao / total_percorrido);
-    LOG("ratio = ", steps_por_mm_ratio);
 
     if (duracao) {
         soft_endstop._enabled = false;
@@ -75,9 +79,6 @@ void L3() {
         planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_POR_MM_Y * steps_por_mm_ratio;
         planner.refresh_positioning();
     }
-
-    auto comeco = millis();
-    LOG("comecando L3 - ", comeco);
 
     if (despejar_agua)
         Bico::the().despejar_volume(duracao, volume_agua);
@@ -93,7 +94,13 @@ void L3() {
         char buffer_raio[16] = {};
         dtostrf(raio, 0, 2, buffer_raio);
 
+        if (associado_a_estacao && !Fila::the().executando()) {
+            vaza = true;
+            return util::Iter::Break;
+        }
+
         executar_fmt("G2 F5000 X%s I%s", buffer_diametro, buffer_raio);
+        return util::Iter::Continue;
     });
 
     if (despejar_agua)
@@ -101,14 +108,15 @@ void L3() {
 
     planner.synchronize();
 
-    LOG("terminado L3 - delta = ", millis() - comeco);
-
     if (duracao) {
         soft_endstop._enabled = true;
         planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X;
         planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_POR_MM_Y;
         planner.refresh_positioning();
     }
+
+    if (vaza)
+        return;
 
     if (series % 2 != comecar_na_borda) {
         executar_fmt("G0 F50000 X%s", buffer_raio);

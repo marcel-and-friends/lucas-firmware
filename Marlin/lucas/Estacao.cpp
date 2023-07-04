@@ -166,14 +166,15 @@ void Estacao::set_bloqueada(bool b) {
         ESTACAO_LOG(m_bloqueada ? "" : "des", "bloqueada");
 }
 
-void Estacao::set_status(Status status) {
+void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
     if (m_status == status)
         return;
 
     m_status = status;
     info::evento(NovoStatus{
         .estacao = index(),
-        .novo_status = m_status });
+        .novo_status = m_status,
+        .id_receita = id_receita });
     switch (m_status) {
     case Status::FREE:
         WRITE(m_pino_led, LOW);

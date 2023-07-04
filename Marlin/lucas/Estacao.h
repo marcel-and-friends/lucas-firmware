@@ -2,6 +2,7 @@
 
 #include <array>
 #include <string>
+#include <optional>
 #include <string_view>
 #include <lucas/lucas.h>
 #include <lucas/Receita.h>
@@ -84,7 +85,7 @@ public:
     void set_bloqueada(bool);
 
     Status status() const { return m_status; }
-    void set_status(Status);
+    void set_status(Status, std::optional<uint32_t> id_receita = std::nullopt);
 
 public:
     class NovoStatus : public info::Evento<NovoStatus, "novoStatus"> {
@@ -92,10 +93,13 @@ public:
         void gerar_json_impl(JsonObject o) const {
             o["estacao"] = estacao;
             o["status"] = static_cast<int>(novo_status);
+            if (id_receita)
+                o["idReceita"] = *id_receita;
         }
 
         size_t estacao;
         Status novo_status;
+        std::optional<uint32_t> id_receita;
     };
 
 private:

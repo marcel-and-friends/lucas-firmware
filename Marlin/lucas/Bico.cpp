@@ -31,7 +31,6 @@ void Bico::tick() {
                 const auto volume_total_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
                 if (m_volume_total_desejado) {
                     const auto fluxo_ideal = (m_volume_total_desejado - volume_total_despejado) / ((m_duracao - m_tempo_decorrido) / 1000);
-                    BICO_LOG("fluxo ideal = ", fluxo_ideal, "mL/s");
                     aplicar_forca(ControladorFluxo::the().melhor_valor_digital(fluxo_ideal));
                 }
             }
