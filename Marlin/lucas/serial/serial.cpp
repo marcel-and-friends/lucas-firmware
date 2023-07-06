@@ -17,14 +17,14 @@ bool hooks() {
                 if (hook.callback && hook.buffer_size)
                     hook.callback({ hook.buffer, hook.buffer_size });
                 hook.reset();
-                LOG(STR_OK);
+                LOG("juju");
                 hook_ativo = nullptr;
                 break;
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
                 if (++hook.counter >= MAX_BYTES) {
                     hook.counter = 0;
-                    LOG(STR_OK);
+                    LOG("ok");
                 }
             }
         } else {

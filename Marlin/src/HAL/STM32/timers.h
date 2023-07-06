@@ -41,14 +41,15 @@
 #define HAL_TIMER_TYPE_MAX UINT16_MAX
 
 // Marlin timer_instance[] content (unrelated to timer selection)
-#define MF_TIMER_STEP       0  // Timer Index for Stepper
-#define MF_TIMER_TEMP       1  // Timer Index for Temperature
-#define MF_TIMER_PULSE      MF_TIMER_STEP
+#define MF_TIMER_STEP 0  // Timer Index for Stepper
+#define MF_TIMER_TEMP 1  // Timer Index for Temperature
+#define MF_TIMER_LUCAS 2 // Timer Index for Lucas!!!
+#define MF_TIMER_PULSE MF_TIMER_STEP
 
-#define TIMER_INDEX_(T) TIMER##T##_INDEX  // TIMER#_INDEX enums (timer_index_t) depend on TIM#_BASE defines.
-#define TIMER_INDEX(T) TIMER_INDEX_(T)    // Convert Timer ID to HardwareTimer_Handle index.
+#define TIMER_INDEX_(T) TIMER##T##_INDEX // TIMER#_INDEX enums (timer_index_t) depend on TIM#_BASE defines.
+#define TIMER_INDEX(T) TIMER_INDEX_(T)   // Convert Timer ID to HardwareTimer_Handle index.
 
-#define TEMP_TIMER_FREQUENCY 1000   // Temperature::isr() is expected to be called at around 1kHz
+#define TEMP_TIMER_FREQUENCY 1000 // Temperature::isr() is expected to be called at around 1kHz
 
 // TODO: get rid of manual rate/prescale/ticks/cycles taken for procedures in stepper.cpp
 #define STEPPER_TIMER_RATE 2000000 // 2 Mhz
@@ -71,17 +72,17 @@ extern void Step_Handler();
 extern void Temp_Handler();
 
 #ifndef HAL_STEP_TIMER_ISR
-  #define HAL_STEP_TIMER_ISR() void Step_Handler()
+    #define HAL_STEP_TIMER_ISR() void Step_Handler()
 #endif
 #ifndef HAL_TEMP_TIMER_ISR
-  #define HAL_TEMP_TIMER_ISR() void Temp_Handler()
+    #define HAL_TEMP_TIMER_ISR() void Temp_Handler()
 #endif
 
 // ------------------------
 // Public Variables
 // ------------------------
 
-extern HardwareTimer *timer_instance[];
+extern HardwareTimer* timer_instance[];
 
 // ------------------------
 // Public functions
@@ -98,22 +99,22 @@ void SetTimerInterruptPriorities();
 
 // FORCE_INLINE because these are used in performance-critical situations
 FORCE_INLINE bool HAL_timer_initialized(const uint8_t timer_num) {
-  return timer_instance[timer_num] != nullptr;
+    return timer_instance[timer_num] != nullptr;
 }
 FORCE_INLINE static hal_timer_t HAL_timer_get_count(const uint8_t timer_num) {
-  return HAL_timer_initialized(timer_num) ? timer_instance[timer_num]->getCount() : 0;
+    return HAL_timer_initialized(timer_num) ? timer_instance[timer_num]->getCount() : 0;
 }
 
 // NOTE: Method name may be misleading.
 // STM32 has an Auto-Reload Register (ARR) as opposed to a "compare" register
 FORCE_INLINE static void HAL_timer_set_compare(const uint8_t timer_num, const hal_timer_t overflow) {
-  if (HAL_timer_initialized(timer_num)) {
-    timer_instance[timer_num]->setOverflow(overflow + 1, TICK_FORMAT); // Value decremented by setOverflow()
-    // wiki: "force all registers (Autoreload, prescaler, compare) to be taken into account"
-    // So, if the new overflow value is less than the count it will trigger a rollover interrupt.
-    if (overflow < timer_instance[timer_num]->getCount())  // Added 'if' here because reports say it won't boot without it
-      timer_instance[timer_num]->refresh();
-  }
+    if (HAL_timer_initialized(timer_num)) {
+        timer_instance[timer_num]->setOverflow(overflow + 1, TICK_FORMAT); // Value decremented by setOverflow()
+        // wiki: "force all registers (Autoreload, prescaler, compare) to be taken into account"
+        // So, if the new overflow value is less than the count it will trigger a rollover interrupt.
+        if (overflow < timer_instance[timer_num]->getCount()) // Added 'if' here because reports say it won't boot without it
+            timer_instance[timer_num]->refresh();
+    }
 }
 
 #define HAL_timer_isr_prologue(T) NOOP

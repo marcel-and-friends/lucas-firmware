@@ -63,7 +63,7 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            cmd::executar_fmt("M140 S%s", v.as<const char*>());
+            // cmd::executar_fmt("M140 S%s", v.as<const char*>());
         } break;
         case 2: { // estacoes bloqueadas
             if (!v.is<JsonArrayConst>()) {
@@ -78,7 +78,7 @@ void interpretar_json(std::span<char> buffer) {
             }
 
             Estacao::for_each([&array](Estacao& estacao) {
-                estacao.set_bloqueada(array[estacao.index()].as<bool>());
+                estacao.set_bloqueada(!array[estacao.index()].as<bool>());
                 return util::Iter::Continue;
             });
         } break;
@@ -149,8 +149,8 @@ void interpretar_json(std::span<char> buffer) {
 }
 
 void print_json(const DocumentoJson& doc) {
-    SERIAL_ECHOPGM("#");
+    SERIAL_CHAR('#');
     serializeJson(doc, SERIAL_IMPL);
-    SERIAL_ECHOPGM("#\n");
+    SERIAL_ECHOLNPGM("#");
 }
 }

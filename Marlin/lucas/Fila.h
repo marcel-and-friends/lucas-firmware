@@ -95,6 +95,10 @@ public:
     friend class InfoEstacoes;
 
 private:
+    void executar_passo(Estacao&, Receita&);
+
+    void compensar_passo_atrasado(Estacao&, Receita&);
+
     bool possui_colisoes_com_outras_receitas(Receita&);
 
     void remover_receita(Estacao::Index);
@@ -106,7 +110,7 @@ private:
     Estacao::Index m_estacao_ativa = Estacao::INVALIDA;
 
     // para quando não há receita ativa mas não queremos executar a fila
-    bool m_ocupado = false;
+    bool m_ocupar_fila = false;
 
     struct ReceitaInfo {
         std::unique_ptr<Receita> receita = nullptr;
