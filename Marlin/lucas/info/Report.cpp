@@ -5,7 +5,7 @@ namespace lucas::info {
 Report::Lista Report::s_reports = {};
 
 void Report::make(const char* nome, millis_t intervalo, Callback callback, CallbackCondicao condicao) {
-    if (s_num_reports >= s_reports.size() - 1) {
+    if (s_num_reports >= s_reports.size()) {
         LOG("muitos reports!! aumenta a capacidade ou diminui a quantidade");
         return;
     }

@@ -41,9 +41,9 @@ void Bico::tick() {
         if (m_tick_final) {
             if (tick - m_tick_final >= TEMPO_PARA_DESLIGAR_O_BREAK) {
                 digitalWrite(pino::BREAK, HIGH);
-                const auto pulsos = static_cast<uint32_t>(s_contador_de_pulsos - m_pulsos_no_final_do_despejo);
-                BICO_LOG("desligando break apos despejo - [delta = ", tick - m_tick_final, " | pulsos extras = ", pulsos, "]");
                 m_tick_final = 0;
+                // const auto pulsos = static_cast<uint32_t>(s_contador_de_pulsos - m_pulsos_no_final_do_despejo);
+                // BICO_LOG("desligando break apos despejo - [delta = ", tick - m_tick_final, " | pulsos extras = ", pulsos, "]");
             }
         }
     }
@@ -71,14 +71,15 @@ void Bico::desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital)
 void Bico::desligar() {
     const auto volume_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
     const auto pulsos = static_cast<uint32_t>(s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo);
-    BICO_LOG("finalizando despejo - [delta = ", m_tempo_decorrido, "ms | volume despejado = ", volume_despejado, " | pulsos = ", pulsos, "]");
+    BICO_LOG("finalizando despejo - [delta = ", m_tempo_decorrido, "ms | volume = ", volume_despejado, " | pulsos = ", pulsos, "]");
+
+    aplicar_forca(0);
     m_ativo = false;
     m_tick_comeco = 0;
     m_tick_final = millis();
     m_duracao = 0;
     m_volume_total_desejado = 0.f;
     m_tempo_decorrido = 0;
-    aplicar_forca(0);
     m_pulsos_no_inicio_do_despejo = 0;
     m_pulsos_no_final_do_despejo = s_contador_de_pulsos;
 }

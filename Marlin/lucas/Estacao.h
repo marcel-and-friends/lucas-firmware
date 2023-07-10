@@ -29,6 +29,15 @@ public:
                 break;
     }
 
+    static void for_each(util::IterCallback<Estacao&, size_t> auto&& callback) {
+        if (s_num_estacoes == 0)
+            return;
+
+        for (size_t i = 0; i < s_num_estacoes; ++i)
+            if (std::invoke(FWD(callback), s_lista[i], i) == util::Iter::Break)
+                break;
+    }
+
     static void for_each_if(auto&& condicao, util::IterCallback<Estacao&> auto&& callback) {
         if (s_num_estacoes == 0)
             return;
@@ -93,7 +102,7 @@ public:
         void gerar_json_impl(JsonObject o) const {
             o["estacao"] = estacao;
             o["status"] = static_cast<int>(novo_status);
-            if (id_receita)
+            if (id_receita.has_value())
                 o["idReceita"] = *id_receita;
         }
 

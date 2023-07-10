@@ -13,11 +13,13 @@ bool hooks() {
         if (hook_ativo) {
             auto& hook = *hook_ativo;
             if (hook.delimitador == peek) {
+                hook.buffer[hook.buffer_size] = 0;
                 SERIAL_IMPL.read();
                 if (hook.callback && hook.buffer_size)
                     hook.callback({ hook.buffer, hook.buffer_size });
+
                 hook.reset();
-                LOG("juju");
+                LOG("ok");
                 hook_ativo = nullptr;
                 break;
             } else {

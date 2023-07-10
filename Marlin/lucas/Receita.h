@@ -15,9 +15,6 @@ namespace lucas {
 class Receita {
 public:
     struct Passo {
-        // o offset do primeiro ataque onde a receita começa
-        millis_t comeco_rel = 0;
-
         millis_t comeco_abs = 0;
 
         // a duracao total
@@ -38,27 +35,7 @@ public:
             return comeco_abs + duracao;
         }
 
-        bool colide_com(const Passo& outro) const {
-            // dois ataques colidem se:
-
-            // 1. um comeca dentro do outro
-            if (this->comeco_abs >= outro.comeco_abs && this->comeco_abs <= outro.fim())
-                return true;
-
-            // 2. um termina dentro do outro
-            if (this->fim() >= outro.comeco_abs && this->fim() <= outro.fim())
-                return true;
-
-            // 3. a distancia entre o comeco de um e o fim do outro é menor que o tempo de viagem de uma estacao à outra
-            if (this->comeco_abs > outro.fim() && this->comeco_abs - outro.fim() < util::MARGEM_DE_VIAGEM)
-                return true;
-
-            // 4. a distancia entre o fim de um e o comeco do outro é menor que o tempo de viagem de uma estacao à outra
-            if (this->fim() < outro.comeco_abs && outro.comeco_abs - this->fim() < util::MARGEM_DE_VIAGEM)
-                return true;
-
-            return false;
-        }
+        bool colide_com(const Passo& outro) const;
     };
 
 public:
@@ -72,9 +49,11 @@ public:
     Receita& operator=(Receita&&) = delete;
 
 public:
-    bool executar_passo();
+    bool executar_passo_atual();
 
     void mapear_passos_pendentes(millis_t tick_inicial);
+
+    void desmapear_passos();
 
     bool passos_pendentes_estao_mapeados();
 
@@ -85,10 +64,9 @@ public:
             return;
         }
 
-        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i)
             if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
-                break;
-        }
+                return;
     }
 
     void for_each_passo_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
@@ -97,24 +75,41 @@ public:
             return;
         }
 
-        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i)
             if (std::invoke(FWD(callback), m_ataques[i], i + 1) == util::Iter::Break)
-                break;
-        }
+                return;
     }
 
-    void for_each_ataque_pendente(util::IterCallback<Passo&> auto&& callback) {
-        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
+    void for_each_passo_pendente(util::IterCallback<const Passo&> auto&& callback) const {
+        if (m_escaldo.has_value() && !m_escaldou) {
+            std::invoke(FWD(callback), m_escaldo.value());
+            return;
+        }
+
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i)
             if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
-                break;
-        }
+                return;
     }
 
-    void for_each_ataque_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
-        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i) {
-            if (std::invoke(FWD(callback), m_ataques[i], i) == util::Iter::Break)
-                break;
+    void for_each_passo_pendente(util::IterCallback<const Passo&, size_t> auto&& callback) const {
+        if (m_escaldo.has_value() && !m_escaldou) {
+            std::invoke(FWD(callback), m_escaldo.value(), 0);
+            return;
         }
+
+        for (size_t i = m_ataque_atual; i < m_num_ataques; ++i)
+            if (std::invoke(FWD(callback), m_ataques[i], i + 1) == util::Iter::Break)
+                return;
+    }
+
+    void for_each_passo(util::IterCallback<Passo&> auto&& callback) {
+        if (m_escaldo.has_value())
+            if (std::invoke(FWD(callback), m_escaldo.value()) == util::Iter::Break)
+                return;
+
+        for (size_t i = 0; i < m_num_ataques; ++i)
+            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
+                return;
     }
 
 public:

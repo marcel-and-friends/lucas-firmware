@@ -49,4 +49,5 @@ void L3();
 // N - Número da estação
 void L5();
 void L6();
+void L7();
 }

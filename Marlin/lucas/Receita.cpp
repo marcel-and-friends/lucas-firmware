@@ -18,10 +18,10 @@ std::unique_ptr<Receita> Receita::padrao() {
 
     { // ataques
         constexpr auto passos = std::array{
-            Passo{ .comeco_rel = 0, .duracao = 6000, .intervalo = 24000 },
-            Passo{ .comeco_rel = 30000, .duracao = 9000, .intervalo = 30000 },
-            Passo{ .comeco_rel = 69000, .duracao = 10000, .intervalo = 35000 },
-            Passo{ .comeco_rel = 114000, .duracao = 10000 }
+            Passo{ .duracao = 6000, .intervalo = 24000 },
+            Passo{ .duracao = 9000, .intervalo = 30000 },
+            Passo{ .duracao = 10000, .intervalo = 35000 },
+            Passo{ .duracao = 10000 }
         };
         constexpr auto gcodes = std::array{
             "L3 D7 N3 R1 T6000 G60",
@@ -55,6 +55,10 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
 
     // yum have, a problem  in yum brain
     auto rec = std::unique_ptr<Receita>(new Receita);
+    if (!rec) {
+        LOG("ERRO - nao foi possivel alocar receita");
+        return nullptr;
+    }
 
     { // informacoes gerais (e obrigatorias)
         rec->m_id = json["id"].as<size_t>();
@@ -77,7 +81,6 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
         for (size_t i = 0; i < ataques_obj.size(); ++i) {
             auto ataque_obj = ataques_obj[i];
             auto& ataque = rec->m_ataques[i];
-            ataque.comeco_rel = ataque_obj["comeco"].as<millis_t>();
             ataque.duracao = ataque_obj["duracao"].as<millis_t>();
             strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
             if (ataque_obj.containsKey("intervalo")) {
@@ -93,7 +96,29 @@ std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
     return rec;
 }
 
-bool Receita::executar_passo() {
+bool Receita::Passo::colide_com(const Passo& outro) const {
+    // dois ataques colidem se:
+
+    // 1. um comeca dentro do outro
+    if (this->comeco_abs >= outro.comeco_abs && this->comeco_abs <= outro.fim())
+        return true;
+
+    // 2. um termina dentro do outro
+    if (this->fim() >= outro.comeco_abs && this->fim() <= outro.fim())
+        return true;
+
+    // 3. a distancia entre o comeco de um e o fim do outro é menor que o tempo de viagem de uma estacao à outra
+    if (this->comeco_abs > outro.fim() && this->comeco_abs - outro.fim() < util::MARGEM_DE_VIAGEM)
+        return true;
+
+    // 4. a distancia entre o fim de um e o comeco do outro é menor que o tempo de viagem de uma estacao à outra
+    if (this->fim() < outro.comeco_abs && outro.comeco_abs - this->fim() < util::MARGEM_DE_VIAGEM)
+        return true;
+
+    return false;
+}
+
+bool Receita::executar_passo_atual() {
     if (m_escaldo.has_value() && !m_escaldou) {
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
         m_escaldou = true;
@@ -104,9 +129,16 @@ bool Receita::executar_passo() {
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
-    for_each_passo_pendente([&](auto& passo) {
+    for_each_passo_pendente([&](Passo& passo) {
         passo.comeco_abs = tick;
         tick += passo.duracao + passo.intervalo;
+        return util::Iter::Continue;
+    });
+}
+
+void Receita::desmapear_passos() {
+    for_each_passo([](Passo& passo) {
+        passo.comeco_abs = 0;
         return util::Iter::Continue;
     });
 }

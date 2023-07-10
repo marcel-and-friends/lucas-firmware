@@ -94,7 +94,7 @@ void L3() {
         char buffer_raio[16] = {};
         dtostrf(raio, 0, 2, buffer_raio);
 
-        if (associado_a_estacao && !Fila::the().executando()) {
+        if (associado_a_estacao && !Fila::the().executando()) [[unlikely]] {
             vaza = true;
             return util::Iter::Break;
         }

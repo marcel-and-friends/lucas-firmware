@@ -27,14 +27,17 @@ void Estacao::iniciar(size_t num) {
         int pino_led;
     };
 
-    static constexpr std::array<InfoEstacao, Estacao::NUM_MAX_ESTACOES> infos = {
+    constexpr std::array<InfoEstacao, Estacao::NUM_MAX_ESTACOES> infos = {
         InfoEstacao{.pino_botao = PC8,  .pino_led = PE13},
+        InfoEstacao{ .pino_botao = PC4, .pino_led = PD13},
+        InfoEstacao{ .pino_botao = PC4, .pino_led = PD13},
+        InfoEstacao{ .pino_botao = PC4, .pino_led = PD13},
         InfoEstacao{ .pino_botao = PC4, .pino_led = PD13}
     };
 
     for (size_t i = 0; i < num; i++) {
         auto& info = infos.at(i);
-        auto& estacao = Estacao::lista().at(i);
+        auto& estacao = s_lista.at(i);
         estacao.set_botao(info.pino_botao);
         estacao.set_led(info.pino_led);
         // todas as maquinas começam livres
@@ -48,6 +51,7 @@ void Estacao::iniciar(size_t num) {
 
 void Estacao::tick() {
     // atualizacao dos estados das estacoes
+#if 0 // VOLTAR QUANDO TIVER FIACAO
     {
         for_each([](Estacao& estacao) {
             const auto tick = millis();
@@ -68,7 +72,7 @@ void Estacao::tick() {
                         estacao.set_tick_botao_segurado(tick);
 
                     if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
-                        Fila::the().cancelar_receita(estacao.index());
+                        Fila::the().cancelar_receita_da_estacao(estacao.index());
                         estacao.set_receita_cancelada(true);
                         return util::Iter::Continue;
                     }
@@ -93,11 +97,11 @@ void Estacao::tick() {
                 switch (estacao.status()) {
                 case Status::FREE:
                     // isso aqui é so qnd nao tiver conectado no app
-                    Fila::the().agendar_receita(estacao.index(), Receita::padrao());
+                    Fila::the().agendar_receita_para_estacao(Receita::padrao(), estacao.index());
                     break;
                 case Status::WAITING_START:
                 case Status::INITIALIZE_COFFEE:
-                    Fila::the().mapear_receita(estacao.index());
+                    Fila::the().mapear_receita_para_estacao(estacao.index());
                     break;
                 case Status::IS_READY:
                     estacao.set_status(Status::FREE);
@@ -110,6 +114,7 @@ void Estacao::tick() {
             return util::Iter::Continue;
         });
     }
+#endif
 
     // atualizacao das leds
     {

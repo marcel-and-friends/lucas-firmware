@@ -47,7 +47,7 @@ enum class Iter {
     Break
 };
 
-static constexpr millis_t MARGEM_DE_VIAGEM = 2000;
+static constexpr millis_t MARGEM_DE_VIAGEM = 1000;
 
 template<typename FN, typename... Args>
 concept IterCallback = std::invocable<FN, Args...> && std::same_as<std::invoke_result_t<FN, Args...>, Iter>;

@@ -5,7 +5,7 @@ namespace lucas::serial {
 HookDelimitado::Lista HookDelimitado::s_hooks = {};
 
 void HookDelimitado::make(char delimitador, HookCallback callback) {
-    if (s_num_hooks >= s_hooks.size() - 1) {
+    if (s_num_hooks >= s_hooks.size()) {
         LOG("muitos hooks!! aumenta a capacidade ou diminui a quantidade");
         return;
     }

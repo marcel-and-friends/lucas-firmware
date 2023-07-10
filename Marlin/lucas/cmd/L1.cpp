@@ -1,6 +1,7 @@
 #include <lucas/cmd/cmd.h>
 #include <src/gcode/parser.h>
 #include <lucas/Bico.h>
+#include <lucas/Fila.h>
 #include <lucas/Estacao.h>
 
 namespace lucas::cmd {
@@ -10,7 +11,11 @@ void L1() {
     else
         Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'));
 
-    while (Bico::the().ativo())
+    const bool associado_a_estacao = Fila::the().executando();
+    while (Bico::the().ativo()) {
         idle();
+        if (associado_a_estacao && !Fila::the().executando())
+            return;
+    }
 }
 }
