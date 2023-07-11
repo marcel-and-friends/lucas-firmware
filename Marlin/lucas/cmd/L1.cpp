@@ -14,7 +14,7 @@ void L1() {
     const bool associado_a_estacao = Fila::the().executando();
     while (Bico::the().ativo()) {
         idle();
-        if (associado_a_estacao && !Fila::the().executando())
+        if (associado_a_estacao && !Fila::the().executando()) [[unlikely]]
             return;
     }
 }

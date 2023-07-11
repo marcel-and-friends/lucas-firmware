@@ -6,19 +6,17 @@
 #include <lucas/Fila.h>
 #include <lucas/cmd/cmd.h>
 
-#define ESTACAO_LOG(...) LOG("ESTACAO #", this->numero(), ": ", "", __VA_ARGS__)
-
 namespace lucas {
 Estacao::Lista Estacao::s_lista = {};
 
-void Estacao::iniciar(size_t num) {
+void Estacao::inicializar(size_t num) {
     if (num > NUM_MAX_ESTACOES) {
-        LOG("numero de estacoes invalido - [max = ", NUM_MAX_ESTACOES, "]");
+        LOG_ERR("numero de estacoes invalido - [max = ", NUM_MAX_ESTACOES, "]");
         return;
     }
 
     if (s_num_estacoes) {
-        LOG("estacoes ja iniciadas");
+        LOG("estacoes ja foram inicializadas");
         return;
     }
 
@@ -41,7 +39,7 @@ void Estacao::iniciar(size_t num) {
         estacao.set_botao(info.pino_botao);
         estacao.set_led(info.pino_led);
         // todas as maquinas começam livres
-        estacao.set_status(Status::FREE);
+        estacao.set_status(Status::Livre);
     }
 
     s_num_estacoes = num;
@@ -95,16 +93,16 @@ void Estacao::tick() {
                 }
 
                 switch (estacao.status()) {
-                case Status::FREE:
+                case Status::Livre:
                     // isso aqui é so qnd nao tiver conectado no app
                     Fila::the().agendar_receita_para_estacao(Receita::padrao(), estacao.index());
                     break;
-                case Status::WAITING_START:
-                case Status::INITIALIZE_COFFEE:
+                case Status::AguardandoConfirmacao:
+                case Status::AguardandoCafe:
                     Fila::the().mapear_receita_para_estacao(estacao.index());
                     break;
-                case Status::IS_READY:
-                    estacao.set_status(Status::FREE);
+                case Status::Pronto:
+                    estacao.set_status(Status::Livre);
                     break;
                 default:
                     break;
@@ -124,10 +122,10 @@ void Estacao::tick() {
         // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
         static bool ultimo_estado = true;
         static millis_t ultimo_tick_atualizado = 0;
-        const auto tick = millis();
-        if (tick - ultimo_tick_atualizado >= TIMER_LEDS) {
+
+        if (millis() - ultimo_tick_atualizado >= TIMER_LEDS) {
             ultimo_estado = !ultimo_estado;
-            ultimo_tick_atualizado = tick;
+            ultimo_tick_atualizado = millis();
             for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
                 // aguardando input do usuário - led piscando
                 WRITE(estacao.led(), ultimo_estado);
@@ -168,7 +166,7 @@ void Estacao::set_bloqueada(bool b) {
     auto antigo = m_bloqueada;
     m_bloqueada = b;
     if (antigo != m_bloqueada)
-        ESTACAO_LOG(m_bloqueada ? "" : "des", "bloqueada");
+        LOG("estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
 }
 
 void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
@@ -181,16 +179,16 @@ void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
         .novo_status = m_status,
         .id_receita = id_receita });
     switch (m_status) {
-    case Status::FREE:
+    case Status::Livre:
         WRITE(m_pino_led, LOW);
-        break;
-    case Status::SCALDING:
-    case Status::MAKING_COFFEE:
-    case Status::NOTIFICATION_TIME:
+        return;
+    case Status::Escaldando:
+    case Status::FazendoCafe:
+    case Status::Finalizando:
         WRITE(m_pino_led, HIGH);
-        break;
+        return;
     default:
-        break;
+        return;
     }
 }
 }

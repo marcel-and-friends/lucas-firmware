@@ -35,12 +35,4 @@ void setup() {
     wifi::conectar(LUCAS_WIFI_NOME_SENHA);
 #endif
 }
-
-void pos_execucao_gcode() {
-    if (wifi::conectando()) {
-        if (wifi::terminou_de_conectar())
-            wifi::informar_sobre_rede();
-        return;
-    }
-}
 }

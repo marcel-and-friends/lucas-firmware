@@ -8,23 +8,22 @@
 #include <ranges>
 
 namespace lucas {
-#define FILA_LOG(...) LOG("", "FILA: ", __VA_ARGS__);
 
 // TODO: mudar isso aqui tudo pra um timer de 1mhz e executar gcode injetando na fila do marlin inves de executar na hora
 
 void Fila::tick() {
-    finalizar_receitas_em_notificacao();
+    finalizar_receitas_em_finalizacao();
     if (m_executando)
         return;
 
     if (m_estacao_executando != Estacao::INVALIDA) {
-        if (!m_fila[m_estacao_executando]) {
-            FILA_LOG("ERRO - estacao executando nao possui receita na fila - [estacao = ", m_estacao_executando, "]");
+        if (!m_fila[m_estacao_executando].ativa) {
+            LOG_ERR("estacao executando nao possui receita na fila - [estacao = ", m_estacao_executando, "]");
             m_estacao_executando = Estacao::INVALIDA;
             return;
         }
 
-        auto& receita = *m_fila[m_estacao_executando];
+        auto& receita = m_fila[m_estacao_executando].receita;
         auto& estacao = Estacao::lista().at(m_estacao_executando);
         const auto comeco = receita.passo_atual().comeco_abs;
         if (comeco == millis()) {
@@ -34,18 +33,18 @@ void Fila::tick() {
             compensar_passo_atrasado(receita, estacao);
         }
     } else {
-        for_each_receita_mapeada([this](Receita& receita, Estacao::Index estacao_idx) {
+        for_each_receita_mapeada([this](Receita& receita, size_t index) {
             const auto comeco = receita.passo_atual().comeco_abs;
             const auto tick = millis();
             // obs: a ordem desses ifs importa pq esses numeros sao unsigned! tome cuideido...
             if (comeco < tick) { // perdemos o passo :(
-                compensar_passo_atrasado(receita, Estacao::lista().at(estacao_idx));
+                compensar_passo_atrasado(receita, Estacao::lista().at(index));
                 return util::Iter::Break;
             } else if (comeco - tick <= util::MARGEM_DE_VIAGEM) { // o passo está chegando...
-                if (!Bico::the().esta_na_estacao(estacao_idx) && !planner.busy()) {
-                    m_estacao_executando = estacao_idx;
+                if (!Bico::the().esta_na_estacao(index) && !planner.busy()) {
+                    m_estacao_executando = index;
                     m_executando = true;
-                    Bico::the().viajar_para_estacao(estacao_idx);
+                    Bico::the().viajar_para_estacao(index);
                     m_executando = false;
                 }
                 return util::Iter::Break;
@@ -55,53 +54,64 @@ void Fila::tick() {
     }
 }
 
-void Fila::agendar_receita(std::unique_ptr<Receita> receita) {
+void Fila::agendar_receita(JsonObjectConst json) {
+    if (!json.containsKey("id") ||
+        !json.containsKey("tempoNotificacao") ||
+        !json.containsKey("ataques")) {
+        LOG_ERR("json da receita nao possui todos os campos obrigatorios");
+        return;
+    }
+
     for (size_t i = 0; i < m_fila.size(); i++) {
         auto& estacao = Estacao::lista().at(i);
-        if (estacao.status() != Estacao::Status::FREE || estacao.bloqueada())
+        if (estacao.status() != Estacao::Status::Livre || estacao.bloqueada())
             continue;
 
-        if (!m_fila[i]) {
-            agendar_receita_para_estacao(std::move(receita), i);
+        if (!m_fila[i].ativa) {
+            auto& receita = m_fila[i].receita;
+            receita.montar_com_json(json);
+            agendar_receita_para_estacao(receita, i);
             return;
         }
     }
 
-    FILA_LOG("ERRO - nao foi possivel encontrar uma estacao disponivel");
+    LOG_ERR("nao foi possivel encontrar uma estacao disponivel");
 }
 
-void Fila::agendar_receita_para_estacao(std::unique_ptr<Receita> receita, Estacao::Index estacao_idx) {
-    auto& estacao = Estacao::lista().at(estacao_idx);
-    if (m_fila[estacao_idx]) {
-        FILA_LOG("ERRO - estacao ja possui uma receita na fila - [estacao = ", estacao_idx, "]");
+void Fila::agendar_receita_para_estacao(Receita& receita, size_t index) {
+    auto& estacao = Estacao::lista().at(index);
+    if (m_fila[index].ativa) {
+        LOG_ERR("estacao ja possui uma receita na fila - [estacao = ", index, "]");
         return;
     }
 
-    if (estacao.status() != Estacao::Status::FREE || estacao.bloqueada()) {
-        FILA_LOG("ERRO - tentando agendar receita para uma estacao invalida [estacao = ", estacao_idx, "]");
+    if (estacao.status() != Estacao::Status::Livre || estacao.bloqueada()) {
+        LOG_ERR("tentando agendar receita para uma estacao invalida [estacao = ", index, "]");
         return;
     }
 
-    estacao.set_status(Estacao::Status::WAITING_START, receita->id());
-    adicionar_receita(std::move(receita), estacao_idx);
-    FILA_LOG("receita agendada, aguardando input - [estacao = ", estacao_idx, "]");
+    const auto status = receita.possui_escaldo() ? Estacao::Status::AguardandoConfirmacao : Estacao::Status::AguardandoCafe;
+    estacao.set_status(status, receita.id());
+    adicionar_receita(index);
+    LOG_IF(LogFila, "receita agendada, aguardando input - [estacao = ", index, "]");
 }
 
-void Fila::mapear_receita_da_estacao(Estacao::Index estacao_idx) {
-    auto& estacao = Estacao::lista().at(estacao_idx);
-    if (!m_fila[estacao_idx]) {
-        FILA_LOG("ERRO - estacao nao possui receita na fila - [estacao = ", estacao_idx, "]");
+void Fila::mapear_receita_da_estacao(size_t index) {
+    auto& estacao = Estacao::lista().at(index);
+    if (!m_fila[index].ativa) {
+        LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
         return;
     }
 
-    if (!estacao.aguardando_input() || estacao.bloqueada()) {
-        FILA_LOG("ERRO - tentando mapear receita de uma estacao invalida [estacao = ", estacao_idx, "]");
+    const bool aguardando_confirmacao = estacao.status() == Estacao::Status::AguardandoConfirmacao || estacao.status() == Estacao::Status::AguardandoCafe;
+    if (!aguardando_confirmacao || estacao.bloqueada()) {
+        LOG_ERR("tentando mapear receita de uma estacao invalida [estacao = ", index, "]");
         return;
     }
 
-    auto& receita = *m_fila[estacao_idx];
+    auto& receita = m_fila[index].receita;
     if (receita.passos_pendentes_estao_mapeados()) {
-        FILA_LOG("ERRO - receita ja esta mapeada - [estacao = ", estacao_idx, "]");
+        LOG_ERR("receita ja esta mapeada - [estacao = ", index, "]");
         return;
     }
 
@@ -143,8 +153,9 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
         // pegamos o menor valor da lista de candidatos, para que a receita comece o mais cedo possível
         // obs: nao tem perigo de dar deref no iterator direto aqui
         const auto melhor_tick = *std::min_element(candidatos.begin(), std::next(candidatos.begin(), num_candidatos));
-        FILA_LOG("receita mapeada - [estacao = ", estacao.index(), " | candidatos = ", num_candidatos, " | melhor_tick = ", melhor_tick, "]");
         receita.mapear_passos_pendentes(melhor_tick);
+
+        LOG_IF(LogFila, "receita mapeada - [estacao = ", estacao.index(), " | candidatos = ", num_candidatos, " | melhor_tick = ", melhor_tick, "]");
     } else {
         // garantimos que o bico já estará na estação antes de comecarmos
         m_executando = true;
@@ -154,15 +165,16 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
         m_estacao_executando = estacao.index();
         receita.mapear_passos_pendentes(millis());
 
-        FILA_LOG("receita mapeada - [estacao = ", estacao.index(), " | tick_inicial = ", millis(), "]");
+        LOG_IF(LogFila, "receita mapeada - [estacao = ", estacao.index(), " | tick_inicial = ", millis(), "]");
     }
 }
 
 void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
-    FILA_LOG("executando passo - [tick = ", millis(), " | estacao = ", estacao.index(), " | passo = ", receita.passo_atual_idx(), "]");
+    LOG_IF(LogFila, "executando passo - [estacao = ", estacao.index(), " | passo = ", receita.passo_atual_idx(), " | tick = ", millis(), "]");
 
     const auto index = estacao.index();
     const auto comeco = receita.passo_atual().comeco_abs;
+    const auto duracao_ideal = receita.passo_atual().duracao;
     const bool escaldo = receita.possui_escaldo() && !receita.escaldou();
 
     info::evento(NovoPasso{
@@ -171,6 +183,7 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
         .receita_id = receita.id() });
 
     m_estacao_executando = index;
+
     m_executando = true;
     const bool acabou = receita.executar_passo_atual();
     m_executando = false;
@@ -183,20 +196,22 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
 
     m_estacao_executando = Estacao::INVALIDA;
 
-    FILA_LOG("passo acabou - [duracao = ", millis() - comeco, "]");
+    const auto duracao_real = millis() - comeco;
+    const auto erro = (duracao_ideal > duracao_real) ? (duracao_ideal - duracao_real) : (duracao_real - duracao_ideal);
+    LOG_IF(LogFila, "passo acabou - [duracao = ", duracao_real, "ms | erro = ", erro, "ms]");
 
-    if (escaldo)
-        estacao.set_status(Estacao::Status::INITIALIZE_COFFEE, receita.id());
-
-    if (acabou) {
-        if (receita.tempo_de_notificacao()) {
-            estacao.set_status(Estacao::Status::NOTIFICATION_TIME, receita.id());
-            receita.set_inicio_tempo_notificacao(millis());
-            FILA_LOG("receita acabou, iniciando notificacao - [estacao = ", index, " | tempo de notificacao = ", receita.tempo_de_notificacao(), "]");
+    if (escaldo) {
+        estacao.set_status(Estacao::Status::AguardandoCafe, receita.id());
+    } else if (acabou) {
+        retirar_bico_do_caminho_se_necessario(receita, estacao);
+        if (receita.tempo_de_finalizacao()) {
+            estacao.set_status(Estacao::Status::Finalizando, receita.id());
+            receita.set_inicio_tempo_finalizacao(millis());
+            LOG_IF(LogFila, "receita acabou, iniciando finalizacao - [estacao = ", index, " | tempo = ", receita.tempo_de_finalizacao(), "ms]");
         } else { // isso aqui nao tem como acontecer mas caso aconteca ne ..
-            estacao.set_status(Estacao::Status::IS_READY, receita.id());
+            estacao.set_status(Estacao::Status::Pronto, receita.id());
             remover_receita(index);
-            FILA_LOG("receita acabou, removendo da fila - [estacao = ", index, "]");
+            LOG_IF(LogFila, "receita acabou, removendo da fila - [estacao = ", index, "]");
         }
     }
 }
@@ -209,7 +224,7 @@ void Fila::compensar_passo_atrasado(Receita& receita, Estacao& estacao) {
     const auto comeco = receita.passo_atual().comeco_abs;
     const auto delta = millis() - comeco;
 
-    FILA_LOG("perdemos um tick, compensando - [estacao = ", estacao.index(), " | comeco = ", comeco, " | delta =  ", delta, "ms]");
+    LOG_IF(LogFila, "perdeu um tick, compensando - [estacao = ", estacao.index(), " | comeco = ", comeco, " | delta =  ", delta, "ms]");
 
     receita.mapear_passos_pendentes(millis());
     executar_passo_atual(receita, estacao);
@@ -233,22 +248,22 @@ void Fila::tentar_remapear_receitas_apos_cancelamento() {
     std::array<size_t, Estacao::NUM_MAX_ESTACOES> receitas_para_remapear = {};
     size_t num_receitas_para_remapear = 0;
 
-    for_each_receita_mapeada([&](Receita& receita, size_t i) {
+    for_each_receita_mapeada([&](Receita& receita, size_t index) {
         const bool passo_min = receita.possui_escaldo() && receita.escaldou();
         const bool executou_algum_passo = receita.passo_atual_idx() > passo_min;
-        if (executou_algum_passo || m_estacao_executando == i)
-            // caso a receita ja tenha comecado não mexemos nos seus intervalos
+        if (executou_algum_passo || m_estacao_executando == index)
+            // caso a receita ja tenha comecado não é remapeada
             return util::Iter::Continue;
 
         receita.desmapear_passos();
-        receitas_para_remapear[num_receitas_para_remapear++] = i;
+        receitas_para_remapear[num_receitas_para_remapear++] = index;
 
         return util::Iter::Continue;
     });
 
     for (size_t i = 0; i < num_receitas_para_remapear; ++i) {
         const auto idx = receitas_para_remapear[i];
-        mapear_receita(*m_fila[idx], Estacao::lista().at(idx));
+        mapear_receita(m_fila[idx].receita, Estacao::lista().at(idx));
     }
 
     return;
@@ -278,18 +293,17 @@ bool Fila::possui_colisoes_com_outras_receitas(const Receita& receita_nova) {
     return colide;
 }
 
-void Fila::cancelar_receita_da_estacao(Estacao::Index estacao_idx) {
-    if (!m_fila[estacao_idx]) {
-        FILA_LOG("ERRO - tentando cancelar receita de estacao que nao esta na fila - [estacao = ", estacao_idx, "]");
+void Fila::cancelar_receita_da_estacao(size_t index) {
+    if (!m_fila[index].ativa) {
+        LOG_ERR("tentando cancelar receita de estacao que nao esta na fila - [estacao = ", index, "]");
         return;
     }
 
-    FILA_LOG("cancelando receita - [estacao = ", estacao_idx, "]");
+    remover_receita(index);
+    Estacao::lista().at(index).set_status(Estacao::Status::Livre);
+    LOG_IF(LogFila, "receita cancelada - [estacao = ", index, "]");
 
-    remover_receita(estacao_idx);
-    Estacao::lista().at(estacao_idx).set_status(Estacao::Status::FREE);
-
-    if (estacao_idx == m_estacao_executando) {
+    if (index == m_estacao_executando) {
         m_estacao_executando = Estacao::INVALIDA;
         // melhor desligar por garantia
         Bico::the().desligar();
@@ -340,42 +354,79 @@ void Fila::InfoEstacoes::gerar_json_impl(JsonObject o) const {
     });
 }
 
-void Fila::adicionar_receita(std::unique_ptr<Receita> receita, Estacao::Index estacao_idx) {
+void Fila::adicionar_receita(size_t index) {
     if (m_num_receitas == m_fila.size()) {
-        FILA_LOG("ERRO - tentando adicionar receita com a fila cheia - [estacao = ", estacao_idx, "]");
+        LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
         return;
     }
     m_num_receitas++;
-    m_fila[estacao_idx] = std::move(receita);
+    m_fila[index].ativa = true;
 }
 
-void Fila::remover_receita(Estacao::Index estacao_idx) {
+void Fila::remover_receita(size_t index) {
     if (m_num_receitas == 0) {
-        FILA_LOG("ERRO - tentando remover receita com a fila vazia - [estacao = ", estacao_idx, "]");
+        LOG_ERR("tentando remover receita com a fila vazia - [estacao = ", index, "]");
         return;
     }
     m_num_receitas--;
-    m_fila[estacao_idx] = nullptr;
+    m_fila[index].ativa = false;
+    m_fila[index].receita.resetar();
 }
 
-void Fila::finalizar_receitas_em_notificacao() {
+void Fila::finalizar_receitas_em_finalizacao() {
     if (!m_num_receitas) [[likely]]
         return;
 
     for (size_t i = 0; i < m_fila.size(); ++i) {
-        auto& receita = m_fila[i];
-        if (!receita || receita->passos_pendentes_estao_mapeados())
+        auto& info = m_fila[i];
+        auto& receita = info.receita;
+        if (!info.ativa || info.receita.passos_pendentes_estao_mapeados())
             continue;
 
         auto& estacao = Estacao::lista().at(i);
-        if (estacao.status() == Estacao::Status::NOTIFICATION_TIME) [[unlikely]] {
-            const auto delta = millis() - receita->inicio_tempo_de_notificacao();
-            if (delta >= receita->tempo_de_notificacao()) {
-                FILA_LOG("tempo de finalizacao acabou - [estacao = ", i, " | delta = ", delta, "ms]");
-                estacao.set_status(Estacao::Status::FREE, receita->id());
+        if (estacao.status() == Estacao::Status::Finalizando) [[unlikely]] {
+            const auto delta = millis() - receita.inicio_tempo_de_finalizacao();
+            if (delta >= receita.tempo_de_finalizacao()) {
+                LOG_IF(LogFila, "tempo de finalizacao acabou - [estacao = ", i, " | delta = ", delta, "ms]");
+                estacao.set_status(Estacao::Status::Pronto, receita.id());
                 remover_receita(i);
             }
         }
     }
+}
+
+void Fila::retirar_bico_do_caminho_se_necessario(Receita& receita, Estacao& estacao) {
+    size_t num_estacoes_ativas = 0;
+    for (size_t i = 0; i < m_fila.size(); ++i) {
+        if (!m_fila[i].ativa)
+            continue;
+
+        auto& outra_estacao = Estacao::lista().at(i);
+        auto& outra_receita = m_fila[i].receita;
+        if (outra_estacao.index() == estacao.index() ||
+            outra_estacao.status() == Estacao::Status::Finalizando ||
+            !outra_receita.passos_pendentes_estao_mapeados())
+            continue;
+
+        ++num_estacoes_ativas;
+    }
+
+    if (num_estacoes_ativas)
+        return;
+
+    auto primeira_estacao_desbloqueada = [] {
+        size_t res = Estacao::INVALIDA;
+        Estacao::for_each_if(std::not_fn(&Estacao::bloqueada), [&](Estacao& estacao) {
+            res = estacao.index();
+            return util::Iter::Break;
+        });
+        return res;
+    }();
+
+    if (primeira_estacao_desbloqueada == Estacao::INVALIDA)
+        // isso aqui nao é pra acontecer nunca!
+        return;
+
+    Bico::the().viajar_para_estacao(primeira_estacao_desbloqueada, -80);
 }
 }

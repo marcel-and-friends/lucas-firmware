@@ -37,14 +37,14 @@ enum ComandoDoApp {
     AgendarReceita,          // enviar uma receita para uma estacao
     RequisicaoDeInfo,        // requisicao de informacao de todas as estacoes
     AgendarReceitaPadrao,    // enviar a receita padrao para uma ou mais estacoes
-    MapearReceita,
+    ApertarBotao,            // simula os efeitos de apertar um botao
 };
 
 void interpretar_json(std::span<char> buffer) {
     DocumentoJson doc;
     const auto err = deserializeJson(doc, buffer.data(), buffer.size());
     if (err) {
-        LOG("desserializacao json falhou - [", err.c_str(), "]");
+        LOG_ERR("desserializacao json falhou - [", err.c_str(), "]");
         return;
     }
 
@@ -52,7 +52,7 @@ void interpretar_json(std::span<char> buffer) {
     for (const auto obj : root) {
         const auto chave = obj.key();
         if (chave.size() > 1) {
-            LOG("chave invalida - [", chave.c_str(), "]");
+            LOG_ERR("chave invalida - [", chave.c_str(), "]");
             continue;
         }
 
@@ -61,15 +61,15 @@ void interpretar_json(std::span<char> buffer) {
         switch (comando) {
         case InicializarEstacoes: {
             if (!v.is<size_t>()) {
-                LOG("valor json invalido para numero de estacoes");
+                LOG_ERR("valor json invalido para numero de estacoes");
                 break;
             }
 
-            Estacao::iniciar(v.as<size_t>());
+            Estacao::inicializar(v.as<size_t>());
         } break;
         case TempTargetBoiler: {
             if (!v.is<const char*>()) {
-                LOG("valor json invalido para temperatura target do boiler");
+                LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
 
@@ -77,13 +77,13 @@ void interpretar_json(std::span<char> buffer) {
         } break;
         case BloquearEstacoes: {
             if (!v.is<JsonArrayConst>()) {
-                LOG("valor json invalido para bloqueamento de bocas");
+                LOG_ERR("valor json invalido para bloqueamento de bocas");
                 break;
             }
 
             auto array = v.as<JsonArrayConst>();
             if (array.isNull() || array.size() != Estacao::num_estacoes()) {
-                LOG("array de estacoes bloqueadas invalido");
+                LOG_ERR("array de estacoes bloqueadas invalido");
                 break;
             }
 
@@ -94,13 +94,13 @@ void interpretar_json(std::span<char> buffer) {
         } break;
         case CancelarReceita: {
             if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
-                LOG("valor json invalido para cancelamento de receita");
+                LOG_ERR("valor json invalido para cancelamento de receita");
                 break;
             }
 
             auto index = v.as<size_t>();
             if (index >= Estacao::num_estacoes()) {
-                LOG("index para cancelamento de receita invalido");
+                LOG_ERR("index para cancelamento de receita invalido");
                 break;
             }
 
@@ -114,46 +114,50 @@ void interpretar_json(std::span<char> buffer) {
         } break;
         case AgendarReceita: {
             if (!v.is<JsonObjectConst>()) {
-                LOG("valor json invalido para envio de uma receita");
+                LOG_ERR("valor json invalido para envio de uma receita");
                 break;
             }
 
-            const auto obj = v.as<JsonObjectConst>();
-            Fila::the().agendar_receita(Receita::from_json(obj));
+            Fila::the().agendar_receita(v.as<JsonObjectConst>());
         } break;
         case RequisicaoDeInfo: {
             Fila::the().printar_informacoes();
         } break;
         case AgendarReceitaPadrao: {
-            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
-                LOG("valor json invalido para envio da receita padrao");
+            if (!v.is<size_t>()) {
+                LOG_ERR("valor json invalido para envio da receita padrao");
                 break;
             }
 
-            if (v.is<size_t>()) {
-                Fila::the().agendar_receita_para_estacao(Receita::padrao(), v.as<Estacao::Index>());
-            } else if (v.is<JsonArrayConst>()) {
-                for (auto idx : v.as<JsonArrayConst>()) {
-                    Fila::the().agendar_receita_para_estacao(Receita::padrao(), idx.as<Estacao::Index>());
-                }
-            }
+            for (size_t i = 0; i < v.as<size_t>(); ++i)
+                Fila::the().agendar_receita(Receita::padrao());
+
         } break;
-        case MapearReceita: {
+        case ApertarBotao: {
             if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
-                LOG("valor json invalido para mapear uma receita");
+                LOG_ERR("valor json invalido para apertar botao");
                 break;
             }
 
+            auto apertar_botao = [](size_t index) {
+                auto& estacao = Estacao::lista().at(index);
+                if (estacao.status() == Estacao::Status::Pronto) {
+                    estacao.set_status(Estacao::Status::Livre);
+                } else {
+                    Fila::the().mapear_receita_da_estacao(index);
+                }
+            };
+
             if (v.is<size_t>()) {
-                Fila::the().mapear_receita_da_estacao(v.as<size_t>());
+                apertar_botao(v.as<size_t>());
             } else if (v.is<JsonArrayConst>()) {
                 for (auto idx : v.as<JsonArrayConst>()) {
-                    Fila::the().mapear_receita_da_estacao(idx.as<size_t>());
+                    apertar_botao(idx);
                 }
             }
         } break;
         default:
-            LOG("opcao invalida - [", int(comando), "]");
+            LOG_ERR("opcao invalida - [", int(comando), "]");
         }
     }
 }

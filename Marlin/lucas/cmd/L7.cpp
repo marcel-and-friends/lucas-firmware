@@ -1,18 +1,18 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/Fila.h>
 #include <lucas/Receita.h>
+#include <lucas/cfg/cfg.h>
 
 namespace lucas::cmd {
 void L7() {
-    if (parser.seenval('P')) {
+    for (auto& opcao : cfg::opcoes)
+        if (parser.seenval(opcao.letra))
+            opcao.ativo = !opcao.ativo;
+
+    if (parser.seenval('Z')) {
         const auto pino = parser.value_int();
         SET_INPUT(pino);
-        LOG("valor = ", analogRead(pino));
-    } else {
-        Fila::the().for_each_receita_mapeada([](Receita& receita, size_t idx) {
-            LOG("comeco atual =", receita.passo_atual().comeco_abs, " | estacao = ", idx);
-            return util::Iter::Continue;
-        });
+        LOG("PINO = ", analogRead(pino));
     }
 }
 }

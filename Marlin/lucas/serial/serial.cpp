@@ -15,8 +15,11 @@ bool hooks() {
             if (hook.delimitador == peek) {
                 hook.buffer[hook.buffer_size] = 0;
                 SERIAL_IMPL.read();
-                if (hook.callback && hook.buffer_size)
+                if (hook.callback && hook.buffer_size) {
+                    LOG_IF(LogBufferSerial, "----- BUFFER -----", hook.buffer);
+                    LOG_IF(LogBufferSerial, "------------------");
                     hook.callback({ hook.buffer, hook.buffer_size });
+                }
 
                 hook.reset();
                 LOG("ok");
@@ -24,6 +27,12 @@ bool hooks() {
                 break;
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
+                if (hook.buffer_size >= sizeof(hook.buffer)) {
+                    LOG_ERR("buffer nao tem espaco o suficiente!!!");
+                    hook.reset(true);
+                    hook_ativo = nullptr;
+                    break;
+                }
                 if (++hook.counter >= MAX_BYTES) {
                     hook.counter = 0;
                     LOG("ok");

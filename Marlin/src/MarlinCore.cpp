@@ -1772,8 +1772,6 @@ void loop() {
 
         queue.advance();
 
-        lucas::pos_execucao_gcode();
-
 #if EITHER(POWER_OFF_TIMER, POWER_OFF_WAIT_FOR_COOLDOWN)
         powerManager.checkAutoPowerOff();
 #endif

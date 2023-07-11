@@ -21,9 +21,9 @@ public:
 
     void setup();
 
-    void viajar_para_estacao(Estacao&) const;
+    void viajar_para_estacao(Estacao&, int offset = 0) const;
 
-    void viajar_para_estacao(Estacao::Index) const;
+    void viajar_para_estacao(Estacao::Index, int offset = 0) const;
 
     bool esta_na_estacao(Estacao::Index) const;
 

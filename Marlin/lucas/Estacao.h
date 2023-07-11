@@ -18,7 +18,7 @@ public:
     static constexpr size_t NUM_MAX_ESTACOES = 5;
     using Lista = std::array<Estacao, NUM_MAX_ESTACOES>;
 
-    static void iniciar(size_t num);
+    static void inicializar(size_t num);
 
     static void for_each(util::IterCallback<Estacao&> auto&& callback) {
         if (s_num_estacoes == 0)
@@ -60,19 +60,19 @@ public:
 
 public:
     enum class Status {
-        FREE = 0,
-        WAITING_START,
-        SCALDING,
-        INITIALIZE_COFFEE,
-        MAKING_COFFEE,
-        NOTIFICATION_TIME,
-        IS_READY
+        Livre = 0,
+        AguardandoConfirmacao,
+        Escaldando,
+        AguardandoCafe,
+        FazendoCafe,
+        Finalizando,
+        Pronto
     };
 
     size_t numero() const;
     Index index() const;
 
-    bool aguardando_input() const { return m_status == Status::WAITING_START || m_status == Status::INITIALIZE_COFFEE || m_status == Status::IS_READY; }
+    bool aguardando_input() const { return m_status == Status::AguardandoConfirmacao || m_status == Status::AguardandoCafe || m_status == Status::Pronto; }
 
 public:
     pin_t botao() const { return m_pino_botao; }
@@ -118,7 +118,7 @@ private:
 
 private:
     // status, usado pelo app
-    Status m_status = Status::FREE;
+    Status m_status = Status::Livre;
 
     // o pino físico do nosso botão
     pin_t m_pino_botao = 0;

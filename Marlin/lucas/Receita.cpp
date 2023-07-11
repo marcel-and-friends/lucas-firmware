@@ -2,99 +2,40 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/lucas.h>
 #include <lucas/Fila.h>
+#include <lucas/info/info.h>
 #include <numeric>
 
 namespace lucas {
 // FIXME isso seria melhor sendo uma referencia unica ao inves de inicializar um objeto novo toda vez que essa função é chamada
-std::unique_ptr<Receita> Receita::padrao() {
-    auto receita_padrao = std::unique_ptr<Receita>(new Receita);
-    receita_padrao->m_tempo_de_notificacao = 60000;
-    receita_padrao->m_id = 0xF0F0; // >.<
+JsonObjectConst Receita::padrao() {
+    static StaticJsonDocument<512> doc;
+    static char json[] = R"({
+    "id": 61680,
+    "tempoNotificacao": 60000,
+    "escaldo": {
+      "duracao": 6000,
+      "gcode": "L3 D9 N3 R1 T6000 G80"
+    },
+    "ataques": [
+      {
+        "comeco": 0,
+        "duracao": 6000,
+        "intervalo": 24000,
+        "gcode": "L3 D7 N3 R1 T6000 G60"
+      }
+    ]
+  })";
 
-    { // escaldo
-        receita_padrao->m_escaldo = Passo{ .duracao = 6000 };
-        strcpy(receita_padrao->m_escaldo->gcode, "L3 D9 N3 R1 T6000 G80");
+    static bool once = false;
+    if (!once) {
+        deserializeJson(doc, json, sizeof(json));
+        once = true;
     }
 
-    { // ataques
-        constexpr auto passos = std::array{
-            Passo{ .duracao = 6000, .intervalo = 24000 },
-            Passo{ .duracao = 9000, .intervalo = 30000 },
-            Passo{ .duracao = 10000, .intervalo = 35000 },
-            Passo{ .duracao = 10000 }
-        };
-        constexpr auto gcodes = std::array{
-            "L3 D7 N3 R1 T6000 G60",
-            "L3 D7 N5 R1 T9000 G90",
-            "L3 D7 N5 R1 T10000 G100",
-            "L3 D7 N5 R1 T10000 G100"
-        };
-        static_assert(passos.size() == gcodes.size());
-
-        // isso aqui é feito dessa forma BURRA com o loop e os dois arrays pq o gcc simplesmente não consegue fazer aggreggate initialization de um array de char
-        // https://stackoverflow.com/questions/70172941/c99-designator-member-outside-of-aggregate-initializer
-        for (size_t i = 0; i < passos.size(); ++i) {
-            receita_padrao->m_ataques[i] = passos[i];
-            strcpy(receita_padrao->m_ataques[i].gcode, gcodes[i]);
-        }
-
-        receita_padrao->m_num_ataques = passos.size();
-    }
-
-    return receita_padrao;
+    return doc.as<JsonObjectConst>();
 }
 
 // TODO: alocar as receitas estaticamente no array da Fila e só modificar os dados quando necessario
-std::unique_ptr<Receita> Receita::from_json(JsonObjectConst json) {
-    if (!json.containsKey("id") ||
-        !json.containsKey("tempoNotificacao") ||
-        !json.containsKey("ataques")) {
-        LOG("ERRO - json de receita nao possui todos os campos obrigatorios");
-        return nullptr;
-    }
-
-    // yum have, a problem  in yum brain
-    auto rec = std::unique_ptr<Receita>(new Receita);
-    if (!rec) {
-        LOG("ERRO - nao foi possivel alocar receita");
-        return nullptr;
-    }
-
-    { // informacoes gerais (e obrigatorias)
-        rec->m_id = json["id"].as<size_t>();
-        rec->m_tempo_de_notificacao = json["tempoNotificacao"].as<millis_t>();
-    }
-
-    { // escaldo
-        if (json.containsKey("escaldo")) {
-            auto escaldo_obj = json["escaldo"].as<JsonObjectConst>();
-            rec->m_escaldo = Passo{
-                .duracao = escaldo_obj["duracao"].as<millis_t>(),
-            };
-            // c-string bleeehh
-            strcpy(rec->m_escaldo->gcode, escaldo_obj["gcode"].as<const char*>());
-        }
-    }
-
-    { // ataques
-        auto ataques_obj = json["ataques"].as<JsonArrayConst>();
-        for (size_t i = 0; i < ataques_obj.size(); ++i) {
-            auto ataque_obj = ataques_obj[i];
-            auto& ataque = rec->m_ataques[i];
-            ataque.duracao = ataque_obj["duracao"].as<millis_t>();
-            strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
-            if (ataque_obj.containsKey("intervalo")) {
-                ataque.intervalo = ataque_obj["intervalo"].as<millis_t>();
-            } else {
-                // um numero "invalido", significa que esse ataque é o ultimo
-                ataque.intervalo = 0;
-            }
-        }
-        rec->m_num_ataques = ataques_obj.size();
-    }
-
-    return rec;
-}
 
 bool Receita::Passo::colide_com(const Passo& outro) const {
     // dois ataques colidem se:
@@ -118,6 +59,55 @@ bool Receita::Passo::colide_com(const Passo& outro) const {
     return false;
 }
 
+void Receita::montar_com_json(JsonObjectConst json) {
+    { // informacoes gerais (e obrigatorias)
+        this->m_id = json["id"].as<size_t>();
+        this->m_tempo_de_finalizacao = json["tempoNotificacao"].as<millis_t>();
+    }
+
+    { // escaldo
+        if (json.containsKey("escaldo")) {
+            auto escaldo_obj = json["escaldo"].as<JsonObjectConst>();
+            this->m_escaldo = Passo{
+                .duracao = escaldo_obj["duracao"].as<millis_t>(),
+            };
+            // c-string bleeehh
+            strcpy(this->m_escaldo->gcode, escaldo_obj["gcode"].as<const char*>());
+        }
+    }
+
+    { // ataques
+        auto ataques_obj = json["ataques"].as<JsonArrayConst>();
+        for (size_t i = 0; i < ataques_obj.size(); ++i) {
+            auto ataque_obj = ataques_obj[i];
+            auto& ataque = this->m_ataques[i];
+            ataque.duracao = ataque_obj["duracao"].as<millis_t>();
+            strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
+            if (ataque_obj.containsKey("intervalo")) {
+                ataque.intervalo = ataque_obj["intervalo"].as<millis_t>();
+            } else {
+                // um numero "invalido", significa que esse ataque é o ultimo
+                ataque.intervalo = 0;
+            }
+        }
+        this->m_num_ataques = ataques_obj.size();
+    }
+}
+
+void Receita::resetar() {
+    m_id = 0;
+
+    m_escaldou = false;
+    m_escaldo.reset();
+
+    m_tempo_de_finalizacao = 0;
+    m_inicio_tempo_finalizacao = 0;
+
+    m_num_ataques = 0;
+    m_ataques = {};
+    m_ataque_atual = 0;
+}
+
 bool Receita::executar_passo_atual() {
     if (m_escaldo.has_value() && !m_escaldou) {
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
@@ -129,7 +119,7 @@ bool Receita::executar_passo_atual() {
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
-    for_each_passo_pendente([&](Passo& passo) {
+    for_each_passo_pendente([&](Passo& passo, size_t i) {
         passo.comeco_abs = tick;
         tick += passo.duracao + passo.intervalo;
         return util::Iter::Continue;
@@ -143,7 +133,7 @@ void Receita::desmapear_passos() {
     });
 }
 
-bool Receita::passos_pendentes_estao_mapeados() {
+bool Receita::passos_pendentes_estao_mapeados() const {
     bool estao = false;
     for_each_passo_pendente([&](auto& passo) {
         if (passo.comeco_abs != 0) {

@@ -39,9 +39,10 @@ public:
     };
 
 public:
-    static std::unique_ptr<Receita> padrao();
+    static JsonObjectConst padrao();
 
-    static std::unique_ptr<Receita> from_json(JsonObjectConst json);
+    void montar_com_json(JsonObjectConst);
+    void resetar();
 
     Receita(const Receita&) = delete;
     Receita& operator=(const Receita&) = delete;
@@ -55,7 +56,7 @@ public:
 
     void desmapear_passos();
 
-    bool passos_pendentes_estao_mapeados();
+    bool passos_pendentes_estao_mapeados() const;
 
 public:
     void for_each_passo_pendente(util::IterCallback<Passo&> auto&& callback) {
@@ -121,10 +122,10 @@ public:
         return possui_escaldo() ? escaldo() : m_ataques.front();
     }
 
-    millis_t tempo_de_notificacao() const { return m_tempo_de_notificacao; }
+    millis_t tempo_de_finalizacao() const { return m_tempo_de_finalizacao; }
 
-    millis_t inicio_tempo_de_notificacao() const { return m_inicio_tempo_notificacao; }
-    void set_inicio_tempo_notificacao(millis_t tick) { m_inicio_tempo_notificacao = tick; }
+    millis_t inicio_tempo_de_finalizacao() const { return m_inicio_tempo_finalizacao; }
+    void set_inicio_tempo_finalizacao(millis_t tick) { m_inicio_tempo_finalizacao = tick; }
 
     uint32_t id() const { return m_id; }
 
@@ -139,27 +140,22 @@ public:
     size_t passo_atual_idx() const;
 
 private:
+    friend class Fila;
     Receita() = default;
 
-    // id da receita, usado pelo app
     uint32_t m_id = 0;
 
-    // o passo do escaldo, caso a receita possua um
     std::optional<Passo> m_escaldo;
-
     bool m_escaldou = false;
 
-    // o tempo de finalização dessa receita
-    millis_t m_tempo_de_notificacao = 0;
-    millis_t m_inicio_tempo_notificacao = 0;
+    millis_t m_tempo_de_finalizacao = 0;
+    millis_t m_inicio_tempo_finalizacao = 0;
 
     static constexpr auto MAX_ATAQUES = 10; // foi decidido por marcel
 
-    // lista de todos os nossos ataques
+    // finge que isso é um vector
     size_t m_num_ataques = 0;
     std::array<Passo, MAX_ATAQUES> m_ataques = {};
-
-    // o ataque atual que estamos da receita
     size_t m_ataque_atual = 0;
 };
 }

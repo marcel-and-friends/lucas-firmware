@@ -16,17 +16,17 @@ public:
 
     void tick();
 
-    void agendar_receita(std::unique_ptr<Receita>);
+    void agendar_receita(JsonObjectConst receita_json);
 
-    void agendar_receita_para_estacao(std::unique_ptr<Receita>, Estacao::Index);
+    void agendar_receita_para_estacao(Receita&, size_t);
 
-    void mapear_receita_da_estacao(Estacao::Index);
+    void mapear_receita_da_estacao(size_t);
 
-    void cancelar_receita_da_estacao(Estacao::Index);
+    void cancelar_receita_da_estacao(size_t);
 
     void printar_informacoes();
 
-    Estacao::Index estacao_ativa() const { return m_estacao_executando; }
+    size_t estacao_ativa() const { return m_estacao_executando; }
 
     bool executando() const { return m_estacao_executando != Estacao::INVALIDA; }
 
@@ -35,11 +35,11 @@ public:
         if (!m_num_receitas) [[likely]]
             return;
 
-        for (auto& receita : m_fila) {
-            if (!receita || (excecao && receita.get() == excecao) || !(receita->passos_pendentes_estao_mapeados()))
+        for (auto& info : m_fila) {
+            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
                 continue;
 
-            if (std::invoke(FWD(callback), *receita) == util::Iter::Break)
+            if (std::invoke(FWD(callback), info.receita) == util::Iter::Break)
                 return;
         }
     };
@@ -48,39 +48,39 @@ public:
         if (!m_num_receitas) [[likely]]
             return;
 
-        for (auto& receita : m_fila) {
-            if (!receita || (excecao && receita.get() == excecao) || !(receita->passos_pendentes_estao_mapeados()))
+        for (auto& info : m_fila) {
+            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
                 continue;
 
-            if (std::invoke(FWD(callback), *receita) == util::Iter::Break)
+            if (std::invoke(FWD(callback), info.receita) == util::Iter::Break)
                 return;
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<Receita&, Estacao::Index> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita_mapeada(util::IterCallback<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
         if (!m_num_receitas) [[likely]]
             return;
 
         for (size_t i = 0; i < m_fila.size(); ++i) {
-            auto& receita = m_fila[i];
-            if (!receita || (excecao && receita.get() == excecao) || !(receita->passos_pendentes_estao_mapeados()))
+            auto& info = m_fila[i];
+            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
                 continue;
 
-            if (std::invoke(FWD(callback), *receita, i) == util::Iter::Break)
+            if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)
                 return;
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<const Receita&, Estacao::Index> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita_mapeada(util::IterCallback<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
         if (!m_num_receitas) [[likely]]
             return;
 
         for (size_t i = 0; i < m_fila.size(); ++i) {
-            auto& receita = m_fila[i];
-            if (!receita || (excecao && receita.get() == excecao) || !(receita->passos_pendentes_estao_mapeados()))
+            auto& info = m_fila[i];
+            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
                 continue;
 
-            if (std::invoke(FWD(callback), *receita, i) == util::Iter::Break)
+            if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)
                 return;
         }
     };
@@ -118,19 +118,26 @@ private:
 
     bool possui_colisoes_com_outras_receitas(const Receita&);
 
-    void adicionar_receita(std::unique_ptr<Receita>, Estacao::Index);
+    void adicionar_receita(size_t);
 
-    void remover_receita(Estacao::Index);
+    void remover_receita(size_t);
 
-    void finalizar_receitas_em_notificacao();
+    void finalizar_receitas_em_finalizacao();
+
+    void retirar_bico_do_caminho_se_necessario(Receita&, Estacao&);
 
 private:
-    Estacao::Index m_estacao_executando = Estacao::INVALIDA;
+    size_t m_estacao_executando = Estacao::INVALIDA;
 
     bool m_executando = false;
 
+    struct ReceitaInfo {
+        Receita receita;
+        bool ativa = false;
+    };
+
     // isso aqui modela meio que um hashmap mas nao quero alocar
-    std::array<std::unique_ptr<Receita>, Estacao::NUM_MAX_ESTACOES> m_fila = {};
+    std::array<ReceitaInfo, Estacao::NUM_MAX_ESTACOES> m_fila = {};
     size_t m_num_receitas = 0;
 };
 }

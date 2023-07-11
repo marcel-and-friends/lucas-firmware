@@ -122,7 +122,7 @@ void conectar(std::string_view nome_rede, std::string_view senha_rede) {
     enviar_protocolo(Protocolo::Config, config_msg);
     enviar_protocolo(Protocolo::Conectar, Operacao::Conectar);
 
-    LOG("conectando wifi na rede '", nome_rede.data(), " - ", senha_rede.data(), "'");
+    LOG_IF(LogWifi, "conectando wifi na rede '", nome_rede.data(), " - ", senha_rede.data(), "'");
     g_conectando = true;
 }
 
@@ -142,15 +142,10 @@ bool terminou_de_conectar() {
 
 void informar_sobre_rede() {
     g_conectando = false;
-    LOG("conectado!");
-    LOG("-- informacoes da rede --");
-    LOG("ip = ",
-        wifi::ip().data(),
-        " \nnome = ",
-        wifi::nome_rede().data(),
-        " \nsenha = ",
-        wifi::senha_rede().data());
-    LOG("-------------------------");
+    LOG_IF(LogWifi, "conectado!");
+    LOG_IF(LogWifi, "-- informacoes da rede --");
+    LOG_IF(LogWifi, "ip = ", wifi::ip().data(), " \nnome = ", wifi::nome_rede().data(), " \nsenha = ", wifi::senha_rede().data());
+    LOG_IF(LogWifi, "-------------------------");
 }
 
 std::string_view ip() {

@@ -23,9 +23,11 @@ struct HookDelimitado {
     }
 
 public:
-    void reset() {
+    void reset(bool hard = false) {
         counter = 0;
         buffer_size = 0;
+        if (hard)
+            memset(buffer, 0, sizeof(buffer));
     }
 
     size_t counter = 0;
