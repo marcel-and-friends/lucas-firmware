@@ -1,6 +1,5 @@
 #pragma once
 
-#include <lucas/opcoes.h>
 #include <lucas/tick.h>
 #include <lucas/util/util.h>
 #include <lucas/cfg/cfg.h>

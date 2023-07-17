@@ -8,13 +8,17 @@
 #include <ranges>
 
 namespace lucas {
+// TODO: 06/07 -> mudar isso aqui tudo pra um timer de 1mhz e executar gcode injetando na fila do marlin inves de executar na hora
+// NOTA: 14/07 -> acho que isso é impossivel de fazer sem deixar o codigo uma bosta
 
-// TODO: mudar isso aqui tudo pra um timer de 1mhz e executar gcode injetando na fila do marlin inves de executar na hora
+static millis_t s_tick_comeco_de_inatividade = 0;
+
+void Fila::setup() {
+    s_tick_comeco_de_inatividade = millis();
+}
 
 void Fila::tick() {
-    finalizar_receitas_em_finalizacao();
-    if (m_executando)
-        return;
+    tentar_aquecer_apos_inatividade();
 
     if (m_estacao_executando != Estacao::INVALIDA) {
         if (!m_fila[m_estacao_executando].ativa) {
@@ -29,24 +33,21 @@ void Fila::tick() {
         if (comeco == millis()) {
             executar_passo_atual(receita, estacao);
         } else if (comeco < millis()) {
-            // perdemos o passo :(
             compensar_passo_atrasado(receita, estacao);
         }
     } else {
         for_each_receita_mapeada([this](Receita& receita, size_t index) {
             const auto comeco = receita.passo_atual().comeco_abs;
-            const auto tick = millis();
-            // obs: a ordem desses ifs importa pq esses numeros sao unsigned! tome cuideido...
-            if (comeco < tick) { // perdemos o passo :(
+
+            // a ordem desses ifs importa por causa da subtracao de numeros unsigned, tome cuideido...
+            if (comeco < millis()) {
                 compensar_passo_atrasado(receita, Estacao::lista().at(index));
                 return util::Iter::Break;
-            } else if (comeco - tick <= util::MARGEM_DE_VIAGEM) { // o passo está chegando...
-                if (!Bico::the().esta_na_estacao(index) && !planner.busy()) {
-                    m_estacao_executando = index;
-                    m_executando = true;
-                    Bico::the().viajar_para_estacao(index);
-                    m_executando = false;
-                }
+            } else if (comeco - millis() <= util::MARGEM_DE_VIAGEM) {
+                // o passo está chegando...
+                m_estacao_executando = index;
+                LOG_IF(LogFila, "passo esta prestes a comecar - [estacao = ", index, "]");
+                Bico::the().viajar_para_estacao(index);
                 return util::Iter::Break;
             }
             return util::Iter::Continue;
@@ -56,7 +57,7 @@ void Fila::tick() {
 
 void Fila::agendar_receita(JsonObjectConst json) {
     if (!json.containsKey("id") ||
-        !json.containsKey("tempoNotificacao") ||
+        !json.containsKey("tempoFinalizacao") ||
         !json.containsKey("ataques")) {
         LOG_ERR("json da receita nao possui todos os campos obrigatorios");
         return;
@@ -90,10 +91,10 @@ void Fila::agendar_receita_para_estacao(Receita& receita, size_t index) {
         return;
     }
 
-    const auto status = receita.possui_escaldo() ? Estacao::Status::AguardandoConfirmacao : Estacao::Status::AguardandoCafe;
+    const auto status = receita.possui_escaldo() ? Estacao::Status::ConfirmandoEscaldo : Estacao::Status::ConfirmandoAtaques;
     estacao.set_status(status, receita.id());
     adicionar_receita(index);
-    LOG_IF(LogFila, "receita agendada, aguardando input - [estacao = ", index, "]");
+    LOG_IF(LogFila, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
 }
 
 void Fila::mapear_receita_da_estacao(size_t index) {
@@ -103,8 +104,7 @@ void Fila::mapear_receita_da_estacao(size_t index) {
         return;
     }
 
-    const bool aguardando_confirmacao = estacao.status() == Estacao::Status::AguardandoConfirmacao || estacao.status() == Estacao::Status::AguardandoCafe;
-    if (!aguardando_confirmacao || estacao.bloqueada()) {
+    if (!estacao.aguardando_confirmacao() || estacao.bloqueada()) {
         LOG_ERR("tentando mapear receita de uma estacao invalida [estacao = ", index, "]");
         return;
     }
@@ -115,8 +115,8 @@ void Fila::mapear_receita_da_estacao(size_t index) {
         return;
     }
 
-    const auto status_atual = int(estacao.status());
-    estacao.set_status(Estacao::Status(status_atual + 1), receita.id());
+    const auto proximo_status = int(estacao.status()) + 1;
+    estacao.set_status(Estacao::Status(proximo_status), receita.id());
     mapear_receita(receita, estacao);
 }
 
@@ -135,11 +135,12 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
                     const auto tick_inicial = passo.fim() + offset_intervalo;
                     receita.mapear_passos_pendentes(tick_inicial);
                     if (!possui_colisoes_com_outras_receitas(receita)) {
-                        if (num_candidatos < candidatos.size()) {
+                        if (num_candidatos < candidatos.size()) [[likely]] {
                             // deu boa, adicionamos o tick inicial na lista de candidatos
                             candidatos[num_candidatos++] = tick_inicial;
                         }
-                        // poderiamos parar o loop exterior aqui mas continuamos procurando em outras receitas pois talvez exista um tick inicial melhor
+                        // poderiamos parar o loop exterior aqui mas continuamos procurando em outras receitas
+                        // pois talvez exista um tick inicial melhor
                         return util::Iter::Break;
                     }
                 }
@@ -157,10 +158,7 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
 
         LOG_IF(LogFila, "receita mapeada - [estacao = ", estacao.index(), " | candidatos = ", num_candidatos, " | melhor_tick = ", melhor_tick, "]");
     } else {
-        // garantimos que o bico já estará na estação antes de comecarmos
-        m_executando = true;
         Bico::the().viajar_para_estacao(estacao);
-        m_executando = false;
 
         m_estacao_executando = estacao.index();
         receita.mapear_passos_pendentes(millis());
@@ -170,45 +168,48 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
 }
 
 void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
-    LOG_IF(LogFila, "executando passo - [estacao = ", estacao.index(), " | passo = ", receita.passo_atual_idx(), " | tick = ", millis(), "]");
+    LOG_IF(LogFila, "executando passo - [estacao = ", estacao.index(), " | passo = ", receita.passo_atual_index(), " | tick = ", millis(), "]");
 
     const auto index = estacao.index();
-    const auto comeco = receita.passo_atual().comeco_abs;
-    const auto duracao_ideal = receita.passo_atual().duracao;
     const bool escaldo = receita.possui_escaldo() && !receita.escaldou();
 
-    info::evento(NovoPasso{
-        .estacao = index,
-        .novo_passo = receita.passo_atual_idx(),
-        .receita_id = receita.id() });
+    info::evento(
+        "novoPasso",
+        [&receita, &estacao](JsonObject o) {
+            o["estacao"] = estacao.index();
+            o["passo"] = receita.passo_atual_index();
+        });
 
     m_estacao_executando = index;
 
-    m_executando = true;
-    const bool acabou = receita.executar_passo_atual();
-    m_executando = false;
+    {
+        util::FiltroUpdatesTemporario f{ Filtros::Fila }; // nada de tick()!
+        receita.executar_passo_atual();
+    }
 
     // receita foi cancelada por meios externos
     if (m_estacao_executando == Estacao::INVALIDA) [[unlikely]] {
-        tentar_remapear_receitas_apos_cancelamento();
+        receita_cancelada(index);
         return;
     }
 
     m_estacao_executando = Estacao::INVALIDA;
 
-    const auto duracao_real = millis() - comeco;
+    const auto duracao_real = millis() - receita.passo_atual().comeco_abs;
+    const auto duracao_ideal = receita.passo_atual().duracao;
     const auto erro = (duracao_ideal > duracao_real) ? (duracao_ideal - duracao_real) : (duracao_real - duracao_ideal);
     LOG_IF(LogFila, "passo acabou - [duracao = ", duracao_real, "ms | erro = ", erro, "ms]");
 
+    s_tick_comeco_de_inatividade = millis();
+
     if (escaldo) {
-        estacao.set_status(Estacao::Status::AguardandoCafe, receita.id());
-    } else if (acabou) {
-        retirar_bico_do_caminho_se_necessario(receita, estacao);
+        estacao.set_status(Estacao::Status::ConfirmandoAtaques, receita.id());
+    } else if (receita.acabou()) {
         if (receita.tempo_de_finalizacao()) {
             estacao.set_status(Estacao::Status::Finalizando, receita.id());
             receita.set_inicio_tempo_finalizacao(millis());
             LOG_IF(LogFila, "receita acabou, iniciando finalizacao - [estacao = ", index, " | tempo = ", receita.tempo_de_finalizacao(), "ms]");
-        } else { // isso aqui nao tem como acontecer mas caso aconteca ne ..
+        } else {
             estacao.set_status(Estacao::Status::Pronto, receita.id());
             remover_receita(index);
             LOG_IF(LogFila, "receita acabou, removendo da fila - [estacao = ", index, "]");
@@ -216,15 +217,17 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
     }
 }
 
+// pode acontecer do passo de uma receita nao ser executado no tick correto, pois a 'Fila::tick'
+// nao é necessariamente executada a 1mhz, quando isso acontecer o passo atrasado é executado imediatamente
+// e todos os outros sao compensados pelo tempo de atraso
 void Fila::compensar_passo_atrasado(Receita& receita, Estacao& estacao) {
-    m_executando = true;
     Bico::the().viajar_para_estacao(estacao);
-    m_executando = false;
 
     const auto comeco = receita.passo_atual().comeco_abs;
+    // esse delta já leva em consideração o tempo de viagem para a estacão em atraso
     const auto delta = millis() - comeco;
 
-    LOG_IF(LogFila, "perdeu um tick, compensando - [estacao = ", estacao.index(), " | comeco = ", comeco, " | delta =  ", delta, "ms]");
+    LOG_IF(LogFila, "perdeu um passo, compensando - [estacao = ", estacao.index(), " | comeco = ", comeco, " | delta =  ", delta, "ms]");
 
     receita.mapear_passos_pendentes(millis());
     executar_passo_atual(receita, estacao);
@@ -240,17 +243,17 @@ void Fila::compensar_passo_atrasado(Receita& receita, Estacao& estacao) {
         &receita);
 }
 
-void Fila::tentar_remapear_receitas_apos_cancelamento() {
-    if (m_num_receitas <= 1)
-        return;
-
+// ao ocorrer uma mudança na fila (ex: cancelar uma receita)
+// as receitas que ainda não começaram são trazidas para frente, para evitar grandes períodos onde a máquina não faz nada
+void Fila::remapear_receitas_apos_mudanca_na_fila() {
     // finge que isso é um vector
     std::array<size_t, Estacao::NUM_MAX_ESTACOES> receitas_para_remapear = {};
     size_t num_receitas_para_remapear = 0;
 
     for_each_receita_mapeada([&](Receita& receita, size_t index) {
-        const bool passo_min = receita.possui_escaldo() && receita.escaldou();
-        const bool executou_algum_passo = receita.passo_atual_idx() > passo_min;
+        // leia o comentario em cima da 'Receita::passo_atual_index' pra isso aqui fazer sentido
+        const size_t passo_min = receita.possui_escaldo() && receita.escaldou();
+        const bool executou_algum_passo = receita.passo_atual_index() > passo_min;
         if (executou_algum_passo || m_estacao_executando == index)
             // caso a receita ja tenha comecado não é remapeada
             return util::Iter::Continue;
@@ -261,12 +264,8 @@ void Fila::tentar_remapear_receitas_apos_cancelamento() {
         return util::Iter::Continue;
     });
 
-    for (size_t i = 0; i < num_receitas_para_remapear; ++i) {
-        const auto idx = receitas_para_remapear[i];
-        mapear_receita(m_fila[idx].receita, Estacao::lista().at(idx));
-    }
-
-    return;
+    for (auto index : receitas_para_remapear)
+        mapear_receita(m_fila[index].receita, Estacao::lista().at(index));
 }
 
 // esse algoritmo é basicamente um hit-test 2d de cada passo da receita nova com cada passo das receitas já mapeadas
@@ -301,79 +300,16 @@ void Fila::cancelar_receita_da_estacao(size_t index) {
 
     remover_receita(index);
     Estacao::lista().at(index).set_status(Estacao::Status::Livre);
-    LOG_IF(LogFila, "receita cancelada - [estacao = ", index, "]");
 
     if (index == m_estacao_executando) {
         m_estacao_executando = Estacao::INVALIDA;
-        // melhor desligar por garantia
-        Bico::the().desligar();
-        // caso a receita cancelada seja a que esta sendo executada as outras só serao remapeadas após retornar de "executar_passo_atual"
-        return;
+        // 'receita_cancelada' vai ser chamada dentro da 'executar_passo_atual'
+    } else {
+        receita_cancelada(index);
     }
-
-    tentar_remapear_receitas_apos_cancelamento();
 }
 
-void Fila::printar_informacoes() {
-    info::evento(InfoEstacoes{ .fila = *this });
-}
-
-void Fila::InfoEstacoes::gerar_json_impl(JsonObject o) const {
-    auto arr = o.createNestedArray("info");
-    fila.for_each_receita_mapeada([this, &arr](Receita& receita, size_t index) {
-        auto obj = arr.createNestedObject();
-        const auto tick = millis();
-        const auto& estacao = Estacao::lista().at(index);
-
-        obj["estacao"] = estacao.index();
-        obj["status"] = static_cast<int>(estacao.status());
-        {
-            auto receita_obj = obj.createNestedObject("infoReceita");
-            receita_obj["id"] = receita.id();
-            if (receita.ataques().front().comeco_abs) {
-                if (tick < receita.ataques().front().comeco_abs)
-                    receita_obj["tempoTotalAtaques"] = 0;
-                else
-                    receita_obj["tempoTotalAtaques"] = tick - receita.ataques().front().comeco_abs;
-            }
-            if (tick < receita.primeiro_passo().comeco_abs)
-                receita_obj["tempoTotalReceita"] = 0;
-            else
-                receita_obj["tempoTotalReceita"] = tick - receita.primeiro_passo().comeco_abs;
-        }
-        {
-            auto passo_obj = obj.createNestedObject("infoPasso");
-            passo_obj["index"] = receita.passo_atual_idx();
-            if (tick < receita.passo_atual().comeco_abs)
-                passo_obj["progresso"] = 0;
-            else
-                passo_obj["progresso"] = tick - receita.passo_atual().comeco_abs;
-        }
-
-        return util::Iter::Continue;
-    });
-}
-
-void Fila::adicionar_receita(size_t index) {
-    if (m_num_receitas == m_fila.size()) {
-        LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
-        return;
-    }
-    m_num_receitas++;
-    m_fila[index].ativa = true;
-}
-
-void Fila::remover_receita(size_t index) {
-    if (m_num_receitas == 0) {
-        LOG_ERR("tentando remover receita com a fila vazia - [estacao = ", index, "]");
-        return;
-    }
-    m_num_receitas--;
-    m_fila[index].ativa = false;
-    m_fila[index].receita.resetar();
-}
-
-void Fila::finalizar_receitas_em_finalizacao() {
+void Fila::remover_receitas_finalizadas() {
     if (!m_num_receitas) [[likely]]
         return;
 
@@ -395,38 +331,109 @@ void Fila::finalizar_receitas_em_finalizacao() {
     }
 }
 
-void Fila::retirar_bico_do_caminho_se_necessario(Receita& receita, Estacao& estacao) {
-    size_t num_estacoes_ativas = 0;
-    for (size_t i = 0; i < m_fila.size(); ++i) {
-        if (!m_fila[i].ativa)
-            continue;
+// se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
+// com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
+void Fila::tentar_aquecer_apos_inatividade() {
+    constexpr millis_t tempo_de_espera_apos_execucao = 60000 * 10; // 10min
+    static_assert(tempo_de_espera_apos_execucao >= 60000, "minimo de 1 minuto");
 
-        auto& outra_estacao = Estacao::lista().at(i);
-        auto& outra_receita = m_fila[i].receita;
-        if (outra_estacao.index() == estacao.index() ||
-            outra_estacao.status() == Estacao::Status::Finalizando ||
-            !outra_receita.passos_pendentes_estao_mapeados())
-            continue;
+    constexpr millis_t tempo_de_despejo = 1000 * 20;                    // 20s
+    constexpr float volume_a_despejar = 10 * (tempo_de_despejo / 1000); // 10 g/s
 
-        ++num_estacoes_ativas;
+    if (s_tick_comeco_de_inatividade && millis() > s_tick_comeco_de_inatividade) {
+        const auto delta = millis() - s_tick_comeco_de_inatividade;
+        if (delta >= tempo_de_espera_apos_execucao) {
+            const auto delta_em_min = delta / 60000;
+            LOG_IF(LogFila, "aquecendo apos ", delta_em_min, "min de inatividade");
+
+            Bico::the().viajar_para_esgoto();
+            Bico::the().despejar_volume_e_aguardar(tempo_de_despejo, volume_a_despejar);
+
+            LOG_IF(LogFila, "aquecimento finalizado");
+            s_tick_comeco_de_inatividade = millis();
+        }
+    }
+}
+
+void Fila::receita_cancelada(size_t index) {
+    LOG_IF(LogFila, "receita cancelada - [estacao = ", index, "]");
+    remapear_receitas_apos_mudanca_na_fila();
+}
+
+// o conceito de uma receita "em execucao" engloba somente os despejos em sí (escaldo e ataques)
+// estacões que estão aguardando input do usuário ou finalizando não possuem seus passos pendentes mapeados
+// consequentemente, não são consideradas como "em execucao"
+size_t Fila::numero_de_receitas_em_execucao() const {
+    size_t res = 0;
+    for_each_receita_mapeada([&res](const auto&) {
+        ++res;
+        return util::Iter::Continue;
+    });
+    return res;
+}
+
+void Fila::gerar_informacoes_da_fila() {
+    info::evento(
+        "infoEstacoes",
+        [this](JsonObject o) {
+            auto arr = o.createNestedArray("info");
+            for_each_receita([this, &arr](Receita& receita, size_t index) {
+                auto obj = arr.createNestedObject();
+                const auto tick = millis();
+                const auto& estacao = Estacao::lista().at(index);
+
+                obj["estacao"] = estacao.index();
+                obj["status"] = int(estacao.status());
+                {
+                    auto receita_obj = obj.createNestedObject("infoReceita");
+                    receita_obj["receitaId"] = receita.id();
+                    if (receita.ataques().front().comeco_abs) {
+                        if (tick < receita.ataques().front().comeco_abs)
+                            receita_obj["tempoTotalAtaques"] = 0;
+                        else
+                            receita_obj["tempoTotalAtaques"] = tick - receita.ataques().front().comeco_abs;
+                    }
+
+                    if (tick < receita.primeiro_passo().comeco_abs)
+                        receita_obj["tempoTotalReceita"] = 0;
+                    else
+                        receita_obj["tempoTotalReceita"] = tick - receita.primeiro_passo().comeco_abs;
+
+                    if (estacao.status() == Estacao::Status::Finalizando)
+                        if (receita.inicio_tempo_de_finalizacao() < millis())
+                            receita_obj["progressoFinalizacao"] = millis() - receita.inicio_tempo_de_finalizacao();
+                }
+                {
+                    auto passo_obj = obj.createNestedObject("infoPasso");
+                    passo_obj["index"] = receita.passo_atual_index();
+                    if (tick < receita.passo_atual().comeco_abs)
+                        passo_obj["progresso"] = 0;
+                    else
+                        passo_obj["progresso"] = tick - receita.passo_atual().comeco_abs;
+                }
+
+                return util::Iter::Continue;
+            });
+        });
+}
+
+void Fila::adicionar_receita(size_t index) {
+    if (m_num_receitas == m_fila.size()) {
+        LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
+        return;
     }
 
-    if (num_estacoes_ativas)
+    m_num_receitas++;
+    m_fila[index].ativa = true;
+}
+
+void Fila::remover_receita(size_t index) {
+    if (m_num_receitas == 0) {
+        LOG_ERR("tentando remover receita com a fila vazia - [estacao = ", index, "]");
         return;
+    }
 
-    auto primeira_estacao_desbloqueada = [] {
-        size_t res = Estacao::INVALIDA;
-        Estacao::for_each_if(std::not_fn(&Estacao::bloqueada), [&](Estacao& estacao) {
-            res = estacao.index();
-            return util::Iter::Break;
-        });
-        return res;
-    }();
-
-    if (primeira_estacao_desbloqueada == Estacao::INVALIDA)
-        // isso aqui nao é pra acontecer nunca!
-        return;
-
-    Bico::the().viajar_para_estacao(primeira_estacao_desbloqueada, -80);
+    m_num_receitas--;
+    m_fila[index].ativa = false;
 }
 }

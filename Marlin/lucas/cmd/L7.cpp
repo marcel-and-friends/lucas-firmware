@@ -5,9 +5,12 @@
 
 namespace lucas::cmd {
 void L7() {
-    for (auto& opcao : cfg::opcoes)
-        if (parser.seenval(opcao.letra))
+    for (auto& opcao : cfg::opcoes) {
+        if (opcao.id && parser.seen(opcao.id)) {
             opcao.ativo = !opcao.ativo;
+            LOG("opcao \'", AS_CHAR(opcao.id), "\' foi ", !opcao.ativo ? "des" : "", "ativada");
+        }
+    }
 
     if (parser.seenval('Z')) {
         const auto pino = parser.value_int();

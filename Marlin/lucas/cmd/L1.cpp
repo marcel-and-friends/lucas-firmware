@@ -12,10 +12,13 @@ void L1() {
         Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'));
 
     const bool associado_a_estacao = Fila::the().executando();
-    while (Bico::the().ativo()) {
-        idle();
-        if (associado_a_estacao && !Fila::the().executando()) [[unlikely]]
-            return;
-    }
+    util::aguardar_enquanto(
+        [&] {
+            // receita foi cancelada por meios externos
+            if (associado_a_estacao && !Fila::the().executando())
+                return false;
+            return Bico::the().ativo();
+        },
+        Filtros::Interacao);
 }
 }

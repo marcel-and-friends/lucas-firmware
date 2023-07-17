@@ -50,7 +50,7 @@ public:
     Receita& operator=(Receita&&) = delete;
 
 public:
-    bool executar_passo_atual();
+    void executar_passo_atual();
 
     void mapear_passos_pendentes(millis_t tick_inicial);
 
@@ -59,6 +59,16 @@ public:
     bool passos_pendentes_estao_mapeados() const;
 
 public:
+    void for_each_passo(util::IterCallback<Passo&> auto&& callback) {
+        if (m_escaldo.has_value())
+            if (std::invoke(FWD(callback), m_escaldo.value()) == util::Iter::Break)
+                return;
+
+        for (size_t i = 0; i < m_num_ataques; ++i)
+            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
+                return;
+    }
+
     void for_each_passo_pendente(util::IterCallback<Passo&> auto&& callback) {
         if (m_escaldo.has_value() && !m_escaldou) {
             std::invoke(FWD(callback), m_escaldo.value());
@@ -103,16 +113,6 @@ public:
                 return;
     }
 
-    void for_each_passo(util::IterCallback<Passo&> auto&& callback) {
-        if (m_escaldo.has_value())
-            if (std::invoke(FWD(callback), m_escaldo.value()) == util::Iter::Break)
-                return;
-
-        for (size_t i = 0; i < m_num_ataques; ++i)
-            if (std::invoke(FWD(callback), m_ataques[i]) == util::Iter::Break)
-                return;
-    }
-
 public:
     bool possui_escaldo() const { return m_escaldo.has_value(); }
     const Passo& escaldo() const { return m_escaldo.value(); }
@@ -137,7 +137,9 @@ public:
     const Passo& passo_atual() const;
     Passo& passo_atual();
 
-    size_t passo_atual_idx() const;
+    size_t passo_atual_index() const;
+
+    bool acabou() const;
 
 private:
     friend class Fila;
@@ -145,7 +147,7 @@ private:
 
     uint32_t m_id = 0;
 
-    std::optional<Passo> m_escaldo;
+    std::optional<Passo> m_escaldo = std::nullopt;
     bool m_escaldou = false;
 
     millis_t m_tempo_de_finalizacao = 0;

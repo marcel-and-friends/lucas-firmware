@@ -1,57 +1,80 @@
 #include "serial.h"
 #include <lucas/lucas.h>
-#include <lucas/serial/HookDelimitado.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
+void setup() {
+    while (SERIAL_IMPL.available())
+        SERIAL_IMPL.read();
+
+    HookDelimitado::make(
+        '#',
+        [](std::span<char> buffer) {
+            info::interpretar_json(buffer);
+        });
+
+    LOG("jujuba");
+}
+
 bool hooks() {
     constexpr auto MAX_BYTES = 64;
+    static HookDelimitado* s_hook_ativo = nullptr;
 
-    static HookDelimitado* hook_ativo = nullptr;
     while (SERIAL_IMPL.available()) {
         const auto peek = SERIAL_IMPL.peek();
-        if (hook_ativo) {
-            auto& hook = *hook_ativo;
+        if (!s_hook_ativo) {
+            LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
+
+            HookDelimitado::for_each([&](auto& hook) {
+                if (hook.delimitador == peek) {
+                    SERIAL_IMPL.read();
+
+                    LOG_IF(LogSerial, "iniciando leitura");
+
+                    s_hook_ativo = &hook;
+                    s_hook_ativo->counter = 1;
+
+                    return util::Iter::Break;
+                }
+                return util::Iter::Continue;
+            });
+        } else {
+            auto& hook = *s_hook_ativo;
             if (hook.delimitador == peek) {
-                hook.buffer[hook.buffer_size] = 0;
                 SERIAL_IMPL.read();
+
+                LOG_IF(LogSerial, "finalizando leitura");
+                hook.buffer[hook.buffer_size] = '\0';
                 if (hook.callback && hook.buffer_size) {
-                    LOG_IF(LogBufferSerial, "----- BUFFER -----", hook.buffer);
-                    LOG_IF(LogBufferSerial, "------------------");
+                    LOG_IF(LogSerial, "!BUFFER!\n", hook.buffer);
+                    LOG_IF(LogSerial, "!BUFFER!");
+
                     hook.callback({ hook.buffer, hook.buffer_size });
                 }
 
                 hook.reset();
+                s_hook_ativo = nullptr;
+
                 LOG("ok");
-                hook_ativo = nullptr;
-                break;
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
                 if (hook.buffer_size >= sizeof(hook.buffer)) {
                     LOG_ERR("buffer nao tem espaco o suficiente!!!");
                     hook.reset(true);
-                    hook_ativo = nullptr;
+                    s_hook_ativo = nullptr;
                     break;
                 }
                 if (++hook.counter >= MAX_BYTES) {
                     hook.counter = 0;
+                    LOG_IF(LogSerial, "limite de 64 atingido");
                     LOG("ok");
                 }
             }
-        } else {
-            HookDelimitado::for_each([peek](auto& hook) {
-                if (hook.delimitador == peek) {
-                    SERIAL_IMPL.read();
-                    hook_ativo = &hook;
-                    hook_ativo->counter = 1;
-                    return util::Iter::Break;
-                }
-                return util::Iter::Continue;
-            });
         }
-        if (!hook_ativo)
+
+        if (!s_hook_ativo)
             break;
     }
-    return hook_ativo;
+    return s_hook_ativo;
 }
 }

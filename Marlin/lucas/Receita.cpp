@@ -11,24 +11,41 @@ JsonObjectConst Receita::padrao() {
     static StaticJsonDocument<512> doc;
     static char json[] = R"({
     "id": 61680,
-    "tempoNotificacao": 60000,
+    "tempoFinalizacao": 60000,
     "escaldo": {
       "duracao": 6000,
       "gcode": "L3 D9 N3 R1 T6000 G80"
     },
     "ataques": [
       {
-        "comeco": 0,
         "duracao": 6000,
         "intervalo": 24000,
         "gcode": "L3 D7 N3 R1 T6000 G60"
+      },
+      {
+        "duracao": 9000,
+        "intervalo": 30000,
+        "gcode": "L3 D7 N5 R1 T9000 G90"
+      },
+      {
+        "duracao": 10000,
+        "intervalo": 35000,
+        "gcode": "L3 D7 N5 R1 T10000 G100"
+      },
+      {
+        "duracao": 9000,
+        "gcode": "L3 D7 N5 R1 T10000 G100"
       }
     ]
   })";
 
     static bool once = false;
     if (!once) {
-        deserializeJson(doc, json, sizeof(json));
+        const auto err = deserializeJson(doc, json, sizeof(json));
+        if (err) {
+            LOG_ERR("DESSERIALIZACAO DA RECEITA PADRAO FALHOU - [", err.c_str(), "]");
+            kill();
+        }
         once = true;
     }
 
@@ -60,19 +77,19 @@ bool Receita::Passo::colide_com(const Passo& outro) const {
 }
 
 void Receita::montar_com_json(JsonObjectConst json) {
-    { // informacoes gerais (e obrigatorias)
-        this->m_id = json["id"].as<size_t>();
-        this->m_tempo_de_finalizacao = json["tempoNotificacao"].as<millis_t>();
-    }
+    resetar();
+
+    m_id = json["id"].as<size_t>();
+    m_tempo_de_finalizacao = json["tempoFinalizacao"].as<millis_t>();
 
     { // escaldo
         if (json.containsKey("escaldo")) {
             auto escaldo_obj = json["escaldo"].as<JsonObjectConst>();
-            this->m_escaldo = Passo{
+            m_escaldo = Passo{
                 .duracao = escaldo_obj["duracao"].as<millis_t>(),
             };
             // c-string bleeehh
-            strcpy(this->m_escaldo->gcode, escaldo_obj["gcode"].as<const char*>());
+            strcpy(m_escaldo->gcode, escaldo_obj["gcode"].as<const char*>());
         }
     }
 
@@ -80,7 +97,7 @@ void Receita::montar_com_json(JsonObjectConst json) {
         auto ataques_obj = json["ataques"].as<JsonArrayConst>();
         for (size_t i = 0; i < ataques_obj.size(); ++i) {
             auto ataque_obj = ataques_obj[i];
-            auto& ataque = this->m_ataques[i];
+            auto& ataque = m_ataques[i];
             ataque.duracao = ataque_obj["duracao"].as<millis_t>();
             strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
             if (ataque_obj.containsKey("intervalo")) {
@@ -90,7 +107,7 @@ void Receita::montar_com_json(JsonObjectConst json) {
                 ataque.intervalo = 0;
             }
         }
-        this->m_num_ataques = ataques_obj.size();
+        m_num_ataques = ataques_obj.size();
     }
 }
 
@@ -98,7 +115,7 @@ void Receita::resetar() {
     m_id = 0;
 
     m_escaldou = false;
-    m_escaldo.reset();
+    m_escaldo = std::nullopt;
 
     m_tempo_de_finalizacao = 0;
     m_inicio_tempo_finalizacao = 0;
@@ -108,14 +125,13 @@ void Receita::resetar() {
     m_ataque_atual = 0;
 }
 
-bool Receita::executar_passo_atual() {
+void Receita::executar_passo_atual() {
     if (m_escaldo.has_value() && !m_escaldou) {
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
         m_escaldou = true;
-        return false;
+    } else {
+        GcodeSuite::process_subcommands_now(F(m_ataques[m_ataque_atual++].gcode));
     }
-    GcodeSuite::process_subcommands_now(F(passo_atual().gcode));
-    return ++m_ataque_atual >= m_num_ataques;
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
@@ -157,7 +173,14 @@ Receita::Passo& Receita::passo_atual() {
     return m_ataques[m_ataque_atual];
 }
 
-size_t Receita::passo_atual_idx() const {
+// a index dos passos de uma receita depende da existencia do escaldo
+// o primeiro ataque de uma receita com escaldo tem index 1
+// o primeiro ataque de uma receita sem escaldo tem index 0
+size_t Receita::passo_atual_index() const {
     return m_ataque_atual + (m_escaldo.has_value() && m_escaldou);
+}
+
+bool Receita::acabou() const {
+    return m_ataque_atual >= m_num_ataques;
 }
 }

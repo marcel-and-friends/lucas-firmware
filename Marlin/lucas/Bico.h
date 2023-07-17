@@ -15,6 +15,8 @@ public:
 
     void despejar_volume(millis_t duracao, float volume_desejado);
 
+    void despejar_volume_e_aguardar(millis_t duracao, float volume_desejado);
+
     void desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital);
 
     void desligar();
@@ -25,11 +27,13 @@ public:
 
     void viajar_para_estacao(Estacao::Index, int offset = 0) const;
 
-    bool esta_na_estacao(Estacao::Index) const;
+    void viajar_para_lado_da_estacao(Estacao&) const;
+
+    void viajar_para_lado_da_estacao(Estacao::Index) const;
+
+    void aguardar_viagem_terminar() const;
 
     void viajar_para_esgoto() const;
-
-    void descartar_agua_ruim() const;
 
     void nivelar() const;
 
@@ -78,17 +82,15 @@ private:
 
     void iniciar_despejo(millis_t duracao);
 
-    static inline uint64_t s_contador_de_pulsos = 0;
+    static volatile inline uint32_t s_contador_de_pulsos = 0;
+    uint32_t m_pulsos_no_inicio_do_despejo = 0;
+    uint32_t m_pulsos_no_final_do_despejo = 0;
 
     millis_t m_duracao = 0;
 
     float m_volume_total_desejado = 0.f;
 
     millis_t m_tempo_decorrido = 0;
-
-    uint64_t m_pulsos_no_inicio_do_despejo = 0;
-
-    uint64_t m_pulsos_no_final_do_despejo = 0;
 
     // instante onde o despejo comeca/acaba
     millis_t m_tick_comeco = 0;

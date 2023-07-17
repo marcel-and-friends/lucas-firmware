@@ -48,97 +48,89 @@ void Estacao::inicializar(size_t num) {
 }
 
 void Estacao::tick() {
-    // atualizacao dos estados das estacoes
 #if 0 // VOLTAR QUANDO TIVER FIACAO
-    {
-        for_each([](Estacao& estacao) {
-            const auto tick = millis();
-            // absolutamente nada é atualizado se a estacao estiver bloqueada
-            if (estacao.bloqueada())
-                return util::Iter::Continue;
+	for_each_if(std::not_fn(&Estacao::bloqueada), [](Estacao& estacao) {
+		const auto tick = millis();
 
-            // atualizacao simples do estado do botao
-            bool segurado_antes = estacao.botao_segurado();
-            bool segurado_agora = util::segurando(estacao.botao());
-            estacao.set_botao_segurado(segurado_agora);
+		// atualizacao simples do estado do botao
+		bool segurado_antes = estacao.botao_segurado();
+		bool segurado_agora = util::segurando(estacao.botao());
+		estacao.set_botao_segurado(segurado_agora);
 
-            // agora vemos se o usuario quer cancelar a receita
-            {
-                constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
-                if (segurado_agora) {
-                    if (!estacao.tick_botao_segurado())
-                        estacao.set_tick_botao_segurado(tick);
+		// agora vemos se o usuario quer cancelar a receita
+		{
+			constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
+			if (segurado_agora) {
+				if (!estacao.tick_botao_segurado())
+					estacao.set_tick_botao_segurado(tick);
 
-                    if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
-                        Fila::the().cancelar_receita_da_estacao(estacao.index());
-                        estacao.set_receita_cancelada(true);
-                        return util::Iter::Continue;
-                    }
-                }
-            }
+				if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
+					Fila::the().cancelar_receita_da_estacao(estacao.index());
+					estacao.set_receita_cancelada(true);
+					return util::Iter::Continue;
+				}
+			}
+		}
 
-            // o botão acabou de ser solto, temos varias opcoes
-            // TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
-            if (!segurado_agora && segurado_antes) {
-                if (estacao.tick_botao_segurado()) {
-                    // logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
-                    estacao.set_tick_botao_segurado(0);
-                }
+		// o botão acabou de ser solto, temos varias opcoes
+		// TODO: mudar isso aqui pra usar um interrupt 'FALLING' no botao
+		// TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
+		if (!segurado_agora && segurado_antes) {
+			if (estacao.tick_botao_segurado()) {
+				// logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
+				estacao.set_tick_botao_segurado(0);
+			}
 
-                if (estacao.receita_cancelada()) {
-                    // se a receita acabou de ser cancelada, podemos voltar ao normal
-                    // o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
-                    estacao.set_receita_cancelada(false);
-                    return util::Iter::Continue;
-                }
+			if (estacao.receita_cancelada()) {
+				// se a receita acabou de ser cancelada, podemos voltar ao normal
+				// o proposito disso é não enviar a receita padrao imediatamente após cancelar uma receita
+				estacao.set_receita_cancelada(false);
+				return util::Iter::Continue;
+			}
 
-                switch (estacao.status()) {
-                case Status::Livre:
-                    // isso aqui é so qnd nao tiver conectado no app
-                    Fila::the().agendar_receita_para_estacao(Receita::padrao(), estacao.index());
-                    break;
-                case Status::AguardandoConfirmacao:
-                case Status::AguardandoCafe:
-                    Fila::the().mapear_receita_para_estacao(estacao.index());
-                    break;
-                case Status::Pronto:
-                    estacao.set_status(Status::Livre);
-                    break;
-                default:
-                    break;
-                }
-            }
+			switch (estacao.status()) {
+			case Status::Livre:
+				// FIXME: isso aqui é so qnd nao tiver conectado no app
+				Fila::the().agendar_receita_para_estacao(Receita::padrao(), estacao.index());
+				break;
+			case Status::ConfirmandoEscaldo:
+			case Status::ConfirmandoAtaques:
+				Fila::the().mapear_receita_para_estacao(estacao.index());
+				break;
+			case Status::Pronto:
+				estacao.set_status(Status::Livre);
+				break;
+			default:
+				break;
+			}
+		}
 
+		return util::Iter::Continue;
+	});
+#endif
+}
+
+void Estacao::atualizar_leds() {
+    constexpr auto INTERVALO_PISCADELA = 500;
+    // é necessario manter um estado geral para que as leds pisquem juntas.
+    // poderiamos simplificar essa funcao substituindo o 'WRITE(estacao.led(), ultimo_estado)' por 'TOGGLE(estacao.led())'
+    // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
+    static bool ultimo_estado = true;
+    static millis_t ultimo_tick_atualizado = 0;
+
+    if (millis() - ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
+        ultimo_estado = !ultimo_estado;
+        ultimo_tick_atualizado = millis();
+        for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
+            // aguardando input do usuário - led piscando
+            WRITE(estacao.led(), ultimo_estado);
             return util::Iter::Continue;
         });
-    }
-#endif
-
-    // atualizacao das leds
-    {
-        constexpr auto TIMER_LEDS = 500;
-        // é necessario manter um estado geral para que as leds pisquem juntas.
-        // poderiamos simplificar essa funcao substituindo o 'WRITE(estacao.led(), ultimo_estado)' por 'TOGGLE(estacao.led())'
-        // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
-        static bool ultimo_estado = true;
-        static millis_t ultimo_tick_atualizado = 0;
-
-        if (millis() - ultimo_tick_atualizado >= TIMER_LEDS) {
-            ultimo_estado = !ultimo_estado;
-            ultimo_tick_atualizado = millis();
-            for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
-                // aguardando input do usuário - led piscando
-                WRITE(estacao.led(), ultimo_estado);
-                return util::Iter::Continue;
-            });
-        }
     }
 }
 
 float Estacao::posicao_absoluta(size_t index) {
-    auto distancia_primeira_estacao = 80.f / util::step_ratio_x();
-    auto distancia_entre_estacoes = 160.f / util::step_ratio_x();
-    return distancia_primeira_estacao + index * distancia_entre_estacoes;
+    return util::distancia_primeira_estacao() + index * util::distancia_entre_estacoes();
 }
 
 size_t Estacao::numero() const {
@@ -174,10 +166,16 @@ void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
         return;
 
     m_status = status;
-    info::evento(NovoStatus{
-        .estacao = index(),
-        .novo_status = m_status,
-        .id_receita = id_receita });
+
+    info::evento(
+        "novoStatus",
+        [this, &id_receita](JsonObject o) {
+            o["estacao"] = index();
+            o["status"] = int(m_status);
+            if (id_receita.has_value())
+                o["receitaId"] = *id_receita;
+        });
+
     switch (m_status) {
     case Status::Livre:
         WRITE(m_pino_led, LOW);

@@ -4,8 +4,18 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/serial/serial.h>
 #include <lucas/Fila.h>
+#include <src/module/temperature.h>
 
 namespace lucas::info {
+void setup() {
+    Report::make(
+        "infoBoiler",
+        5000,
+        [](millis_t tick, JsonObject obj) {
+            obj["tempAtual"] = thermalManager.degBed();
+        });
+}
+
 void tick() {
     DocumentoJson doc;
     bool atualizou = false;
@@ -98,17 +108,16 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            auto index = v.as<size_t>();
-            if (index >= Estacao::num_estacoes()) {
-                LOG_ERR("index para cancelamento de receita invalido");
-                break;
-            }
-
             if (v.is<size_t>()) {
-                Fila::the().cancelar_receita_da_estacao(v.as<size_t>());
+                auto index = v.as<size_t>();
+                if (index >= Estacao::num_estacoes()) {
+                    LOG_ERR("index para cancelamento de receita invalido");
+                    break;
+                }
+                Fila::the().cancelar_receita_da_estacao(index);
             } else if (v.is<JsonArrayConst>()) {
-                for (auto idx : v.as<JsonArrayConst>()) {
-                    Fila::the().cancelar_receita_da_estacao(idx.as<size_t>());
+                for (auto index : v.as<JsonArrayConst>()) {
+                    Fila::the().cancelar_receita_da_estacao(index.as<size_t>());
                 }
             }
         } break;
@@ -121,7 +130,7 @@ void interpretar_json(std::span<char> buffer) {
             Fila::the().agendar_receita(v.as<JsonObjectConst>());
         } break;
         case RequisicaoDeInfo: {
-            Fila::the().printar_informacoes();
+            Fila::the().gerar_informacoes_da_fila();
         } break;
         case AgendarReceitaPadrao: {
             if (!v.is<size_t>()) {
@@ -151,8 +160,8 @@ void interpretar_json(std::span<char> buffer) {
             if (v.is<size_t>()) {
                 apertar_botao(v.as<size_t>());
             } else if (v.is<JsonArrayConst>()) {
-                for (auto idx : v.as<JsonArrayConst>()) {
-                    apertar_botao(idx);
+                for (auto index : v.as<JsonArrayConst>()) {
+                    apertar_botao(index);
                 }
             }
         } break;

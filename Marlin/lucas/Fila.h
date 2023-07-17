@@ -14,6 +14,8 @@ public:
         return instance;
     }
 
+    void setup();
+
     void tick();
 
     void agendar_receita(JsonObjectConst receita_json);
@@ -24,13 +26,31 @@ public:
 
     void cancelar_receita_da_estacao(size_t);
 
-    void printar_informacoes();
+    void gerar_informacoes_da_fila();
+
+    void remover_receitas_finalizadas();
+
+    void tentar_aquecer_apos_inatividade();
 
     size_t estacao_ativa() const { return m_estacao_executando; }
 
     bool executando() const { return m_estacao_executando != Estacao::INVALIDA; }
 
 public:
+    void for_each_receita(util::IterCallback<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
+        if (!m_num_receitas)
+            return;
+
+        for (size_t i = 0; i < m_fila.size(); ++i) {
+            auto& info = m_fila[i];
+            if (!info.ativa || (excecao && &info.receita == excecao))
+                continue;
+
+            if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)
+                return;
+        }
+    };
+
     void for_each_receita_mapeada(util::IterCallback<Receita&> auto&& callback, const Receita* excecao = nullptr) {
         if (!m_num_receitas) [[likely]]
             return;
@@ -85,28 +105,6 @@ public:
         }
     };
 
-public:
-    class NovoPasso : public info::Evento<NovoPasso, "novoPasso"> {
-    public:
-        void gerar_json_impl(JsonObject o) const {
-            o["estacao"] = estacao;
-            o["receitaId"] = receita_id;
-            o["passo"] = novo_passo;
-        }
-
-        size_t estacao;
-        size_t novo_passo;
-        size_t receita_id;
-    };
-
-    class InfoEstacoes : public info::Evento<InfoEstacoes, "infoEstacoes"> {
-    public:
-        void gerar_json_impl(JsonObject obj) const;
-        Fila& fila;
-    };
-
-    friend class InfoEstacoes;
-
 private:
     void executar_passo_atual(Receita&, Estacao&);
 
@@ -114,7 +112,7 @@ private:
 
     void compensar_passo_atrasado(Receita&, Estacao&);
 
-    void tentar_remapear_receitas_apos_cancelamento();
+    void remapear_receitas_apos_mudanca_na_fila();
 
     bool possui_colisoes_com_outras_receitas(const Receita&);
 
@@ -122,14 +120,12 @@ private:
 
     void remover_receita(size_t);
 
-    void finalizar_receitas_em_finalizacao();
+    void receita_cancelada(size_t index);
 
-    void retirar_bico_do_caminho_se_necessario(Receita&, Estacao&);
+    size_t numero_de_receitas_em_execucao() const;
 
 private:
     size_t m_estacao_executando = Estacao::INVALIDA;
-
-    bool m_executando = false;
 
     struct ReceitaInfo {
         Receita receita;

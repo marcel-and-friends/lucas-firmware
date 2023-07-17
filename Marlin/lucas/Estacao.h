@@ -6,7 +6,6 @@
 #include <string_view>
 #include <lucas/lucas.h>
 #include <lucas/Receita.h>
-#include <lucas/info/evento.h>
 #include <ArduinoJson.h>
 
 namespace lucas {
@@ -38,7 +37,7 @@ public:
                 break;
     }
 
-    static void for_each_if(auto&& condicao, util::IterCallback<Estacao&> auto&& callback) {
+    static void for_each_if(util::Fn<bool, Estacao&> auto&& condicao, util::IterCallback<Estacao&> auto&& callback) {
         if (s_num_estacoes == 0)
             return;
 
@@ -52,6 +51,8 @@ public:
 
     static void tick();
 
+    static void atualizar_leds();
+
     static Lista& lista() { return s_lista; }
 
     static float posicao_absoluta(size_t index);
@@ -61,9 +62,9 @@ public:
 public:
     enum class Status {
         Livre = 0,
-        AguardandoConfirmacao,
+        ConfirmandoEscaldo,
         Escaldando,
-        AguardandoCafe,
+        ConfirmandoAtaques,
         FazendoCafe,
         Finalizando,
         Pronto
@@ -72,7 +73,8 @@ public:
     size_t numero() const;
     Index index() const;
 
-    bool aguardando_input() const { return m_status == Status::AguardandoConfirmacao || m_status == Status::AguardandoCafe || m_status == Status::Pronto; }
+    bool aguardando_confirmacao() const { return m_status == Status::ConfirmandoEscaldo || m_status == Status::ConfirmandoAtaques; }
+    bool aguardando_input() const { return aguardando_confirmacao() || m_status == Status::Pronto; }
 
 public:
     pin_t botao() const { return m_pino_botao; }
@@ -95,21 +97,6 @@ public:
 
     Status status() const { return m_status; }
     void set_status(Status, std::optional<uint32_t> id_receita = std::nullopt);
-
-public:
-    class NovoStatus : public info::Evento<NovoStatus, "novoStatus"> {
-    public:
-        void gerar_json_impl(JsonObject o) const {
-            o["estacao"] = estacao;
-            o["status"] = static_cast<int>(novo_status);
-            if (id_receita.has_value())
-                o["idReceita"] = *id_receita;
-        }
-
-        size_t estacao;
-        Status novo_status;
-        std::optional<uint32_t> id_receita;
-    };
 
 private:
     static Lista s_lista;

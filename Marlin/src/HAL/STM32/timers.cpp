@@ -197,7 +197,7 @@ void HAL_timer_enable_interrupt(const uint8_t timer_num) {
             timer_instance[timer_num]->attachInterrupt(Temp_Handler);
             break;
         case MF_TIMER_LUCAS:
-            timer_instance[timer_num]->attachInterrupt(lucas::tick);
+            // timer_instance[timer_num]->attachInterrupt(lucas::tick); todo: VOLTAR PRA ISSO DEPOIS
             break;
         }
     }

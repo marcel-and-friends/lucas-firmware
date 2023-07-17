@@ -6,20 +6,7 @@
 #include <src/gcode/parser.h>
 
 namespace lucas::cmd {
-void injetar(const char* gcode);
-
-std::string_view proxima_instrucao(const char* gcode);
-
-bool ultima_instrucao(const char* gcode);
-
-void parar_fila();
-
-bool comandos_pendentes();
-
-inline void executar(const char* gcode) {
-    parser.parse(const_cast<char*>(gcode));
-    GcodeSuite::process_parsed_command(true);
-}
+void executar(const char* gcode);
 
 inline void executar_cmds(auto... cmds) {
     (executar(cmds), ...);
