@@ -12,8 +12,6 @@ void setup() {
         [](std::span<char> buffer) {
             info::interpretar_json(buffer);
         });
-
-    LOG("jujuba");
 }
 
 bool hooks() {
@@ -55,7 +53,7 @@ bool hooks() {
                 hook.reset();
                 s_hook_ativo = nullptr;
 
-                LOG("ok");
+                SERIAL_ECHOLNPGM("ok");
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
                 if (hook.buffer_size >= sizeof(hook.buffer)) {
@@ -67,7 +65,7 @@ bool hooks() {
                 if (++hook.counter >= MAX_BYTES) {
                     hook.counter = 0;
                     LOG_IF(LogSerial, "limite de 64 atingido");
-                    LOG("ok");
+                    SERIAL_ECHOLNPGM("ok");
                 }
             }
         }

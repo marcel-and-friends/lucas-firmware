@@ -35,7 +35,7 @@ void L3() {
     const auto posicao_inicial = planner.get_axis_positions_mm();
     auto posicao_final = xyze_pos_t{ posicao_inicial.x, 60.f, 0.f, 0.f };
 
-    auto for_each_arco = [&](util::IterCallback<float, float, int> auto&& callback) {
+    auto for_each_arco = [&](util::IterFn<float, float, int> auto&& callback) {
         for (auto serie = 0; serie < series; serie++) {
             const bool fora_pra_dentro = serie % 2 != comecar_na_borda;
             for (auto arco = 0; arco < num_arcos; arco++) {

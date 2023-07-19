@@ -7,9 +7,7 @@
 
 namespace lucas::cmd {
 void executar(const char* gcode) {
-    if (CFG(LogGcode))
-        LOG("executando gcode: ", gcode);
-
+    LOG_IF(LogGcode, "executando gcode: ", gcode);
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);
 }

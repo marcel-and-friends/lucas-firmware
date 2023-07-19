@@ -26,18 +26,18 @@ public:
 
     void cancelar_receita_da_estacao(size_t);
 
-    void gerar_informacoes_da_fila();
-
     void remover_receitas_finalizadas();
 
-    void tentar_aquecer_apos_inatividade();
+    void tentar_aquecer_apos_inatividade() const;
+
+    void gerar_informacoes_da_fila() const;
 
     size_t estacao_ativa() const { return m_estacao_executando; }
 
     bool executando() const { return m_estacao_executando != Estacao::INVALIDA; }
 
 public:
-    void for_each_receita(util::IterCallback<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
         if (!m_num_receitas)
             return;
 
@@ -51,7 +51,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<Receita&> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita_mapeada(util::IterFn<Receita&> auto&& callback, const Receita* excecao = nullptr) {
         if (!m_num_receitas) [[likely]]
             return;
 
@@ -64,7 +64,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<const Receita&> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita_mapeada(util::IterFn<const Receita&> auto&& callback, const Receita* excecao = nullptr) const {
         if (!m_num_receitas) [[likely]]
             return;
 
@@ -77,7 +77,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita_mapeada(util::IterFn<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
         if (!m_num_receitas) [[likely]]
             return;
 
@@ -91,7 +91,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterCallback<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita_mapeada(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
         if (!m_num_receitas) [[likely]]
             return;
 
@@ -114,7 +114,7 @@ private:
 
     void remapear_receitas_apos_mudanca_na_fila();
 
-    bool possui_colisoes_com_outras_receitas(const Receita&);
+    bool possui_colisoes_com_outras_receitas(const Receita&) const;
 
     void adicionar_receita(size_t);
 
@@ -132,7 +132,8 @@ private:
         bool ativa = false;
     };
 
-    // isso aqui modela meio que um hashmap mas nao quero alocar
+    // o mapeamento de index -> receita é o mesmo de index -> estação
+    // ou seja, a receita na posição 0 da fila pertence à estação 0
     std::array<ReceitaInfo, Estacao::NUM_MAX_ESTACOES> m_fila = {};
     size_t m_num_receitas = 0;
 };

@@ -8,9 +8,6 @@
 #include <ranges>
 
 namespace lucas {
-// TODO: 06/07 -> mudar isso aqui tudo pra um timer de 1mhz e executar gcode injetando na fila do marlin inves de executar na hora
-// NOTA: 14/07 -> acho que isso é impossivel de fazer sem deixar o codigo uma bosta
-
 static millis_t s_tick_comeco_de_inatividade = 0;
 
 void Fila::setup() {
@@ -115,6 +112,8 @@ void Fila::mapear_receita_da_estacao(size_t index) {
         return;
     }
 
+    // por conta do if acima nesse momento a receita só pode estar em um de dois estados - 'ConfirmandoEscaldo' e 'ConfirmandoAtaques'
+    // os próximo estados após esses são 'Escaldando' e 'FazendoCafe', respectivamente
     const auto proximo_status = int(estacao.status()) + 1;
     estacao.set_status(Estacao::Status(proximo_status), receita.id());
     mapear_receita(receita, estacao);
@@ -269,7 +268,8 @@ void Fila::remapear_receitas_apos_mudanca_na_fila() {
 }
 
 // esse algoritmo é basicamente um hit-test 2d de cada passo da receita nova com cada passo das receitas já mapeadas
-bool Fila::possui_colisoes_com_outras_receitas(const Receita& receita_nova) {
+// é verificado se qualquer um dos passos da receita nova colide com qualquer um dos passos de qualquer uma das receitas já mapeada
+bool Fila::possui_colisoes_com_outras_receitas(const Receita& receita_nova) const {
     bool colide = false;
     receita_nova.for_each_passo_pendente([&](const Receita::Passo& passo_novo) {
         for_each_receita_mapeada(
@@ -303,7 +303,7 @@ void Fila::cancelar_receita_da_estacao(size_t index) {
 
     if (index == m_estacao_executando) {
         m_estacao_executando = Estacao::INVALIDA;
-        // 'receita_cancelada' vai ser chamada dentro da 'executar_passo_atual'
+        // 'receita_cancelada' vai ser chamada dentro da 'Fila::executar_passo_atual'
     } else {
         receita_cancelada(index);
     }
@@ -333,7 +333,7 @@ void Fila::remover_receitas_finalizadas() {
 
 // se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
-void Fila::tentar_aquecer_apos_inatividade() {
+void Fila::tentar_aquecer_apos_inatividade() const {
     constexpr millis_t tempo_de_espera_apos_execucao = 60000 * 10; // 10min
     static_assert(tempo_de_espera_apos_execucao >= 60000, "minimo de 1 minuto");
 
@@ -372,12 +372,15 @@ size_t Fila::numero_de_receitas_em_execucao() const {
     return res;
 }
 
-void Fila::gerar_informacoes_da_fila() {
+void Fila::gerar_informacoes_da_fila() const {
     info::evento(
         "infoEstacoes",
         [this](JsonObject o) {
+            if (m_estacao_executando != Estacao::INVALIDA)
+                o["estacaoAtiva"] = m_estacao_executando;
+
             auto arr = o.createNestedArray("info");
-            for_each_receita([this, &arr](Receita& receita, size_t index) {
+            for_each_receita([this, &arr](const Receita& receita, size_t index) {
                 auto obj = arr.createNestedObject();
                 const auto tick = millis();
                 const auto& estacao = Estacao::lista().at(index);
@@ -387,17 +390,14 @@ void Fila::gerar_informacoes_da_fila() {
                 {
                     auto receita_obj = obj.createNestedObject("infoReceita");
                     receita_obj["receitaId"] = receita.id();
-                    if (receita.ataques().front().comeco_abs) {
-                        if (tick < receita.ataques().front().comeco_abs)
-                            receita_obj["tempoTotalAtaques"] = 0;
-                        else
-                            receita_obj["tempoTotalAtaques"] = tick - receita.ataques().front().comeco_abs;
-                    }
 
-                    if (tick < receita.primeiro_passo().comeco_abs)
-                        receita_obj["tempoTotalReceita"] = 0;
-                    else
+                    const auto& primeiro_passo = receita.primeiro_passo();
+                    if (primeiro_passo.comeco_abs && tick > primeiro_passo.comeco_abs)
                         receita_obj["tempoTotalReceita"] = tick - receita.primeiro_passo().comeco_abs;
+
+                    const auto& primeiro_ataque = receita.ataques().front();
+                    if (primeiro_ataque.comeco_abs && tick > primeiro_ataque.comeco_abs)
+                        receita_obj["tempoTotalAtaques"] = tick - receita.ataques().front().comeco_abs;
 
                     if (estacao.status() == Estacao::Status::Finalizando)
                         if (receita.inicio_tempo_de_finalizacao() < millis())
@@ -405,11 +405,25 @@ void Fila::gerar_informacoes_da_fila() {
                 }
                 {
                     auto passo_obj = obj.createNestedObject("infoPasso");
-                    passo_obj["index"] = receita.passo_atual_index();
-                    if (tick < receita.passo_atual().comeco_abs)
-                        passo_obj["progresso"] = 0;
-                    else
-                        passo_obj["progresso"] = tick - receita.passo_atual().comeco_abs;
+                    if (!receita.passo_atual().comeco_abs)
+                        return util::Iter::Continue;
+
+                    // se o passo ainda não comecou porém está mapeado ele pode estar ou no intervalo do ataque passado ou na fila para começar
+                    if (tick < receita.passo_atual().comeco_abs) {
+                        // se é o escaldo ou o primeiro ataque não existe um "passo anterior", ou seja, não tem um intervalo - só pode estar na fila
+                        // nesse caso nada é enviado para o app
+                        if (receita.passo_atual_index() <= size_t(receita.possui_escaldo()))
+                            return util::Iter::Continue;
+
+                        // caso contrario, do segundo ataque pra frente, estamos no intervalo do passo anterior
+                        const auto index_ultimo_passo = receita.passo_atual_index() - 1;
+                        const auto& ultimo_passo = receita.passo_num(index_ultimo_passo);
+                        passo_obj["index"] = index_ultimo_passo;
+                        passo_obj["progressoIntervalo"] = tick - ultimo_passo.fim();
+                    } else {
+                        passo_obj["index"] = receita.passo_atual_index();
+                        passo_obj["progressoPasso"] = tick - receita.passo_atual().comeco_abs;
+                    }
                 }
 
                 return util::Iter::Continue;

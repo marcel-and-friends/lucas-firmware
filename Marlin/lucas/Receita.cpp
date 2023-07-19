@@ -52,8 +52,6 @@ JsonObjectConst Receita::padrao() {
     return doc.as<JsonObjectConst>();
 }
 
-// TODO: alocar as receitas estaticamente no array da Fila e só modificar os dados quando necessario
-
 bool Receita::Passo::colide_com(const Passo& outro) const {
     // dois ataques colidem se:
 
@@ -126,16 +124,18 @@ void Receita::resetar() {
 }
 
 void Receita::executar_passo_atual() {
-    if (m_escaldo.has_value() && !m_escaldou) {
+    if (possui_escaldo() && !m_escaldou) {
         GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
         m_escaldou = true;
     } else {
-        GcodeSuite::process_subcommands_now(F(m_ataques[m_ataque_atual++].gcode));
+        GcodeSuite::process_subcommands_now(F(m_ataques[m_ataque_atual].gcode));
+        // é muito importante o incremento do ataque atual ocorro APÓS O FINAL da execucao de gcode!
+        ++m_ataque_atual;
     }
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
-    for_each_passo_pendente([&](Passo& passo, size_t i) {
+    for_each_passo_pendente([&](Passo& passo) {
         passo.comeco_abs = tick;
         tick += passo.duracao + passo.intervalo;
         return util::Iter::Continue;
@@ -162,13 +162,13 @@ bool Receita::passos_pendentes_estao_mapeados() const {
 }
 
 const Receita::Passo& Receita::passo_atual() const {
-    if (m_escaldo.has_value() && !m_escaldou)
+    if (possui_escaldo() && !m_escaldou)
         return m_escaldo.value();
     return m_ataques[m_ataque_atual];
 }
 
 Receita::Passo& Receita::passo_atual() {
-    if (m_escaldo.has_value() && !m_escaldou)
+    if (possui_escaldo() && !m_escaldou)
         return m_escaldo.value();
     return m_ataques[m_ataque_atual];
 }
@@ -177,10 +177,18 @@ Receita::Passo& Receita::passo_atual() {
 // o primeiro ataque de uma receita com escaldo tem index 1
 // o primeiro ataque de uma receita sem escaldo tem index 0
 size_t Receita::passo_atual_index() const {
-    return m_ataque_atual + (m_escaldo.has_value() && m_escaldou);
+    return m_ataque_atual + (possui_escaldo() && m_escaldou);
 }
 
 bool Receita::acabou() const {
-    return m_ataque_atual >= m_num_ataques;
+    return m_ataque_atual >= m_num_ataques && (possui_escaldo() ? m_escaldou : true);
+}
+
+const Receita::Passo& Receita::primeiro_passo() const {
+    return possui_escaldo() ? escaldo() : m_ataques.front();
+}
+
+const Receita::Passo& Receita::passo_num(size_t index) const {
+    return index == 0 ? primeiro_passo() : m_ataques[index - possui_escaldo()];
 }
 }

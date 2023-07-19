@@ -18,7 +18,7 @@ void print_json(const DocumentoJson& doc);
 
 void evento(const char* nome, util::Fn<void, JsonObject> auto&& callback) {
     DocumentoJson evento_doc;
-    callback(evento_doc.createNestedObject(nome));
+    std::invoke(FWD(callback), evento_doc.createNestedObject(nome));
     print_json(evento_doc);
 }
 }

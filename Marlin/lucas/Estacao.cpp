@@ -16,7 +16,7 @@ void Estacao::inicializar(size_t num) {
     }
 
     if (s_num_estacoes) {
-        LOG("estacoes ja foram inicializadas");
+        LOG_IF(LogEstacoes, "estacoes ja foram inicializadas");
         return;
     }
 
@@ -44,7 +44,7 @@ void Estacao::inicializar(size_t num) {
 
     s_num_estacoes = num;
 
-    LOG("maquina vai usar ", num, " estacoes");
+    LOG_IF(LogEstacoes, "maquina vai usar ", num, " estacoes");
 }
 
 void Estacao::tick() {
@@ -74,8 +74,6 @@ void Estacao::tick() {
 
 		// o botão acabou de ser solto, temos varias opcoes
 		// TODO: mudar isso aqui pra usar um interrupt 'FALLING' no botao
-		// TODO: TEM QUE COMUNICAR PRO APP QUE ISSO AQUI ACONTECEU
-		if (!segurado_agora && segurado_antes) {
 			if (estacao.tick_botao_segurado()) {
 				// logicamente o botao ja nao está mais sendo segurado (pois acabou de ser solto)
 				estacao.set_tick_botao_segurado(0);
@@ -90,7 +88,6 @@ void Estacao::tick() {
 
 			switch (estacao.status()) {
 			case Status::Livre:
-				// FIXME: isso aqui é so qnd nao tiver conectado no app
 				Fila::the().agendar_receita_para_estacao(Receita::padrao(), estacao.index());
 				break;
 			case Status::ConfirmandoEscaldo:
@@ -158,7 +155,7 @@ void Estacao::set_bloqueada(bool b) {
     auto antigo = m_bloqueada;
     m_bloqueada = b;
     if (antigo != m_bloqueada)
-        LOG("estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
+        LOG_IF(LogEstacoes, "estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
 }
 
 void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
@@ -172,7 +169,7 @@ void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
         [this, &id_receita](JsonObject o) {
             o["estacao"] = index();
             o["status"] = int(m_status);
-            if (id_receita.has_value())
+            if (id_receita)
                 o["receitaId"] = *id_receita;
         });
 

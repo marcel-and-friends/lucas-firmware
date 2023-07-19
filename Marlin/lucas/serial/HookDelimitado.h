@@ -13,7 +13,7 @@ using HookCallback = void (*)(std::span<char>);
 struct HookDelimitado {
     static void make(char delimitador, HookCallback callback);
 
-    static void for_each(util::IterCallback<HookDelimitado&> auto&& callback) {
+    static void for_each(util::IterFn<HookDelimitado&> auto&& callback) {
         if (!s_num_hooks)
             return;
 

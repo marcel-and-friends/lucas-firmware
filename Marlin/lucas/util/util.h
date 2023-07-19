@@ -20,7 +20,7 @@ template<typename T, typename Ret, typename... Args>
 concept Fn = std::invocable<T, Args...> && std::same_as<std::invoke_result_t<T, Args...>, Ret>;
 
 template<typename FN, typename... Args>
-concept IterCallback = Fn<FN, Iter, Args...>;
+concept IterFn = Fn<FN, Iter, Args...>;
 
 #define FWD(x) std::forward<decltype(x)>(x)
 

@@ -19,8 +19,8 @@ public:
 
     static void inicializar(size_t num);
 
-    static void for_each(util::IterCallback<Estacao&> auto&& callback) {
-        if (s_num_estacoes == 0)
+    static void for_each(util::IterFn<Estacao&> auto&& callback) {
+        if (!s_num_estacoes)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
@@ -28,8 +28,8 @@ public:
                 break;
     }
 
-    static void for_each(util::IterCallback<Estacao&, size_t> auto&& callback) {
-        if (s_num_estacoes == 0)
+    static void for_each(util::IterFn<Estacao&, size_t> auto&& callback) {
+        if (!s_num_estacoes)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
@@ -37,8 +37,8 @@ public:
                 break;
     }
 
-    static void for_each_if(util::Fn<bool, Estacao&> auto&& condicao, util::IterCallback<Estacao&> auto&& callback) {
-        if (s_num_estacoes == 0)
+    static void for_each_if(util::Fn<bool, Estacao&> auto&& condicao, util::IterFn<Estacao&> auto&& callback) {
+        if (!s_num_estacoes)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i) {
@@ -59,7 +59,21 @@ public:
 
     static size_t num_estacoes() { return s_num_estacoes; }
 
+    Estacao(const Estacao&) = delete;
+    Estacao(Estacao&&) = delete;
+    Estacao& operator=(const Estacao&) = delete;
+    Estacao& operator=(Estacao&&) = delete;
+
 public:
+    // muito importante manter esse enum em sincronia com o app!
+    // FREE = 0,
+    // WAITING_START,
+    // SCALDING,
+    // INITIALIZE_COFFEE,
+    // MAKING_COFFEE,
+    // NOTIFICATION_TIME,
+    // IS_READY
+
     enum class Status {
         Livre = 0,
         ConfirmandoEscaldo,
@@ -99,11 +113,14 @@ public:
     void set_status(Status, std::optional<uint32_t> id_receita = std::nullopt);
 
 private:
+    // inicializado out of line porque nesse momento a classe 'Estacao' é incompleta
     static Lista s_lista;
 
     static inline size_t s_num_estacoes = 0;
 
 private:
+    Estacao() = default;
+
     // status, usado pelo app
     Status m_status = Status::Livre;
 

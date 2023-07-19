@@ -4,6 +4,8 @@
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
 #include <cmath>
+#include <bit>
+#include <utility/stm32_eeprom.h>
 
 namespace lucas {
 namespace pino {
@@ -104,8 +106,6 @@ void Bico::setup() {
     // e o enable permamentemente ligado, o motor é controlado somente pelo break e sv
     digitalWrite(pino::ENABLE, LOW);
 
-    nivelar();
-
     pinMode(pino::FLUXO, INPUT);
     attachInterrupt(
         digitalPinToInterrupt(pino::FLUXO),
@@ -114,8 +114,7 @@ void Bico::setup() {
         },
         RISING);
 
-    if (CFG(PreencherTabelaDeFluxoNoSetup))
-        preencher_tabela_de_controle_de_fluxo();
+    nivelar();
 }
 
 void Bico::viajar_para_estacao(Estacao& estacao, int offset) const {
@@ -137,13 +136,13 @@ void Bico::viajar_para_estacao(Estacao::Index index, int offset) const {
     LOG_IF(LogViagemBico, "viagem completa - [duracao = ", millis() - comeco, "ms]");
 }
 
-void Fila::viajar_para_lado_da_estacao(Estacao&) const {
+void Bico::viajar_para_lado_da_estacao(Estacao& estacao) const {
     viajar_para_lado_da_estacao(estacao.index());
 }
 
-void Fila::viajar_para_lado_da_estacao(Estacao::Index) const {
+void Bico::viajar_para_lado_da_estacao(Estacao::Index index) const {
     const auto offset = -(util::distancia_entre_estacoes() / 2.f);
-    viajar_para_estacao(estacao, offset);
+    viajar_para_estacao(index, offset);
 }
 
 void Bico::viajar_para_esgoto() const {
@@ -151,7 +150,7 @@ void Bico::viajar_para_esgoto() const {
 
     const auto comeco = millis();
     cmd::executar_cmds("G90",
-                       "G0 F50000 Y60 X5",
+                       "G0 F5000 Y60 X5",
                        "G91");
 
     aguardar_viagem_terminar();
@@ -164,9 +163,13 @@ void Bico::aguardar_viagem_terminar() const {
 }
 
 void Bico::nivelar() const {
-    LOG("executando rotina de nivelamento");
+    LOG_IF(LogNivelamento, "executando rotina de nivelamento");
+
     cmd::executar("G28 XY");
-    LOG("nivelamento finalizado");
+    if (CFG(PreencherTabelaDeFluxoNoNivelamento))
+        preencher_tabela_de_controle_de_fluxo();
+
+    LOG_IF(LogNivelamento, "nivelamento finalizado");
 }
 
 void Bico::preencher_tabela_de_controle_de_fluxo() const {
@@ -216,6 +219,19 @@ void Bico::ControladorFluxo::preencher_tabela() {
     m_tabela[8][5] = 1709;
     m_tabela[8][9] = 1712;
     m_tabela[9][6] = 1715;
+
+    // uint8_t eeprom_buffer[sizeof(m_tabela)];
+    // memcpy(eeprom_buffer, ((uint32_t)((FLASH_END + 1) - FLASH_PAGE_SIZE)), sizeof(eeprom_buffer));
+
+    // auto bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
+    // auto bloco_eeprom = std::bit_cast<uint32_t*>(&eeprom_buffer);
+    // for (size_t i = 0; i < sizeof(bloco_tabela) / sizeof(uint32_t); ++i) {
+    //     const auto valor_digital = bloco_tabela[i];
+    //     auto& valor_memoria = bloco_eeprom[i];
+    //     if (valor_digital != valor_memoria)
+    //         valor_memoria = valor_digital;
+    // }
+
     return;
     constexpr auto VALOR_DIGITAL_INICIAL = 1200;
     constexpr auto INCREMENTO_INICIAL = 25;

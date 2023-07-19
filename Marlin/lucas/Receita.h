@@ -42,11 +42,10 @@ public:
     static JsonObjectConst padrao();
 
     void montar_com_json(JsonObjectConst);
-    void resetar();
 
     Receita(const Receita&) = delete;
-    Receita& operator=(const Receita&) = delete;
     Receita(Receita&&) = delete;
+    Receita& operator=(const Receita&) = delete;
     Receita& operator=(Receita&&) = delete;
 
 public:
@@ -58,8 +57,16 @@ public:
 
     bool passos_pendentes_estao_mapeados() const;
 
+    size_t passo_atual_index() const;
+
+    bool acabou() const;
+
+    const Passo& primeiro_passo() const;
+
+    const Passo& passo_num(size_t) const;
+
 public:
-    void for_each_passo(util::IterCallback<Passo&> auto&& callback) {
+    void for_each_passo(util::IterFn<Passo&> auto&& callback) {
         if (m_escaldo.has_value())
             if (std::invoke(FWD(callback), m_escaldo.value()) == util::Iter::Break)
                 return;
@@ -69,7 +76,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterCallback<Passo&> auto&& callback) {
+    void for_each_passo_pendente(util::IterFn<Passo&> auto&& callback) {
         if (m_escaldo.has_value() && !m_escaldou) {
             std::invoke(FWD(callback), m_escaldo.value());
             return;
@@ -80,7 +87,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterCallback<Passo&, size_t> auto&& callback) {
+    void for_each_passo_pendente(util::IterFn<Passo&, size_t> auto&& callback) {
         if (m_escaldo.has_value() && !m_escaldou) {
             std::invoke(FWD(callback), m_escaldo.value(), 0);
             return;
@@ -91,7 +98,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterCallback<const Passo&> auto&& callback) const {
+    void for_each_passo_pendente(util::IterFn<const Passo&> auto&& callback) const {
         if (m_escaldo.has_value() && !m_escaldou) {
             std::invoke(FWD(callback), m_escaldo.value());
             return;
@@ -102,7 +109,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterCallback<const Passo&, size_t> auto&& callback) const {
+    void for_each_passo_pendente(util::IterFn<const Passo&, size_t> auto&& callback) const {
         if (m_escaldo.has_value() && !m_escaldou) {
             std::invoke(FWD(callback), m_escaldo.value(), 0);
             return;
@@ -117,10 +124,6 @@ public:
     bool possui_escaldo() const { return m_escaldo.has_value(); }
     const Passo& escaldo() const { return m_escaldo.value(); }
     Passo& escaldo() { return m_escaldo.value(); }
-
-    const Passo& primeiro_passo() const {
-        return possui_escaldo() ? escaldo() : m_ataques.front();
-    }
 
     millis_t tempo_de_finalizacao() const { return m_tempo_de_finalizacao; }
 
@@ -137,11 +140,9 @@ public:
     const Passo& passo_atual() const;
     Passo& passo_atual();
 
-    size_t passo_atual_index() const;
-
-    bool acabou() const;
-
 private:
+    void resetar();
+
     friend class Fila;
     Receita() = default;
 

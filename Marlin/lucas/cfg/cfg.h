@@ -16,9 +16,10 @@ enum Opcoes {
     LogNivelamento,
     LogWifi,
     LogGcode,
+    LogEstacoes,
 
     ConectarWifiAuto,
-    PreencherTabelaDeFluxoNoSetup
+    PreencherTabelaDeFluxoNoNivelamento
 };
 
 inline auto opcoes = std::to_array<Opcao>({
@@ -27,11 +28,12 @@ inline auto opcoes = std::to_array<Opcao>({
     [LogViagemBico] = { .id = 'V', .ativo = true },
     [LogFila] = { .id = 'F', .ativo = true },
     [LogNivelamento] = { .id = 'N', .ativo = true },
-    [LogWifi] = { .id = 'W', .ativo = true },
+    [LogWifi] = { .id = 'W', .ativo = false },
     [LogGcode] = { .id = 'G', .ativo = false },
+    [LogEstacoes] = { .id = 'E', .ativo = true },
 
     [ConectarWifiAuto] = { .ativo = false },
-    [PreencherTabelaDeFluxoNoSetup] = { .ativo = false },
+    [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = false },
 });
 }
 
