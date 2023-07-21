@@ -11,6 +11,6 @@ void L5() {
     if (num == -1)
         Bico::the().viajar_para_esgoto();
     else
-        Bico::the().viajar_para_estacao(std::clamp(num, 0L, max));
+        Bico::the().viajar_para_estacao(std::clamp(num, 0L, max), parser.floatval('O'));
 }
 }

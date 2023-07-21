@@ -16,8 +16,5 @@ void setup() {
 
     Bico::the().setup();
     Fila::the().setup();
-
-    if (CFG(ConectarWifiAuto))
-        wifi::conectar("Kika-Amora", "Desconto5");
 }
 }

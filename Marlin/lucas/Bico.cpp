@@ -47,7 +47,7 @@ void Bico::tick() {
     }
 }
 
-void Bico::despejar_volume(millis_t duracao, float volume_desejado) {
+void Bico::despejar_com_volume_desejado(millis_t duracao, float volume_desejado) {
     if (!duracao || !volume_desejado)
         return;
 
@@ -60,7 +60,7 @@ void Bico::despejar_volume(millis_t duracao, float volume_desejado) {
 }
 
 void Bico::despejar_volume_e_aguardar(millis_t duracao, float volume_desejado) {
-    despejar_volume(duracao, volume_desejado);
+    despejar_com_volume_desejado(duracao, volume_desejado);
     util::aguardar_enquanto(
         [] { return Bico::the().ativo(); },
         Filtros::Interacao);
@@ -114,14 +114,19 @@ void Bico::setup() {
         },
         RISING);
 
-    nivelar();
+    if (!CFG(ModoGiga)) {
+        util::set_hysteresis(1.5f);
+        thermalManager.setTargetBed(93);
+        util::set_hysteresis(0.5f);
+        nivelar();
+    }
 }
 
-void Bico::viajar_para_estacao(Estacao& estacao, int offset) const {
+void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
     viajar_para_estacao(estacao.index(), offset);
 }
 
-void Bico::viajar_para_estacao(Estacao::Index index, int offset) const {
+void Bico::viajar_para_estacao(Estacao::Index index, float offset) const {
     LOG_IF(LogViagemBico, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     const auto comeco = millis();
@@ -163,9 +168,11 @@ void Bico::aguardar_viagem_terminar() const {
 }
 
 void Bico::nivelar() const {
-    LOG_IF(LogNivelamento, "executando rotina de nivelamento");
+    LOG_IF(LogNivelamento, "iniciando rotina de nivelamento");
 
     cmd::executar("G28 XY");
+    viajar_para_esgoto();
+
     if (CFG(PreencherTabelaDeFluxoNoNivelamento))
         preencher_tabela_de_controle_de_fluxo();
 
@@ -195,31 +202,6 @@ void Bico::iniciar_despejo(millis_t duracao) {
 }
 
 void Bico::ControladorFluxo::preencher_tabela() {
-    m_tabela[1][8] = 1200;
-    m_tabela[1][9] = 1225;
-    m_tabela[2][2] = 1250;
-    m_tabela[2][3] = 1275;
-    m_tabela[2][4] = 1325;
-    m_tabela[2][5] = 1350;
-    m_tabela[2][6] = 1375;
-    m_tabela[2][9] = 1400;
-    m_tabela[3][3] = 1450;
-    m_tabela[3][4] = 1475;
-    m_tabela[3][7] = 1500;
-    m_tabela[3][9] = 1525;
-    m_tabela[4][1] = 1550;
-    m_tabela[4][4] = 1575;
-    m_tabela[4][6] = 1600;
-    m_tabela[4][9] = 1625;
-    m_tabela[5][2] = 1650;
-    m_tabela[5][8] = 1675;
-    m_tabela[6][2] = 1688;
-    m_tabela[7][1] = 1700;
-    m_tabela[7][9] = 1706;
-    m_tabela[8][5] = 1709;
-    m_tabela[8][9] = 1712;
-    m_tabela[9][6] = 1715;
-
     // uint8_t eeprom_buffer[sizeof(m_tabela)];
     // memcpy(eeprom_buffer, ((uint32_t)((FLASH_END + 1) - FLASH_PAGE_SIZE)), sizeof(eeprom_buffer));
 
@@ -232,7 +214,6 @@ void Bico::ControladorFluxo::preencher_tabela() {
     //         valor_memoria = valor_digital;
     // }
 
-    return;
     constexpr auto VALOR_DIGITAL_INICIAL = 1200;
     constexpr auto INCREMENTO_INICIAL = 25;
     constexpr auto TEMPO_DE_ANALIZAR_FLUXO = 1000 * 10;
@@ -307,7 +288,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
         for (size_t j = 0; j < linha.size(); ++j) {
             auto& valor_digital = linha.at(j);
             if (valor_digital != VALOR_DIGITAL_INVALIDO)
-                LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " - (", i + FLUXO_MIN, ".", j, "g/s");
+                LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
         }
     }
 }
@@ -324,10 +305,11 @@ uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
     const auto [fluxo_abaixo, valor_digital_abaixo] = primeiro_fluxo_abaixo(fluxo_index, casa_decimal);
     const auto [fluxo_acima, valor_digital_acima] = primeiro_fluxo_acima(fluxo_index, casa_decimal);
 
-    if (valor_digital_abaixo == VALOR_DIGITAL_INVALIDO)
+    if (valor_digital_abaixo == VALOR_DIGITAL_INVALIDO) {
         return valor_digital_acima;
-    else if (valor_digital_acima == VALOR_DIGITAL_INVALIDO)
+    } else if (valor_digital_acima == VALOR_DIGITAL_INVALIDO) {
         return valor_digital_abaixo;
+    }
 
     const auto normalizado = (fluxo - fluxo_abaixo) / (fluxo_acima - fluxo_abaixo);
     const auto interp = std::lerp(float(valor_digital_abaixo), float(valor_digital_acima), normalizado);
@@ -336,9 +318,9 @@ uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
 }
 
 void Bico::ControladorFluxo::limpar_tabela() {
-    for (auto& valores_digitais : m_tabela)
-        for (auto& valor : valores_digitais)
-            valor = VALOR_DIGITAL_INVALIDO;
+    for (auto& t : m_tabela)
+        for (auto& v : t)
+            v = VALOR_DIGITAL_INVALIDO;
 }
 
 std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) {
@@ -380,14 +362,12 @@ int Bico::ControladorFluxo::casa_decimal_apropriada(float fluxo) {
              : std::round(fluxo * 10.f)) /
         10.f;
 
-    const auto casa_decimal = int(volume_arredondado * 10.f) % 10;
-
-    return casa_decimal;
+    return int(volume_arredondado * 10.f) % 10;
 }
 
 std::tuple<int, uint32_t> Bico::ControladorFluxo::decompor_fluxo(float fluxo) {
-    fluxo = std::clamp(fluxo, float(FLUXO_MIN), float(FLUXO_MAX) - 0.1f);
-    return { fluxo, casa_decimal_apropriada(fluxo) };
+    const auto fluxo_no_range = std::clamp(fluxo, float(FLUXO_MIN), float(FLUXO_MAX) - 0.1f);
+    return { fluxo_no_range, casa_decimal_apropriada(fluxo_no_range) };
 }
 
 uint32_t& Bico::ControladorFluxo::valor_na_tabela(float fluxo) {

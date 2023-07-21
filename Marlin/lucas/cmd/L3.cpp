@@ -26,6 +26,14 @@ void L3() {
     const auto comecar_na_borda = parser.seen_test('B');
 
     const auto duracao = parser.ulongval('T');
+
+    if (CFG(ModoGiga) && duracao) {
+        LOG("iniciando L3 em modo giga");
+        util::aguardar_por(duracao);
+        LOG("L3 finalizado");
+        return;
+    }
+
     const auto volume_agua = parser.floatval('G');
     const auto despejar_agua = duracao && volume_agua;
 
@@ -73,7 +81,7 @@ void L3() {
     planner.refresh_positioning();
 
     if (despejar_agua)
-        Bico::the().despejar_volume(duracao, volume_agua);
+        Bico::the().despejar_com_volume_desejado(duracao, volume_agua);
 
     for_each_arco([&](float diametro, float raio, int arco) {
         char buffer_diametro[16] = {};

@@ -110,7 +110,7 @@ public:
     void set_bloqueada(bool);
 
     Status status() const { return m_status; }
-    void set_status(Status, std::optional<uint32_t> id_receita = std::nullopt);
+    void set_status(Status, std::optional<uint32_t> receita_id = std::nullopt);
 
 private:
     // inicializado out of line porque nesse momento a classe 'Estacao' é incompleta

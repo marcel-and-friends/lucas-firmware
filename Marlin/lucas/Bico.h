@@ -13,7 +13,7 @@ public:
 
     void tick();
 
-    void despejar_volume(millis_t duracao, float volume_desejado);
+    void despejar_com_volume_desejado(millis_t duracao, float volume_desejado);
 
     void despejar_volume_e_aguardar(millis_t duracao, float volume_desejado);
 
@@ -23,9 +23,9 @@ public:
 
     void setup();
 
-    void viajar_para_estacao(Estacao&, int offset = 0) const;
+    void viajar_para_estacao(Estacao&, float offset = 0.f) const;
 
-    void viajar_para_estacao(Estacao::Index, int offset = 0) const;
+    void viajar_para_estacao(Estacao::Index, float offset = 0.f) const;
 
     void viajar_para_lado_da_estacao(Estacao&) const;
 
@@ -50,7 +50,7 @@ private:
         static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
 
         static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0;
-        static constexpr auto ML_POR_PULSO = 0.55f;
+        static constexpr auto ML_POR_PULSO = 0.5375f;
 
         static ControladorFluxo& the() {
             static ControladorFluxo instance;

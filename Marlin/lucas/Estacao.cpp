@@ -158,7 +158,7 @@ void Estacao::set_bloqueada(bool b) {
         LOG_IF(LogEstacoes, "estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
 }
 
-void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
+void Estacao::set_status(Status status, std::optional<uint32_t> receita_id) {
     if (m_status == status)
         return;
 
@@ -166,11 +166,11 @@ void Estacao::set_status(Status status, std::optional<uint32_t> id_receita) {
 
     info::evento(
         "novoStatus",
-        [this, &id_receita](JsonObject o) {
+        [this, &receita_id](JsonObject o) {
             o["estacao"] = index();
             o["status"] = int(m_status);
-            if (id_receita)
-                o["receitaId"] = *id_receita;
+            if (receita_id)
+                o["receitaId"] = *receita_id;
         });
 
     switch (m_status) {

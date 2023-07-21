@@ -416,7 +416,6 @@ inline void finishSDPrinting() {
  *  - Check if an idle but hot extruder needs filament extruded (EXTRUDER_RUNOUT_PREVENT)
  *  - Pulse FET_SAFETY_PIN if it exists
  */
-#include <StreamUtils.h>
 #include <lucas/lucas.h>
 #include <lucas/serial/serial.h>
 inline void manage_inactivity(const bool no_stepper_sleep = false) {

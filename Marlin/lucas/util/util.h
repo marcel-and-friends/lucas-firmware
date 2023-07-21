@@ -1,15 +1,19 @@
 #pragma once
 
 #include <lucas/tick.h>
+#include <lucas/util/FiltroUpdatesTemporario.h>
 #include <src/MarlinCore.h>
 #include <src/module/planner.h>
 #include <avr/dtostrf.h>
 #include <type_traits>
 #include <concepts>
-#include <lucas/Filtros.h>
 
 namespace lucas::util {
-static constexpr millis_t MARGEM_DE_VIAGEM = 1000;
+constexpr millis_t MARGEM_DE_VIAGEM = 1000;
+
+constexpr float MS_POR_MM = 12.41f;
+constexpr float DEFAULT_STEPS_POR_MM_X = 44.5f;
+constexpr float DEFAULT_STEPS_POR_MM_Y = 26.5f;
 
 enum class Iter {
     Continue = 0,
@@ -30,59 +34,23 @@ inline const char* fmt(const char* fmt, auto... args) {
     return buffer;
 }
 
-// isso aqui é uma desgraça mas é o que tem pra hoje
-inline const char* ff(const char* str, float valor) {
-    char buffer[16] = {};
-    dtostrf(valor, 0, 2, buffer);
-    return fmt(str, buffer);
-}
+const char* ff(const char* str, float valor);
 
-inline bool segurando(int pino) {
-    return READ(pino) == false;
-}
+bool segurando(int pino);
 
-constexpr float MS_POR_MM = 12.41f;
-constexpr float DEFAULT_STEPS_POR_MM_X = 44.5f;
-constexpr float DEFAULT_STEPS_POR_MM_Y = 26.5f;
+float step_ratio_x();
 
-inline float step_ratio_x() {
-    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_POR_MM_X;
-}
+float step_ratio_y();
 
-inline float step_ratio_y() {
-    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_POR_MM_Y;
-}
+float distancia_primeira_estacao();
 
-inline float distancia_primeira_estacao() {
-    return 80.f / step_ratio_x();
-}
+float distancia_entre_estacoes();
 
-inline float distancia_entre_estacoes() {
-    return 160.f / step_ratio_x();
-}
+float hysteresis();
 
-class FiltroUpdatesTemporario {
-public:
-    FiltroUpdatesTemporario(Filtros filtros) {
-        m_backup = filtros_atuais();
-        filtrar_updates(filtros | m_backup);
-    }
+void set_hysteresis(float valor);
 
-    ~FiltroUpdatesTemporario() {
-        filtrar_updates(m_backup);
-    }
-
-private:
-    Filtros m_backup;
-};
-
-inline void aguardar_por(millis_t tempo, Filtros filtros = Filtros::Nenhum) {
-    FiltroUpdatesTemporario f{ filtros };
-
-    const auto comeco = millis();
-    while (millis() - comeco < tempo)
-        idle();
-}
+void aguardar_por(millis_t tempo, Filtros filtros = Filtros::Nenhum);
 
 inline void aguardar_enquanto(Fn<bool> auto&& callback, Filtros filtros = Filtros::Nenhum) {
     FiltroUpdatesTemporario f{ filtros };

@@ -6,38 +6,40 @@
 #include <numeric>
 
 namespace lucas {
-// FIXME isso seria melhor sendo uma referencia unica ao inves de inicializar um objeto novo toda vez que essa função é chamada
 JsonObjectConst Receita::padrao() {
-    static StaticJsonDocument<512> doc;
+    // calculado com o Assistant do ArduinoJson
+    constexpr size_t TAMANHO_BUFFER = 384;
+    static StaticJsonDocument<TAMANHO_BUFFER> doc;
+
     static char json[] = R"({
-    "id": 61680,
-    "tempoFinalizacao": 60000,
-    "escaldo": {
+  "id": 61680,
+  "tempoFinalizacao": 60000,
+  "escaldo": {
+    "duracao": 6000,
+    "gcode": "L3 D9 N3 R1 T6000 G80"
+  },
+  "ataques": [
+    {
       "duracao": 6000,
-      "gcode": "L3 D9 N3 R1 T6000 G80"
+      "gcode": "L3 D7 N3 R1 T6000 G60",
+      "intervalo": 24000
     },
-    "ataques": [
-      {
-        "duracao": 6000,
-        "intervalo": 24000,
-        "gcode": "L3 D7 N3 R1 T6000 G60"
-      },
-      {
-        "duracao": 9000,
-        "intervalo": 30000,
-        "gcode": "L3 D7 N5 R1 T9000 G90"
-      },
-      {
-        "duracao": 10000,
-        "intervalo": 35000,
-        "gcode": "L3 D7 N5 R1 T10000 G100"
-      },
-      {
-        "duracao": 9000,
-        "gcode": "L3 D7 N5 R1 T10000 G100"
-      }
-    ]
-  })";
+    {
+      "duracao": 9000,
+      "gcode": "L3 D7 N5 R1 T9000 G90",
+      "intervalo": 30000
+    },
+    {
+      "duracao": 10000,
+      "gcode": "L3 D7 N5 R1 T10000 G100",
+      "intervalo": 35000
+    },
+    {
+      "duracao": 9000,
+      "gcode": "L3 D7 N5 R1 T9000 G100"
+    }
+  ]
+})";
 
     static bool once = false;
     if (!once) {
@@ -80,58 +82,48 @@ void Receita::montar_com_json(JsonObjectConst json) {
     m_id = json["id"].as<size_t>();
     m_tempo_de_finalizacao = json["tempoFinalizacao"].as<millis_t>();
 
-    { // escaldo
-        if (json.containsKey("escaldo")) {
-            auto escaldo_obj = json["escaldo"].as<JsonObjectConst>();
-            m_escaldo = Passo{
-                .duracao = escaldo_obj["duracao"].as<millis_t>(),
-            };
-            // c-string bleeehh
-            strcpy(m_escaldo->gcode, escaldo_obj["gcode"].as<const char*>());
-        }
+    // o escaldo é opcional
+    if (json.containsKey("escaldo")) {
+        auto escaldo_obj = json["escaldo"].as<JsonObjectConst>();
+        auto& escaldo = m_passos[0];
+
+        escaldo.duracao = escaldo_obj["duracao"].as<millis_t>();
+        strcpy(escaldo.gcode, escaldo_obj["gcode"].as<const char*>());
+
+        m_possui_escaldo = true;
     }
 
-    { // ataques
-        auto ataques_obj = json["ataques"].as<JsonArrayConst>();
-        for (size_t i = 0; i < ataques_obj.size(); ++i) {
-            auto ataque_obj = ataques_obj[i];
-            auto& ataque = m_ataques[i];
-            ataque.duracao = ataque_obj["duracao"].as<millis_t>();
-            strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
-            if (ataque_obj.containsKey("intervalo")) {
-                ataque.intervalo = ataque_obj["intervalo"].as<millis_t>();
-            } else {
-                // um numero "invalido", significa que esse ataque é o ultimo
-                ataque.intervalo = 0;
-            }
-        }
-        m_num_ataques = ataques_obj.size();
+    auto ataques_obj = json["ataques"].as<JsonArrayConst>();
+    for (size_t i = 0; i < ataques_obj.size(); ++i) {
+        auto ataque_obj = ataques_obj[i];
+        auto& ataque = m_passos[i + m_possui_escaldo];
+
+        ataque.duracao = ataque_obj["duracao"].as<millis_t>();
+        ataque.intervalo = ataque_obj.containsKey("intervalo") ? ataque_obj["intervalo"].as<millis_t>() : 0;
+        strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
     }
+
+    m_num_passos = ataques_obj.size() + m_possui_escaldo;
 }
 
 void Receita::resetar() {
     m_id = 0;
 
-    m_escaldou = false;
-    m_escaldo = std::nullopt;
+    m_possui_escaldo = false;
 
     m_tempo_de_finalizacao = 0;
     m_inicio_tempo_finalizacao = 0;
 
-    m_num_ataques = 0;
-    m_ataques = {};
-    m_ataque_atual = 0;
+    m_num_passos = 0;
+    m_passos = {};
+
+    m_passo_atual = 0;
 }
 
 void Receita::executar_passo_atual() {
-    if (possui_escaldo() && !m_escaldou) {
-        GcodeSuite::process_subcommands_now(F(m_escaldo->gcode));
-        m_escaldou = true;
-    } else {
-        GcodeSuite::process_subcommands_now(F(m_ataques[m_ataque_atual].gcode));
-        // é muito importante o incremento do ataque atual ocorro APÓS O FINAL da execucao de gcode!
-        ++m_ataque_atual;
-    }
+    GcodeSuite::process_subcommands_now(F(m_passos[m_passo_atual].gcode));
+    // é muito importante esse número só incrementar APÓS a execucão do passo
+    m_passo_atual++;
 }
 
 void Receita::mapear_passos_pendentes(millis_t tick) {
@@ -159,36 +151,5 @@ bool Receita::passos_pendentes_estao_mapeados() const {
         return util::Iter::Continue;
     });
     return estao;
-}
-
-const Receita::Passo& Receita::passo_atual() const {
-    if (possui_escaldo() && !m_escaldou)
-        return m_escaldo.value();
-    return m_ataques[m_ataque_atual];
-}
-
-Receita::Passo& Receita::passo_atual() {
-    if (possui_escaldo() && !m_escaldou)
-        return m_escaldo.value();
-    return m_ataques[m_ataque_atual];
-}
-
-// a index dos passos de uma receita depende da existencia do escaldo
-// o primeiro ataque de uma receita com escaldo tem index 1
-// o primeiro ataque de uma receita sem escaldo tem index 0
-size_t Receita::passo_atual_index() const {
-    return m_ataque_atual + (possui_escaldo() && m_escaldou);
-}
-
-bool Receita::acabou() const {
-    return m_ataque_atual >= m_num_ataques && (possui_escaldo() ? m_escaldou : true);
-}
-
-const Receita::Passo& Receita::primeiro_passo() const {
-    return possui_escaldo() ? escaldo() : m_ataques.front();
-}
-
-const Receita::Passo& Receita::passo_num(size_t index) const {
-    return index == 0 ? primeiro_passo() : m_ataques[index - possui_escaldo()];
 }
 }

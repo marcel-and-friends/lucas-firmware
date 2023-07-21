@@ -17,9 +17,8 @@ enum Opcoes {
     LogWifi,
     LogGcode,
     LogEstacoes,
-
-    ConectarWifiAuto,
-    PreencherTabelaDeFluxoNoNivelamento
+    PreencherTabelaDeFluxoNoNivelamento,
+    ModoGiga
 };
 
 inline auto opcoes = std::to_array<Opcao>({
@@ -31,9 +30,8 @@ inline auto opcoes = std::to_array<Opcao>({
     [LogWifi] = { .id = 'W', .ativo = false },
     [LogGcode] = { .id = 'G', .ativo = false },
     [LogEstacoes] = { .id = 'E', .ativo = true },
-
-    [ConectarWifiAuto] = { .ativo = false },
     [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = false },
+    [ModoGiga] = { .id = 'M', .ativo = false }
 });
 }
 
