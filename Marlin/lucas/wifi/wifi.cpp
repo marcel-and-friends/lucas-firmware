@@ -142,7 +142,7 @@ bool terminou_de_conectar() {
 
 void informar_sobre_rede() {
     g_conectando = false;
-    LOG_IF(LogWifi, "conectado!");
+    LOG_IF(LogWifi, "conectadonot ");
     LOG_IF(LogWifi, "-- informacoes da rede --");
     LOG_IF(LogWifi, "ip = ", wifi::ip().data(), " \nnome = ", wifi::nome_rede().data(), " \nsenha = ", wifi::senha_rede().data());
     LOG_IF(LogWifi, "-------------------------");

@@ -6,8 +6,6 @@
 #include <lucas/wifi/wifi.h>
 
 namespace lucas {
-// https://www.st.com/resource/en/reference_manual/rm0090-stm32f405415-stm32f407417-stm32f427437-and-stm32f429439-advanced-armbased-32bit-mcus-stmicroelectronics.pdf
-
 void setup() {
     util::FiltroUpdatesTemporario f{ Filtros::Todos };
 

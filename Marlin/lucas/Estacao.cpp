@@ -61,7 +61,7 @@ void Estacao::tick() {
 		{
 			constexpr auto TEMPO_PARA_CANCELAR_RECEITA = 3000; // 3s
 			if (segurado_agora) {
-				if (!estacao.tick_botao_segurado())
+				if (not estacao.tick_botao_segurado())
 					estacao.set_tick_botao_segurado(tick);
 
 				if (tick - estacao.tick_botao_segurado() >= TEMPO_PARA_CANCELAR_RECEITA) {
@@ -116,7 +116,7 @@ void Estacao::atualizar_leds() {
     static millis_t ultimo_tick_atualizado = 0;
 
     if (millis() - ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
-        ultimo_estado = !ultimo_estado;
+        ultimo_estado = not ultimo_estado;
         ultimo_tick_atualizado = millis();
         for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
             // aguardando input do usuário - led piscando
@@ -152,10 +152,11 @@ void Estacao::set_botao(pin_t pino) {
 }
 
 void Estacao::set_bloqueada(bool b) {
-    auto antigo = m_bloqueada;
+    if (m_bloqueada == b)
+        return;
+
     m_bloqueada = b;
-    if (antigo != m_bloqueada)
-        LOG_IF(LogEstacoes, "estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
+    LOG_IF(LogEstacoes, "estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
 }
 
 void Estacao::set_status(Status status, std::optional<uint32_t> receita_id) {

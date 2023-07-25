@@ -5,7 +5,7 @@
 namespace lucas::cfg {
 struct Opcao {
     char id = 0;
-    bool ativo = false;
+    bool ativo = true;
 };
 
 enum Opcoes {
@@ -17,8 +17,10 @@ enum Opcoes {
     LogWifi,
     LogGcode,
     LogEstacoes,
+    ModoGiga,
+
     PreencherTabelaDeFluxoNoNivelamento,
-    ModoGiga
+    SetarTemperaturaTargetInicial
 };
 
 inline auto opcoes = std::to_array<Opcao>({
@@ -30,16 +32,21 @@ inline auto opcoes = std::to_array<Opcao>({
     [LogWifi] = { .id = 'W', .ativo = false },
     [LogGcode] = { .id = 'G', .ativo = false },
     [LogEstacoes] = { .id = 'E', .ativo = true },
-    [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = false },
-    [ModoGiga] = { .id = 'M', .ativo = false }
+    [ModoGiga] = { .id = 'M', .ativo = false },
+
+    [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = true },
+    [SetarTemperaturaTargetInicial] = { .ativo = true },
 });
 }
 
 #define CFG(opcao) cfg::opcoes[cfg::Opcoes::opcao].ativo
-#define LOG_IF(opcao, ...)                                            \
-    do {                                                              \
-        if (CFG(opcao)) {                                             \
-            SERIAL_ECHO(AS_CHAR(cfg::opcoes[cfg::Opcoes::opcao].id)); \
-            LOG("", ": ", __VA_ARGS__);                               \
-        }                                                             \
+#define LOG_IF(opcao, ...)                                                \
+    do {                                                                  \
+        if (CFG(opcao)) {                                                 \
+            if (cfg::opcoes[cfg::Opcoes::opcao].id)                       \
+                SERIAL_ECHO(AS_CHAR(cfg::opcoes[cfg::Opcoes::opcao].id)); \
+            else                                                          \
+                SERIAL_ECHO(AS_CHAR('?'));                                \
+            LOG("", ": ", __VA_ARGS__);                                   \
+        }                                                                 \
     } while (false)

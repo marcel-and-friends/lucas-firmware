@@ -1,5 +1,3 @@
-#pragma once
-
 #include <lucas/util/util.h>
 #include <src/MarlinCore.h>
 #include <src/module/planner.h>
@@ -33,7 +31,7 @@ float distancia_entre_estacoes() {
     return 160.f / step_ratio_x();
 }
 
-static float s_hysteresis = 0.f;
+static float s_hysteresis = 0.5f;
 
 float hysteresis() {
     return s_hysteresis;

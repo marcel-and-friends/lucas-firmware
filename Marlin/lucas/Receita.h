@@ -29,7 +29,7 @@ public:
         char gcode[48] = {};
 
         millis_t fim() const {
-            if (!comeco_abs)
+            if (not comeco_abs)
                 return 0;
             return comeco_abs + duracao;
         }
@@ -64,7 +64,7 @@ public:
     }
 
     void for_each_passo_pendente(util::IterFn<Passo&> auto&& callback) {
-        if (m_possui_escaldo && !escaldou()) {
+        if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
         }
@@ -75,7 +75,7 @@ public:
     }
 
     void for_each_passo_pendente(util::IterFn<Passo&, size_t> auto&& callback) {
-        if (m_possui_escaldo && !escaldou()) {
+        if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
         }
@@ -86,7 +86,7 @@ public:
     }
 
     void for_each_passo_pendente(util::IterFn<const Passo&> auto&& callback) const {
-        if (m_possui_escaldo && !escaldou()) {
+        if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
         }
@@ -97,7 +97,7 @@ public:
     }
 
     void for_each_passo_pendente(util::IterFn<const Passo&, size_t> auto&& callback) const {
-        if (m_possui_escaldo && !escaldou()) {
+        if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
         }
@@ -119,7 +119,7 @@ public:
 
     uint32_t id() const { return m_id; }
 
-    bool escaldou() const { return m_possui_escaldo && m_passo_atual > 0; }
+    bool escaldou() const { return m_possui_escaldo and m_passo_atual > 0; }
 
     std::span<const Passo> ataques() const { return { m_passos.begin() + m_possui_escaldo, m_num_passos - m_possui_escaldo }; }
     std::span<Passo> ataques() { return { m_passos.begin() + m_possui_escaldo, m_num_passos - m_possui_escaldo }; }
@@ -150,11 +150,10 @@ private:
     millis_t m_tempo_de_finalizacao = 0;
     millis_t m_inicio_tempo_finalizacao = 0;
 
-    static constexpr auto MAX_ATAQUES = 10;             // foi decidido por marcel
-    static constexpr auto MAX_PASSOS = MAX_ATAQUES + 1; // incluindo o escaldo
-
     bool m_possui_escaldo = false;
 
+    static constexpr auto MAX_ATAQUES = 10;             // foi decidido por marcel
+    static constexpr auto MAX_PASSOS = MAX_ATAQUES + 1; // incluindo o escaldo
     // finge que isso é um vector
     size_t m_num_passos = 0;
     std::array<Passo, MAX_PASSOS> m_passos = {};

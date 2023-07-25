@@ -28,9 +28,9 @@ public:
 
     void remover_receitas_finalizadas();
 
-    void tentar_aquecer_apos_inatividade() const;
+    void tentar_aquecer_mangueira_apos_inatividade() const;
 
-    void gerar_informacoes_da_fila() const;
+    void gerar_informacoes_da_fila(JsonArrayConst estacoes) const;
 
     size_t estacao_ativa() const { return m_estacao_executando; }
 
@@ -38,12 +38,12 @@ public:
 
 public:
     void for_each_receita(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
-        if (!m_num_receitas)
+        if (m_num_receitas == 0) [[likely]]
             return;
 
         for (size_t i = 0; i < m_fila.size(); ++i) {
             auto& info = m_fila[i];
-            if (!info.ativa || (excecao && &info.receita == excecao))
+            if (not info.ativa or (excecao and excecao == &info.receita))
                 continue;
 
             if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)
@@ -52,11 +52,11 @@ public:
     };
 
     void for_each_receita_mapeada(util::IterFn<Receita&> auto&& callback, const Receita* excecao = nullptr) {
-        if (!m_num_receitas) [[likely]]
+        if (m_num_receitas == 0) [[likely]]
             return;
 
         for (auto& info : m_fila) {
-            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
+            if (not info.ativa or (excecao and excecao == &info.receita) or not info.receita.passos_pendentes_estao_mapeados())
                 continue;
 
             if (std::invoke(FWD(callback), info.receita) == util::Iter::Break)
@@ -65,11 +65,11 @@ public:
     };
 
     void for_each_receita_mapeada(util::IterFn<const Receita&> auto&& callback, const Receita* excecao = nullptr) const {
-        if (!m_num_receitas) [[likely]]
+        if (m_num_receitas == 0) [[likely]]
             return;
 
         for (auto& info : m_fila) {
-            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
+            if (not info.ativa or (excecao and excecao == &info.receita) or not info.receita.passos_pendentes_estao_mapeados())
                 continue;
 
             if (std::invoke(FWD(callback), info.receita) == util::Iter::Break)
@@ -78,12 +78,12 @@ public:
     };
 
     void for_each_receita_mapeada(util::IterFn<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
-        if (!m_num_receitas) [[likely]]
+        if (m_num_receitas == 0) [[likely]]
             return;
 
         for (size_t i = 0; i < m_fila.size(); ++i) {
             auto& info = m_fila[i];
-            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
+            if (not info.ativa or (excecao and excecao == &info.receita) or not info.receita.passos_pendentes_estao_mapeados())
                 continue;
 
             if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)
@@ -92,12 +92,12 @@ public:
     };
 
     void for_each_receita_mapeada(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
-        if (!m_num_receitas) [[likely]]
+        if (m_num_receitas == 0) [[likely]]
             return;
 
         for (size_t i = 0; i < m_fila.size(); ++i) {
             auto& info = m_fila[i];
-            if (!info.ativa || (excecao && &info.receita == excecao) || !(info.receita.passos_pendentes_estao_mapeados()))
+            if (not info.ativa or (excecao and excecao == &info.receita) or not info.receita.passos_pendentes_estao_mapeados())
                 continue;
 
             if (std::invoke(FWD(callback), info.receita, i) == util::Iter::Break)

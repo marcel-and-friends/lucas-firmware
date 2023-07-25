@@ -42,7 +42,7 @@ JsonObjectConst Receita::padrao() {
 })";
 
     static bool once = false;
-    if (!once) {
+    if (not once) {
         const auto err = deserializeJson(doc, json, sizeof(json));
         if (err) {
             LOG_ERR("DESSERIALIZACAO DA RECEITA PADRAO FALHOU - [", err.c_str(), "]");
@@ -58,19 +58,19 @@ bool Receita::Passo::colide_com(const Passo& outro) const {
     // dois ataques colidem se:
 
     // 1. um comeca dentro do outro
-    if (this->comeco_abs >= outro.comeco_abs && this->comeco_abs <= outro.fim())
+    if (this->comeco_abs >= outro.comeco_abs and this->comeco_abs <= outro.fim())
         return true;
 
     // 2. um termina dentro do outro
-    if (this->fim() >= outro.comeco_abs && this->fim() <= outro.fim())
+    if (this->fim() >= outro.comeco_abs and this->fim() <= outro.fim())
         return true;
 
     // 3. a distancia entre o comeco de um e o fim do outro é menor que o tempo de viagem de uma estacao à outra
-    if (this->comeco_abs > outro.fim() && this->comeco_abs - outro.fim() < util::MARGEM_DE_VIAGEM)
+    if (this->comeco_abs > outro.fim() and this->comeco_abs - outro.fim() < util::MARGEM_DE_VIAGEM)
         return true;
 
     // 4. a distancia entre o fim de um e o comeco do outro é menor que o tempo de viagem de uma estacao à outra
-    if (this->fim() < outro.comeco_abs && outro.comeco_abs - this->fim() < util::MARGEM_DE_VIAGEM)
+    if (this->fim() < outro.comeco_abs and outro.comeco_abs - this->fim() < util::MARGEM_DE_VIAGEM)
         return true;
 
     return false;

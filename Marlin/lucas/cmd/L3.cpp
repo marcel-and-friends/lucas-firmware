@@ -27,7 +27,7 @@ void L3() {
 
     const auto duracao = parser.ulongval('T');
 
-    if (CFG(ModoGiga) && duracao) {
+    if (CFG(ModoGiga) and duracao) {
         LOG("iniciando L3 em modo giga");
         util::aguardar_por(duracao);
         LOG("L3 finalizado");
@@ -35,7 +35,7 @@ void L3() {
     }
 
     const auto volume_agua = parser.floatval('G');
-    const auto despejar_agua = duracao && volume_agua;
+    const auto despejar_agua = duracao and volume_agua;
 
     const bool associado_a_estacao = Fila::the().executando();
     bool vaza = false;
@@ -98,7 +98,7 @@ void L3() {
 
         posicao_final.x = posicao_inicial.x + offset_x;
 
-        if (associado_a_estacao && !Fila::the().executando()) {
+        if (associado_a_estacao and not Fila::the().executando()) {
             vaza = true;
             return util::Iter::Break;
         }

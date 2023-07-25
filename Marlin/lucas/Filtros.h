@@ -24,7 +24,7 @@ constexpr Filtros operator&(const Filtros a, const Filtros b) {
     return Filtros(uint32_t(a) & uint32_t(b));
 }
 
-void filtrar_updates(Filtros filtro);
+void aplicar_filtro(Filtros filtro);
 
 void resetar_filtros();
 

@@ -14,7 +14,7 @@ void L1() {
     const bool associado_a_estacao = Fila::the().executando();
     util::aguardar_enquanto([&] {
         // receita foi cancelada por meios externos
-        if (associado_a_estacao && !Fila::the().executando())
+        if (associado_a_estacao and not Fila::the().executando())
             return false;
         return Bico::the().ativo();
     });

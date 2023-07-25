@@ -47,10 +47,12 @@ private:
     struct ControladorFluxo {
         static constexpr auto FLUXO_MIN = 5;
         static constexpr auto FLUXO_MAX = 15;
+        static_assert(FLUXO_MAX > FLUXO_MIN, "FLUXO_MAX deve ser maior que FLUXO_MIN");
+
         static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
 
-        static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0;
-        static constexpr auto ML_POR_PULSO = 0.5375f;
+        static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0; // UwU
+        static inline auto ML_POR_PULSO = 0.5375f;
 
         static ControladorFluxo& the() {
             static ControladorFluxo instance;

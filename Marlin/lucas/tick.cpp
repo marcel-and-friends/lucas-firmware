@@ -16,26 +16,26 @@ void tick() {
     ultimo_tick = millis();
 
     { // fila
-        if (!filtrado(Filtros::Fila))
+        if (not filtrado(Filtros::Fila))
             Fila::the().tick();
 
         Fila::the().remover_receitas_finalizadas();
     }
 
     { // estacoes
-        if (!filtrado(Filtros::Estacao))
+        if (not filtrado(Filtros::Estacao))
             Estacao::tick();
 
         Estacao::atualizar_leds();
     }
 
     { // bico
-        if (!filtrado(Filtros::Bico))
+        if (not filtrado(Filtros::Bico))
             Bico::the().tick();
     }
 
     { // info
-        if (!filtrado(Filtros::Info))
+        if (not filtrado(Filtros::Info))
             info::tick();
     }
 }

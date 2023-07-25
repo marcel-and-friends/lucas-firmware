@@ -19,7 +19,7 @@ struct Report {
     static void make(const char* nome, millis_t intervalo, Callback, CallbackCondicao condicao = nullptr);
 
     static void for_each(util::IterFn<Report&> auto&& callback) {
-        if (!s_num_reports)
+        if (not s_num_reports)
             return;
 
         for (size_t i = 0; i < s_num_reports; ++i)

@@ -14,7 +14,7 @@ struct HookDelimitado {
     static void make(char delimitador, HookCallback callback);
 
     static void for_each(util::IterFn<HookDelimitado&> auto&& callback) {
-        if (!s_num_hooks)
+        if (not s_num_hooks)
             return;
 
         for (size_t i = 0; i < s_num_hooks; ++i)

@@ -21,7 +21,7 @@ enum class Iter {
 };
 
 template<typename T, typename Ret, typename... Args>
-concept Fn = std::invocable<T, Args...> && std::same_as<std::invoke_result_t<T, Args...>, Ret>;
+concept Fn = std::invocable<T, Args...> and std::same_as<std::invoke_result_t<T, Args...>, Ret>;
 
 template<typename FN, typename... Args>
 concept IterFn = Fn<FN, Iter, Args...>;
@@ -39,15 +39,12 @@ const char* ff(const char* str, float valor);
 bool segurando(int pino);
 
 float step_ratio_x();
-
 float step_ratio_y();
 
 float distancia_primeira_estacao();
-
 float distancia_entre_estacoes();
 
 float hysteresis();
-
 void set_hysteresis(float valor);
 
 void aguardar_por(millis_t tempo, Filtros filtros = Filtros::Nenhum);

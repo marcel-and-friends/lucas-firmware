@@ -20,7 +20,7 @@ bool hooks() {
 
     while (SERIAL_IMPL.available()) {
         const auto peek = SERIAL_IMPL.peek();
-        if (!s_hook_ativo) {
+        if (not s_hook_ativo) {
             LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
 
             HookDelimitado::for_each([&](auto& hook) {
@@ -43,9 +43,9 @@ bool hooks() {
 
                 LOG_IF(LogSerial, "finalizando leitura");
                 hook.buffer[hook.buffer_size] = '\0';
-                if (hook.callback && hook.buffer_size) {
-                    LOG_IF(LogSerial, "!BUFFER!\n", hook.buffer);
-                    LOG_IF(LogSerial, "!BUFFER!");
+                if (hook.callback and hook.buffer_size) {
+                    LOG_IF(LogSerial, "not BUFFERnot \n", hook.buffer);
+                    LOG_IF(LogSerial, "not BUFFERnot ");
 
                     hook.callback({ hook.buffer, hook.buffer_size });
                 }
@@ -57,7 +57,7 @@ bool hooks() {
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
                 if (hook.buffer_size >= sizeof(hook.buffer)) {
-                    LOG_ERR("buffer nao tem espaco o suficiente!!!");
+                    LOG_ERR("buffer nao tem espaco o suficientenot not not ");
                     hook.reset(true);
                     s_hook_ativo = nullptr;
                     break;
@@ -70,7 +70,7 @@ bool hooks() {
             }
         }
 
-        if (!s_hook_ativo)
+        if (not s_hook_ativo)
             break;
     }
     return s_hook_ativo;

@@ -6,7 +6,7 @@ Report::Lista Report::s_reports = {};
 
 void Report::make(const char* nome, millis_t intervalo, Callback callback, CallbackCondicao condicao) {
     if (s_num_reports >= s_reports.size()) {
-        LOG_ERR("muitos reports!!");
+        LOG_ERR("muitos reportsnot not ");
         return;
     }
     s_reports[s_num_reports++] = { nome, intervalo, 0, callback, condicao };

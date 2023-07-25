@@ -3,7 +3,7 @@
 namespace lucas {
 static Filtros s_filtro_updates = Filtros::Nenhum;
 
-void filtrar_updates(Filtros filtro) {
+void aplicar_filtro(Filtros filtro) {
     s_filtro_updates = filtro;
 }
 

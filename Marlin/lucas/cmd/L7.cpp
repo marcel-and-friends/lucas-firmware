@@ -6,9 +6,9 @@
 namespace lucas::cmd {
 void L7() {
     for (auto& opcao : cfg::opcoes) {
-        if (opcao.id && parser.seen(opcao.id)) {
-            opcao.ativo = !opcao.ativo;
-            LOG("opcao \'", AS_CHAR(opcao.id), "\' foi ", !opcao.ativo ? "des" : "", "ativada");
+        if (opcao.id and parser.seen(opcao.id)) {
+            opcao.ativo = not opcao.ativo;
+            LOG("opcao \'", AS_CHAR(opcao.id), "\' foi ", not opcao.ativo ? "des" : "", "ativada");
         }
     }
 

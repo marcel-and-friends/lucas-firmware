@@ -48,26 +48,22 @@ void Bico::tick() {
 }
 
 void Bico::despejar_com_volume_desejado(millis_t duracao, float volume_desejado) {
-    if (!duracao || !volume_desejado)
+    if (not duracao or not volume_desejado)
         return;
 
     iniciar_despejo(duracao);
     aplicar_forca(ControladorFluxo::the().melhor_valor_digital(volume_desejado / (duracao / 1000)));
     m_volume_total_desejado = volume_desejado;
-
-    if (m_forca != 0)
-        LOG_IF(LogDespejoBico, "iniciando despejo - [volume desejado = ", volume_desejado, " | forca = ", m_forca, "]");
+    LOG_IF(LogDespejoBico, "iniciando despejo - [volume desejado = ", volume_desejado, " | forca = ", m_forca, "]");
 }
 
 void Bico::despejar_volume_e_aguardar(millis_t duracao, float volume_desejado) {
     despejar_com_volume_desejado(duracao, volume_desejado);
-    util::aguardar_enquanto(
-        [] { return Bico::the().ativo(); },
-        Filtros::Interacao);
+    util::aguardar_enquanto([] { return Bico::the().ativo(); }, Filtros::Interacao);
 }
 
 void Bico::desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital) {
-    if (!duracao || !valor_digital)
+    if (not duracao or not valor_digital)
         return;
 
     iniciar_despejo(duracao);
@@ -114,11 +110,35 @@ void Bico::setup() {
         },
         RISING);
 
-    if (!CFG(ModoGiga)) {
-        util::set_hysteresis(1.5f);
-        thermalManager.setTargetBed(93);
-        util::set_hysteresis(0.5f);
-        nivelar();
+    if (not CFG(ModoGiga)) {
+        if (CFG(SetarTemperaturaTargetInicial)) {
+            constexpr auto TEMP_TARGET_INICIAL = 93.f;
+            constexpr auto HYSTERESIS_INICIAL = 1.5f;
+            constexpr auto HYSTERESIS_FINAL = 0.5f;
+
+            const auto delta = std::abs(TEMP_TARGET_INICIAL - thermalManager.degBed());
+            util::set_hysteresis(delta < HYSTERESIS_INICIAL ? HYSTERESIS_FINAL : HYSTERESIS_INICIAL);
+
+            LOG_IF(LogNivelamento, "iniciando nivelamento de temperatura - [hysteresis = ", util::hysteresis(), "]");
+
+            thermalManager.setTargetBed(TEMP_TARGET_INICIAL);
+            util::aguardar_enquanto([] {
+                constexpr auto INTERVALO_LOG = 5000;
+                static auto ultimo = millis();
+                if (millis() - ultimo >= INTERVALO_LOG) {
+                    LOG_IF(LogNivelamento, "info - [temp = ", thermalManager.degBed(), " | target = ", thermalManager.degTargetBed(), "]");
+                    ultimo = millis();
+                }
+
+                const auto delta = std::abs(TEMP_TARGET_INICIAL - thermalManager.degBed());
+                return delta >= util::hysteresis();
+            });
+
+            util::set_hysteresis(HYSTERESIS_FINAL);
+        }
+        // nivelar();
+    } else {
+        LOG("placa iniciada no modo giga - nivelamento não sera executado");
     }
 }
 
@@ -214,18 +234,21 @@ void Bico::ControladorFluxo::preencher_tabela() {
     //         valor_memoria = valor_digital;
     // }
 
-    constexpr auto VALOR_DIGITAL_INICIAL = 1200;
-    constexpr auto INCREMENTO_INICIAL = 25;
-    constexpr auto TEMPO_DE_ANALIZAR_FLUXO = 1000 * 10;
+    constexpr auto VALOR_DIGITAL_INICIAL = 0;
+    constexpr auto INCREMENTO_INICIAL = 200;
+    constexpr auto TEMPO_DE_ANALISAR_FLUXO = 1000 * 10;
+    static_assert(TEMPO_DE_ANALISAR_FLUXO >= 1000, "tempo de analise deve ser no minimo 1 minuto");
     constexpr auto TEMPO_DE_PREENCHER_MANGUEIRA = 1000 * 20;
 
     limpar_tabela();
+    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
 
     Bico::the().viajar_para_esgoto();
     Bico::the().aplicar_forca(1650);
-    util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA, Filtros::Interacao);
+    util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
 
-    static float ultimo_fluxo_medio = 0;
+    float ultimo_fluxo_medio = 0;
+    bool conseguiu_5gs = false;
 
     int incremento = INCREMENTO_INICIAL;
     int valor_digital = VALOR_DIGITAL_INICIAL;
@@ -238,12 +261,22 @@ void Bico::ControladorFluxo::preencher_tabela() {
         LOG_IF(LogNivelamento, "aplicando forca de ", valor_digital);
         Bico::the().aplicar_forca(valor_digital);
 
-        util::aguardar_por(TEMPO_DE_ANALIZAR_FLUXO, Filtros::Interacao);
+        util::aguardar_por(TEMPO_DE_ANALISAR_FLUXO);
 
         const auto pulsos = s_contador_de_pulsos - contador_comeco;
-        const auto fluxo_medio = (float(pulsos) * ML_POR_PULSO) / (TEMPO_DE_ANALIZAR_FLUXO / 1000);
+        const auto fluxo_medio = (float(pulsos) * ML_POR_PULSO) / float(TEMPO_DE_ANALISAR_FLUXO / 1000);
 
         LOG_IF(LogNivelamento, "fluxo estabilizou, vamos analisar - [pulsos = ", pulsos, " | fluxo_medio = ", fluxo_medio, "]");
+
+        if (not conseguiu_5gs and fluxo_medio != 5.f) {
+            const bool maior = fluxo_medio > 5.f;
+            incremento = std::max(maior ? incremento / 2 : incremento * 2, 1);
+            valor_digital += incremento * (maior ? -1 : 1);
+            LOG_IF(LogNivelamento, "ainda não foi obtido 5g/s - ", maior ? "diminuindo" : "aumentando", " o valor digital para ", valor_digital, " - [fluxo_medio = ", fluxo_medio, " | incremento = ", incremento, "]");
+            continue;
+        } else {
+            conseguiu_5gs = true;
+        }
 
         if (ultimo_fluxo_medio) {
             const auto delta = fluxo_medio - ultimo_fluxo_medio;

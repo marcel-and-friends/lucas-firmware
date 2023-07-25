@@ -20,7 +20,7 @@ public:
     static void inicializar(size_t num);
 
     static void for_each(util::IterFn<Estacao&> auto&& callback) {
-        if (!s_num_estacoes)
+        if (s_num_estacoes == 0)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
@@ -29,7 +29,7 @@ public:
     }
 
     static void for_each(util::IterFn<Estacao&, size_t> auto&& callback) {
-        if (!s_num_estacoes)
+        if (s_num_estacoes == 0)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i)
@@ -38,7 +38,7 @@ public:
     }
 
     static void for_each_if(util::Fn<bool, Estacao&> auto&& condicao, util::IterFn<Estacao&> auto&& callback) {
-        if (!s_num_estacoes)
+        if (s_num_estacoes == 0)
             return;
 
         for (size_t i = 0; i < s_num_estacoes; ++i) {
@@ -65,7 +65,7 @@ public:
     Estacao& operator=(Estacao&&) = delete;
 
 public:
-    // muito importante manter esse enum em sincronia com o app!
+    // muito importante manter esse enum em sincronia com o appnot
     // FREE = 0,
     // WAITING_START,
     // SCALDING,
@@ -87,8 +87,8 @@ public:
     size_t numero() const;
     Index index() const;
 
-    bool aguardando_confirmacao() const { return m_status == Status::ConfirmandoEscaldo || m_status == Status::ConfirmandoAtaques; }
-    bool aguardando_input() const { return aguardando_confirmacao() || m_status == Status::Pronto; }
+    bool aguardando_confirmacao() const { return m_status == Status::ConfirmandoEscaldo or m_status == Status::ConfirmandoAtaques; }
+    bool aguardando_input() const { return aguardando_confirmacao() or m_status == Status::Pronto; }
 
 public:
     pin_t botao() const { return m_pino_botao; }

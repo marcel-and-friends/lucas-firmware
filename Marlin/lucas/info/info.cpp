@@ -8,12 +8,14 @@
 
 namespace lucas::info {
 void setup() {
-    Report::make(
-        "infoBoiler",
-        5000,
-        [](millis_t tick, JsonObject obj) {
-            obj["tempAtual"] = thermalManager.degBed();
-        });
+    if (not CFG(ModoGiga)) {
+        Report::make(
+            "infoBoiler",
+            5000,
+            [](millis_t tick, JsonObject obj) {
+                obj["tempAtual"] = thermalManager.degBed();
+            });
+    }
 }
 
 void tick() {
@@ -22,10 +24,10 @@ void tick() {
     Report::for_each([&](Report& report) {
         const auto tick = millis();
         const auto delta = report.delta(tick);
-        if (delta < report.intervalo || !report.callback)
+        if (delta < report.intervalo or not report.callback)
             return util::Iter::Continue;
 
-        if (report.condicao && !report.condicao())
+        if (report.condicao and not report.condicao())
             return util::Iter::Continue;
 
         report.callback(tick, doc.createNestedObject(report.nome));
@@ -70,7 +72,7 @@ void interpretar_json(std::span<char> buffer) {
         const auto v = obj.value();
         switch (comando) {
         case InicializarEstacoes: {
-            if (!v.is<size_t>()) {
+            if (not v.is<size_t>()) {
                 LOG_ERR("valor json invalido para numero de estacoes");
                 break;
             }
@@ -78,7 +80,7 @@ void interpretar_json(std::span<char> buffer) {
             Estacao::inicializar(v.as<size_t>());
         } break;
         case TempTargetBoiler: {
-            if (!v.is<const char*>()) {
+            if (not v.is<const char*>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
@@ -86,24 +88,24 @@ void interpretar_json(std::span<char> buffer) {
             // cmd::executar_fmt("M140 S%s", v.as<const char*>());
         } break;
         case BloquearEstacoes: {
-            if (!v.is<JsonArrayConst>()) {
+            if (not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para bloqueamento de bocas");
                 break;
             }
 
             auto array = v.as<JsonArrayConst>();
-            if (array.isNull() || array.size() != Estacao::num_estacoes()) {
+            if (array.isNull() or array.size() != Estacao::num_estacoes()) {
                 LOG_ERR("array de estacoes bloqueadas invalido");
                 break;
             }
 
             Estacao::for_each([&array](Estacao& estacao, size_t i) {
-                estacao.set_bloqueada(!(array[i].as<bool>()));
+                estacao.set_bloqueada(not(array[i].as<bool>()));
                 return util::Iter::Continue;
             });
         } break;
         case CancelarReceita: {
-            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
+            if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para cancelamento de receita");
                 break;
             }
@@ -122,7 +124,7 @@ void interpretar_json(std::span<char> buffer) {
             }
         } break;
         case AgendarReceita: {
-            if (!v.is<JsonObjectConst>()) {
+            if (not v.is<JsonObjectConst>()) {
                 LOG_ERR("valor json invalido para envio de uma receita");
                 break;
             }
@@ -130,10 +132,14 @@ void interpretar_json(std::span<char> buffer) {
             Fila::the().agendar_receita(v.as<JsonObjectConst>());
         } break;
         case RequisicaoDeInfo: {
-            Fila::the().gerar_informacoes_da_fila();
+            if (not v.is<JsonArrayConst>()) {
+                LOG_ERR("valor json invalido para requisicao de informacoes");
+                break;
+            }
+            Fila::the().gerar_informacoes_da_fila(v.as<JsonArrayConst>());
         } break;
         case AgendarReceitaPadrao: {
-            if (!v.is<size_t>()) {
+            if (not v.is<size_t>()) {
                 LOG_ERR("valor json invalido para envio da receita padrao");
                 break;
             }
@@ -143,7 +149,7 @@ void interpretar_json(std::span<char> buffer) {
 
         } break;
         case ApertarBotao: {
-            if (!v.is<size_t>() && !v.is<JsonArrayConst>()) {
+            if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para apertar botao");
                 break;
             }

@@ -17,7 +17,7 @@ inline void executar_fmt(const char* str, auto... args) {
 }
 
 inline void executar_ff(const char* str, float value) {
-    executar_fmt(util::ff(str, value));
+    executar(util::ff(str, value));
 }
 
 // L1 -> Controla o bico
