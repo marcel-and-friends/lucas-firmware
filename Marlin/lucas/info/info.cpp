@@ -12,7 +12,7 @@ void setup() {
         Report::make(
             "infoBoiler",
             5000,
-            [](millis_t tick, JsonObject obj) {
+            [](JsonObject obj) {
                 obj["tempAtual"] = thermalManager.degBed();
             });
     }
@@ -30,7 +30,7 @@ void tick() {
         if (report.condicao and not report.condicao())
             return util::Iter::Continue;
 
-        report.callback(tick, doc.createNestedObject(report.nome));
+        report.callback(doc.createNestedObject(report.nome));
         report.ultimo_tick_reportado = tick;
         atualizou = true;
 
@@ -85,7 +85,8 @@ void interpretar_json(std::span<char> buffer) {
                 break;
             }
 
-            // cmd::executar_fmt("M140 S%s", v.as<const char*>());
+            if (not CFG(ModoGiga))
+                cmd::executar_fmt("M140 S%s", v.as<const char*>());
         } break;
         case BloquearEstacoes: {
             if (not v.is<JsonArrayConst>()) {

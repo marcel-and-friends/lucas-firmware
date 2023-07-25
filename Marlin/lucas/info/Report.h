@@ -7,7 +7,7 @@
 
 namespace lucas::info {
 struct Report {
-    using Callback = void (*)(millis_t, JsonObject);
+    using Callback = void (*)(JsonObject);
     using CallbackCondicao = bool (*)();
 
     const char* nome = "";

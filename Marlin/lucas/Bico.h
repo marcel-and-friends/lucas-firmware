@@ -35,6 +35,8 @@ public:
 
     void viajar_para_esgoto() const;
 
+    void setar_temperatura_boiler(float target) const;
+
     void nivelar() const;
 
     void preencher_tabela_de_controle_de_fluxo() const;
@@ -58,6 +60,7 @@ private:
             static ControladorFluxo instance;
             return instance;
         }
+
         void preencher_tabela();
 
         uint32_t melhor_valor_digital(float fluxo);
@@ -76,6 +79,36 @@ private:
         std::tuple<int, uint32_t> decompor_fluxo(float fluxo);
 
         uint32_t& valor_na_tabela(float fluxo);
+
+        size_t numero_celulas() const {
+            size_t num = 0;
+            for_each_celula([&num](auto) { ++num; return util::Iter::Continue; });
+            return num;
+        }
+
+        void for_each_celula(util::IterFn<uint32_t> auto&& callback) const {
+            for (size_t i = 0; i < m_tabela.size(); ++i) {
+                auto& linha = m_tabela[i];
+                for (size_t j = 0; j < linha.size(); ++j) {
+                    auto valor_digital = linha[j];
+                    if (valor_digital != VALOR_DIGITAL_INVALIDO)
+                        if (std::invoke(FWD(callback), valor_digital) == util::Iter::Break)
+                            return;
+                }
+            }
+        }
+
+        void for_each_celula(util::IterFn<uint32_t, size_t, size_t> auto&& callback) const {
+            for (size_t i = 0; i < m_tabela.size(); ++i) {
+                auto& linha = m_tabela[i];
+                for (size_t j = 0; j < linha.size(); ++j) {
+                    auto valor_digital = linha[j];
+                    if (valor_digital != VALOR_DIGITAL_INVALIDO)
+                        if (std::invoke(FWD(callback), valor_digital, i, j) == util::Iter::Break)
+                            return;
+                }
+            }
+        }
 
         std::array<std::array<uint32_t, 10>, RANGE_FLUXO> m_tabela = { {} };
     };

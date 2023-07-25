@@ -140,12 +140,18 @@ Estacao::Index Estacao::index() const {
 }
 
 void Estacao::set_led(pin_t pino) {
+    if (m_pino_led == pino)
+        return;
+
     m_pino_led = pino;
     SET_OUTPUT(m_pino_led);
     WRITE(m_pino_led, LOW);
 }
 
 void Estacao::set_botao(pin_t pino) {
+    if (m_pino_botao == pino)
+        return;
+
     m_pino_botao = pino;
     SET_INPUT_PULLUP(m_pino_botao);
     WRITE(m_pino_botao, HIGH);

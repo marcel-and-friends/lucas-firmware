@@ -27,10 +27,10 @@ bool hooks() {
                 if (hook.delimitador == peek) {
                     SERIAL_IMPL.read();
 
-                    LOG_IF(LogSerial, "iniciando leitura");
-
                     s_hook_ativo = &hook;
                     s_hook_ativo->counter = 1;
+
+                    LOG_IF(LogSerial, "iniciando leitura");
 
                     return util::Iter::Break;
                 }
@@ -40,12 +40,11 @@ bool hooks() {
             auto& hook = *s_hook_ativo;
             if (hook.delimitador == peek) {
                 SERIAL_IMPL.read();
-
-                LOG_IF(LogSerial, "finalizando leitura");
-                hook.buffer[hook.buffer_size] = '\0';
                 if (hook.callback and hook.buffer_size) {
-                    LOG_IF(LogSerial, "not BUFFERnot \n", hook.buffer);
-                    LOG_IF(LogSerial, "not BUFFERnot ");
+                    hook.buffer[hook.buffer_size] = '\0';
+
+                    LOG_IF(LogSerial, "!BUFFER!\n", hook.buffer);
+                    LOG_IF(LogSerial, "!BUFFER!");
 
                     hook.callback({ hook.buffer, hook.buffer_size });
                 }
@@ -53,18 +52,19 @@ bool hooks() {
                 hook.reset();
                 s_hook_ativo = nullptr;
 
+                LOG_IF(LogSerial, "finalizando leitura");
+
                 SERIAL_ECHOLNPGM("ok");
             } else {
                 hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
                 if (hook.buffer_size >= sizeof(hook.buffer)) {
-                    LOG_ERR("buffer nao tem espaco o suficientenot not not ");
+                    LOG_ERR("buffer nao tem espaco o suficiente!!");
                     hook.reset(true);
                     s_hook_ativo = nullptr;
                     break;
                 }
                 if (++hook.counter >= MAX_BYTES) {
                     hook.counter = 0;
-                    LOG_IF(LogSerial, "limite de 64 atingido");
                     SERIAL_ECHOLNPGM("ok");
                 }
             }

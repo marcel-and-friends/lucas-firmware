@@ -6,7 +6,7 @@ HookDelimitado::Lista HookDelimitado::s_hooks = {};
 
 void HookDelimitado::make(char delimitador, HookCallback callback) {
     if (s_num_hooks >= s_hooks.size()) {
-        LOG_ERR("muitos hooksnot not ");
+        LOG_ERR("muitos hooks!!");
         return;
     }
 

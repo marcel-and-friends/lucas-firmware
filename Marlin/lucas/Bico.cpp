@@ -110,36 +110,8 @@ void Bico::setup() {
         },
         RISING);
 
-    if (not CFG(ModoGiga)) {
-        if (CFG(SetarTemperaturaTargetInicial)) {
-            constexpr auto TEMP_TARGET_INICIAL = 93.f;
-            constexpr auto HYSTERESIS_INICIAL = 1.5f;
-            constexpr auto HYSTERESIS_FINAL = 0.5f;
-
-            const auto delta = std::abs(TEMP_TARGET_INICIAL - thermalManager.degBed());
-            util::set_hysteresis(delta < HYSTERESIS_INICIAL ? HYSTERESIS_FINAL : HYSTERESIS_INICIAL);
-
-            LOG_IF(LogNivelamento, "iniciando nivelamento de temperatura - [hysteresis = ", util::hysteresis(), "]");
-
-            thermalManager.setTargetBed(TEMP_TARGET_INICIAL);
-            util::aguardar_enquanto([] {
-                constexpr auto INTERVALO_LOG = 5000;
-                static auto ultimo = millis();
-                if (millis() - ultimo >= INTERVALO_LOG) {
-                    LOG_IF(LogNivelamento, "info - [temp = ", thermalManager.degBed(), " | target = ", thermalManager.degTargetBed(), "]");
-                    ultimo = millis();
-                }
-
-                const auto delta = std::abs(TEMP_TARGET_INICIAL - thermalManager.degBed());
-                return delta >= util::hysteresis();
-            });
-
-            util::set_hysteresis(HYSTERESIS_FINAL);
-        }
-        // nivelar();
-    } else {
-        LOG("placa iniciada no modo giga - nivelamento não sera executado");
-    }
+    if (not CFG(ModoGiga))
+        nivelar();
 }
 
 void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
@@ -187,11 +159,40 @@ void Bico::aguardar_viagem_terminar() const {
     util::aguardar_enquanto(&Planner::busy, Filtros::Fila);
 }
 
+void Bico::setar_temperatura_boiler(float target) const {
+    constexpr auto HYSTERESIS_INICIAL = 1.5f;
+    constexpr auto HYSTERESIS_FINAL = 0.5f;
+
+    const auto delta = std::abs(target - thermalManager.degBed());
+    util::set_hysteresis(delta < HYSTERESIS_INICIAL ? HYSTERESIS_FINAL : HYSTERESIS_INICIAL);
+
+    LOG_IF(LogNivelamento, "iniciando nivelamento de temperatura - [hysteresis = ", util::hysteresis(), "]");
+
+    thermalManager.setTargetBed(target);
+    util::aguardar_enquanto([target] {
+        constexpr auto INTERVALO_LOG = 5000;
+        static auto ultimo_log = millis();
+        if (millis() - ultimo_log >= INTERVALO_LOG) {
+            LOG_IF(LogNivelamento, "info - [temp = ", thermalManager.degBed(), " | target = ", thermalManager.degTargetBed(), "]");
+            ultimo_log = millis();
+        }
+
+        const auto delta = std::abs(target - thermalManager.degBed());
+        return delta >= util::hysteresis();
+    });
+
+    LOG_IF(LogNivelamento, "temperatura desejada foi atingida");
+
+    util::set_hysteresis(HYSTERESIS_FINAL);
+}
+
 void Bico::nivelar() const {
     LOG_IF(LogNivelamento, "iniciando rotina de nivelamento");
 
     cmd::executar("G28 XY");
-    viajar_para_esgoto();
+
+    if (CFG(SetarTemperaturaTargetInicial))
+        setar_temperatura_boiler(93.f);
 
     if (CFG(PreencherTabelaDeFluxoNoNivelamento))
         preencher_tabela_de_controle_de_fluxo();
@@ -235,30 +236,43 @@ void Bico::ControladorFluxo::preencher_tabela() {
     // }
 
     constexpr auto VALOR_DIGITAL_INICIAL = 0;
-    constexpr auto INCREMENTO_INICIAL = 200;
+    constexpr auto MODIFICACAO_VALOR_DIGITAL_INICIAL = 200;
+    constexpr auto MODIFICACAO_VALOR_DIGITAL_APOS_OBTER_FLUXO_MINIMO = 25;
+    constexpr auto DELTA_MAXIMO_ENTRE_DESPEJOS = 1.f;
+
     constexpr auto TEMPO_DE_ANALISAR_FLUXO = 1000 * 10;
     static_assert(TEMPO_DE_ANALISAR_FLUXO >= 1000, "tempo de analise deve ser no minimo 1 minuto");
     constexpr auto TEMPO_DE_PREENCHER_MANGUEIRA = 1000 * 20;
 
     limpar_tabela();
-    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
 
-    Bico::the().viajar_para_esgoto();
-    Bico::the().aplicar_forca(1650);
-    util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
+    const auto inicio = millis();
 
-    float ultimo_fluxo_medio = 0;
-    bool conseguiu_5gs = false;
+    { // prepara o bico na posição correta e preenche a mangueira com água quente, para evitarmos resultados erroneos
+        Bico::the().viajar_para_esgoto();
 
-    int incremento = INCREMENTO_INICIAL;
+        LOG_IF(LogNivelamento, "preenchendo a mangueira com agua quente - [duracao = ", TEMPO_DE_PREENCHER_MANGUEIRA / 1000, "s]");
+        Bico::the().aplicar_forca(1650);
+        util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
+    }
+
+    // valor enviado para o driver do motor
     int valor_digital = VALOR_DIGITAL_INICIAL;
+    // modificacao aplicada nesse valor em cada iteração do nivelamento
+    int modificacao_valor_digital = MODIFICACAO_VALOR_DIGITAL_INICIAL;
+    // o fluxo medio do ultimo despejo, usado para calcularmos o delta entre despejos e modificarmos o valor digital apropriadamente
+    float fluxo_medio_do_ultimo_despejo = 0.f;
+    // flag para sabermos se ja temos o valor minimo e podemos prosseguir com o restante do nivelamento
+    bool obteve_fluxo_minimo = false;
+
     while (true) {
+        // chegamos no limite, não podemos mais aumentar a força
         if (valor_digital >= 4095)
             break;
 
         const auto contador_comeco = s_contador_de_pulsos;
 
-        LOG_IF(LogNivelamento, "aplicando forca de ", valor_digital);
+        LOG_IF(LogNivelamento, "aplicando forca = ", valor_digital);
         Bico::the().aplicar_forca(valor_digital);
 
         util::aguardar_por(TEMPO_DE_ANALISAR_FLUXO);
@@ -266,64 +280,83 @@ void Bico::ControladorFluxo::preencher_tabela() {
         const auto pulsos = s_contador_de_pulsos - contador_comeco;
         const auto fluxo_medio = (float(pulsos) * ML_POR_PULSO) / float(TEMPO_DE_ANALISAR_FLUXO / 1000);
 
-        LOG_IF(LogNivelamento, "fluxo estabilizou, vamos analisar - [pulsos = ", pulsos, " | fluxo_medio = ", fluxo_medio, "]");
+        LOG_IF(LogNivelamento, "fluxo estabilizou - [pulsos = ", pulsos, " | fluxo_medio = ", fluxo_medio, "]");
 
-        if (not conseguiu_5gs and fluxo_medio != 5.f) {
-            const bool maior = fluxo_medio > 5.f;
-            incremento = std::max(maior ? incremento / 2 : incremento * 2, 1);
-            valor_digital += incremento * (maior ? -1 : 1);
-            LOG_IF(LogNivelamento, "ainda não foi obtido 5g/s - ", maior ? "diminuindo" : "aumentando", " o valor digital para ", valor_digital, " - [fluxo_medio = ", fluxo_medio, " | incremento = ", incremento, "]");
-            continue;
-        } else {
-            conseguiu_5gs = true;
-        }
+        { // primeiro precisamos obter o fluxo minimo
+            if (not obteve_fluxo_minimo) {
+                const auto delta = fluxo_medio - float(FLUXO_MIN);
+                // valores entre FLUXO_MIN e FLUXO_MIN + 0.1 são aceitados
+                // caso contrario, aumentamos ou diminuimos o valor digital ate chegarmos no fluxo minimo
+                if (delta > 0.f && delta < 0.1f) {
+                    obteve_fluxo_minimo = true;
+                    m_tabela[0][0] = valor_digital;
 
-        if (ultimo_fluxo_medio) {
-            const auto delta = fluxo_medio - ultimo_fluxo_medio;
-            if (delta > 1.f) {
-                incremento = std::max(incremento / 2, 1);
-                valor_digital -= incremento;
-                LOG_IF(LogNivelamento, "pulo muito grande de força - [delta = ", delta, " | incremento = ", incremento);
+                    LOG_IF(LogNivelamento, "fluxo minimo obtido - [valor_digital = ", valor_digital, "]");
+
+                    modificacao_valor_digital = MODIFICACAO_VALOR_DIGITAL_APOS_OBTER_FLUXO_MINIMO;
+                    valor_digital += modificacao_valor_digital;
+                } else {
+                    const bool maior = fluxo_medio > float(FLUXO_MIN);
+
+                    modificacao_valor_digital = std::max(maior ? modificacao_valor_digital / 2 : modificacao_valor_digital, 1);
+                    valor_digital += modificacao_valor_digital * (maior ? -1 : 1);
+
+                    LOG_IF(LogNivelamento, "fluxo minimo nao obtido - ", maior ? "diminuindo" : "aumentando", " o valor digital para ", valor_digital, " - [modificacao = ", modificacao_valor_digital, "]");
+                }
                 continue;
             }
         }
 
-        if (fluxo_medio < FLUXO_MIN) {
-            valor_digital += incremento;
-            LOG_IF(LogNivelamento, "ainda nao temos fluxo o suficiente");
+        // se o fluxo diminui entre um despejo e outro o resultado é ignorado
+        if (fluxo_medio < fluxo_medio_do_ultimo_despejo) {
+            valor_digital += modificacao_valor_digital;
+            LOG_IF(LogNivelamento, "fluxo diminuiu?! aumentando valor digital - [fluxo_medio_do_ultimo_despejo = ", fluxo_medio_do_ultimo_despejo, "]");
             continue;
         }
 
-        if (fluxo_medio > FLUXO_MAX) {
-            LOG_IF(LogNivelamento, "fluxo demais");
+        // se o fluxo ultrapassa o limite máximo, finalizamos o nivelamento
+        if (fluxo_medio >= FLUXO_MAX) {
+            LOG_IF(LogNivelamento, "chegamos no fluxo maximo, finalizando nivelamento");
             break;
         }
 
-        ultimo_fluxo_medio = fluxo_medio;
-        const auto [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo_medio);
-
-        auto& valor_digital_salvo = valor_na_tabela(fluxo_medio);
-        if (valor_digital_salvo == VALOR_DIGITAL_INVALIDO) {
-            valor_digital_salvo = valor_digital;
-            LOG_IF(LogNivelamento, "valor digital salvo - m_tabela[", volume_inteiro - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
+        { // precisamos garantir que o fluxo não deu um pulo muito grande entre esse e o último despejo, para termos uma quantidade maior de valores salvos na tabela
+            if (fluxo_medio_do_ultimo_despejo) {
+                const auto delta = fluxo_medio - fluxo_medio_do_ultimo_despejo;
+                // o pulo foi muito grande, corta a modificacao no meio e reduz o valor digital
+                if (delta > DELTA_MAXIMO_ENTRE_DESPEJOS) {
+                    modificacao_valor_digital = std::max(modificacao_valor_digital / 2, 1);
+                    valor_digital -= modificacao_valor_digital;
+                    LOG_IF(LogNivelamento, "pulo muito grande de força - [delta = ", delta, " | nova modificacao = ", modificacao_valor_digital, "]");
+                    continue;
+                }
+            }
         }
 
-        valor_digital += incremento;
+        { // salvamos o fluxo e o valor digital, aplicamos a modificação e prosseguimos com o proximo despejo
+            fluxo_medio_do_ultimo_despejo = fluxo_medio;
+            auto& valor_digital_salvo = valor_na_tabela(fluxo_medio);
+            if (valor_digital_salvo == VALOR_DIGITAL_INVALIDO) {
+                valor_digital_salvo = valor_digital;
 
-        LOG_IF(LogNivelamento, "analise completa");
+                const auto [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo_medio);
+                LOG_IF(LogNivelamento, "valor digital salvo - m_tabela[", volume_inteiro - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
+            }
+            valor_digital += modificacao_valor_digital;
+
+            LOG_IF(LogNivelamento, "analise completa");
+        }
     }
 
     Bico::the().desligar();
 
-    LOG_IF(LogNivelamento, "resultado da m_tabela: ");
-    for (size_t i = 0; i < m_tabela.size(); ++i) {
-        auto& linha = m_tabela.at(i);
-        for (size_t j = 0; j < linha.size(); ++j) {
-            auto& valor_digital = linha.at(j);
-            if (valor_digital != VALOR_DIGITAL_INVALIDO)
-                LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
-        }
-    }
+    LOG_IF(LogNivelamento, "tabela preenchida - [duracao = ", (millis() - inicio) / 60000.f, "min | numero de celulas = ", numero_celulas(), "]");
+
+    LOG_IF(LogNivelamento, "resultado da tabela: ");
+    for_each_celula([](uint32_t valor_digital, size_t i, size_t j) {
+        LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
+        return util::Iter::Continue;
+    });
 }
 
 uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
