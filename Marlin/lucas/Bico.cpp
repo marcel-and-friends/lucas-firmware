@@ -5,7 +5,7 @@
 #include <src/module/planner.h>
 #include <cmath>
 #include <bit>
-#include <utility/stm32_eeprom.h>
+#include <climits>
 
 namespace lucas {
 namespace pino {
@@ -118,7 +118,7 @@ void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
     viajar_para_estacao(estacao.index(), offset);
 }
 
-void Bico::viajar_para_estacao(size_t index, float offset) const {
+void Bico::viajar_para_estacao(Estacao::Index index, float offset) const {
     LOG_IF(LogViagemBico, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     auto const comeco = millis();
@@ -137,7 +137,7 @@ void Bico::viajar_para_lado_da_estacao(Estacao& estacao) const {
     viajar_para_lado_da_estacao(estacao.index());
 }
 
-void Bico::viajar_para_lado_da_estacao(size_t index) const {
+void Bico::viajar_para_lado_da_estacao(Estacao::Index index) const {
     auto const offset = -(util::distancia_entre_estacoes() / 2.f);
     viajar_para_estacao(index, offset);
 }
@@ -163,6 +163,7 @@ void Bico::setar_temperatura_boiler(float target) const {
     constexpr auto HYSTERESIS_INICIAL = 1.5f;
     constexpr auto HYSTERESIS_FINAL = 0.5f;
 
+    auto const delta = std::abs(target - thermalManager.degBed());
     thermalManager.setTargetBed(target);
 
     auto const temp_boiler = thermalManager.degBed();
@@ -199,8 +200,9 @@ void Bico::nivelar() const {
     if (CFG(SetarTemperaturaTargetNoNivelamento))
         setar_temperatura_boiler(93.f);
 
-    if (CFG(PreencherTabelaDeFluxoNoNivelamento))
-        ControladorFluxo::the().preencher_tabela();
+    if (not ControladorFluxo::the().analisar_tabela())
+        if (CFG(PreencherTabelaDeFluxoNoNivelamento))
+            ControladorFluxo::the().preencher_tabela();
 
     LOG_IF(LogNivelamento, "nivelamento finalizado");
 }
@@ -212,7 +214,7 @@ void Bico::aplicar_forca(uint32_t v) {
         return;
     }
     m_forca = v;
-    digitalWrite(pino::BREAK, !!m_forca);
+    digitalWrite(pino::BREAK, m_forca > 0 ? HIGH : LOW);
     analogWrite(pino::SV, m_forca);
 }
 
@@ -224,18 +226,6 @@ void Bico::iniciar_despejo(millis_t duracao) {
 }
 
 void Bico::ControladorFluxo::preencher_tabela() {
-    // uint8_t eeprom_buffer[sizeof(m_tabela)];
-    // memcpy(eeprom_buffer, ((uint32_t)((FLASH_END + 1) - FLASH_PAGE_SIZE)), sizeof(eeprom_buffer));
-
-    // auto bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
-    // auto bloco_eeprom = std::bit_cast<uint32_t*>(&eeprom_buffer);
-    // for (size_t i = 0; i < sizeof(bloco_tabela) / sizeof(uint32_t); ++i) {
-    //     const auto valor_digital = bloco_tabela[i];
-    //     auto& valor_memoria = bloco_eeprom[i];
-    //     if (valor_digital != valor_memoria)
-    //         valor_memoria = valor_digital;
-    // }
-
     constexpr auto VALOR_DIGITAL_INICIAL = 0;
     constexpr auto MODIFICACAO_VALOR_DIGITAL_INICIAL = 200;
     constexpr auto MODIFICACAO_VALOR_DIGITAL_APOS_OBTER_FLUXO_MINIMO = 25;
@@ -247,7 +237,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     util::FiltroUpdatesTemporario f{ Filtros::Interacao };
 
-    limpar_tabela();
+    limpar_tabela(SalvarNaFlash::Nao);
 
     auto const inicio = millis();
 
@@ -321,7 +311,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
         }
 
         // se o fluxo diminui entre um despejo e outro o resultado é ignorado
-        if (fluxo_medio < fluxo_medio_do_ultimo_despejo) {
+        if (fluxo_medio_do_ultimo_despejo and fluxo_medio < fluxo_medio_do_ultimo_despejo) {
             valor_digital += modificacao_valor_digital;
             LOG_IF(LogNivelamento, "fluxo diminuiu?! aumentando valor digital - [fluxo_medio_do_ultimo_despejo = ", fluxo_medio_do_ultimo_despejo, "]");
             continue;
@@ -348,10 +338,8 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
         { // salvamos o fluxo e o valor digital, aplicamos a modificação e prosseguimos com o proximo despejo
             fluxo_medio_do_ultimo_despejo = fluxo_medio;
-            auto& valor_digital_salvo = valor_na_tabela(fluxo_medio);
-            if (valor_digital_salvo == VALOR_DIGITAL_INVALIDO) {
-                valor_digital_salvo = valor_digital;
-
+            if (valor_na_tabela(fluxo_medio) == VALOR_DIGITAL_INVALIDO) {
+                set_valor_na_tabela(fluxo_medio, valor_digital);
                 auto const [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo_medio);
                 LOG_IF(LogNivelamento, "valor digital salvo - m_tabela[", volume_inteiro - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
             }
@@ -365,14 +353,30 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     LOG_IF(LogNivelamento, "tabela preenchida - [duracao = ", (millis() - inicio) / 60000.f, "min | numero de celulas = ", numero_celulas(), "]");
 
-    LOG_IF(LogNivelamento, "resultado da tabela: ");
+    LOG_IF(LogTabelaNivelamento, "resultado da tabela: ");
     for_each_celula([](uint32_t valor_digital, size_t i, size_t j) {
-        LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
+        LOG_IF(LogTabelaNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
         return util::Iter::Continue;
     });
+
+    salvar_tabela_na_flash();
 }
 
-uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
+bool Bico::ControladorFluxo::analisar_tabela() {
+    eeprom_buffer_fill();
+
+    uint32_t valor_salvo_fluxo_minimo = util::buffered_read_flash<uint32_t>(0);
+    if (valor_salvo_fluxo_minimo == 0 or valor_salvo_fluxo_minimo > 4095 or valor_salvo_fluxo_minimo == VALOR_DIGITAL_INVALIDO)
+        return false;
+
+    LOG_IF(LogNivelamento, "fluxo minimo encontrado na flash - [valor = ", valor_salvo_fluxo_minimo, "]");
+
+    copiar_tabela_da_flash();
+
+    return true;
+}
+
+uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) const {
     auto const [fluxo_inteiro, casa_decimal] = decompor_fluxo(fluxo);
     auto const fluxo_index = fluxo_inteiro - FLUXO_MIN;
     // se tivermos um valor digital salvo, vamos usá-lo
@@ -396,13 +400,32 @@ uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) {
     return valor_digital;
 }
 
-void Bico::ControladorFluxo::limpar_tabela() {
+void Bico::ControladorFluxo::limpar_tabela(SalvarNaFlash salvar) {
     for (auto& t : m_tabela)
         for (auto& v : t)
             v = VALOR_DIGITAL_INVALIDO;
+
+    if (salvar == SalvarNaFlash::Sim)
+        salvar_tabela_na_flash();
 }
 
-std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) {
+void Bico::ControladorFluxo::salvar_tabela_na_flash() {
+    auto const bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
+    for (size_t i = 0; i < sizeof(m_tabela) / sizeof(uint32_t); ++i)
+        util::buffered_write_flash<uint32_t>(i * sizeof(uint32_t), bloco_tabela[i]);
+
+    util::flush_flash();
+}
+
+void Bico::ControladorFluxo::copiar_tabela_da_flash() {
+    util::fill_buffered_flash();
+
+    auto bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
+    for (size_t i = 0; i < sizeof(m_tabela) / sizeof(uint32_t); ++i)
+        bloco_tabela[i] = util::buffered_read_flash<uint32_t>(i * sizeof(uint32_t));
+}
+
+std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) const {
     for (; fluxo_index >= 0; --fluxo_index, casa_decimal = 9) {
         auto& valores_digitais = m_tabela[fluxo_index];
         for (; casa_decimal >= 0; --casa_decimal) {
@@ -416,7 +439,7 @@ std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fl
     return { 0.f, VALOR_DIGITAL_INVALIDO };
 }
 
-std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_acima(int fluxo_index, int casa_decimal) {
+std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_acima(int fluxo_index, int casa_decimal) const {
     for (; fluxo_index < RANGE_FLUXO; ++fluxo_index, casa_decimal = 0) {
         auto& valores_digitais = m_tabela[fluxo_index];
         for (; casa_decimal < 10; ++casa_decimal) {
@@ -430,7 +453,7 @@ std::tuple<float, uint32_t> Bico::ControladorFluxo::primeiro_fluxo_acima(int flu
     return { 0.f, VALOR_DIGITAL_INVALIDO };
 }
 
-int Bico::ControladorFluxo::casa_decimal_apropriada(float fluxo) {
+int Bico::ControladorFluxo::casa_decimal_apropriada(float fluxo) const {
     auto const casa_decimal_antes_de_arredondar = int(fluxo * 10.f) % 10;
     auto const volume_arredondado =
         (casa_decimal_antes_de_arredondar == 9
@@ -444,13 +467,18 @@ int Bico::ControladorFluxo::casa_decimal_apropriada(float fluxo) {
     return int(volume_arredondado * 10.f) % 10;
 }
 
-std::tuple<int, uint32_t> Bico::ControladorFluxo::decompor_fluxo(float fluxo) {
+std::tuple<int, uint32_t> Bico::ControladorFluxo::decompor_fluxo(float fluxo) const {
     auto const fluxo_no_range = std::clamp(fluxo, float(FLUXO_MIN), float(FLUXO_MAX) - 0.1f);
     return { fluxo_no_range, casa_decimal_apropriada(fluxo_no_range) };
 }
 
-uint32_t& Bico::ControladorFluxo::valor_na_tabela(float fluxo) {
+uint32_t Bico::ControladorFluxo::valor_na_tabela(float fluxo) const {
     auto const [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo);
     return m_tabela[volume_inteiro - FLUXO_MIN][casa_decimal];
+}
+
+void Bico::ControladorFluxo::set_valor_na_tabela(float fluxo, uint32_t valor_digital) {
+    auto const [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo);
+    m_tabela[volume_inteiro - FLUXO_MIN][casa_decimal] = valor_digital;
 }
 }

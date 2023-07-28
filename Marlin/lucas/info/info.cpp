@@ -11,7 +11,7 @@ void setup() {
     if (not CFG(ModoGiga)) {
         Report::make(
             "infoBoiler",
-            5000,
+            5'000,
             [](JsonObject obj) {
                 obj["tempAtual"] = thermalManager.degBed();
             });

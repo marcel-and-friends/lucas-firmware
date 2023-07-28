@@ -43,14 +43,8 @@ public:
         return m_ativo;
     }
 
-private:
-    struct ControladorFluxo {
-        static constexpr auto FLUXO_MIN = 5;
-        static constexpr auto FLUXO_MAX = 15;
-        static_assert(FLUXO_MAX > FLUXO_MIN, "FLUXO_MAX deve ser maior que FLUXO_MIN");
-
-        static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
-
+    class ControladorFluxo {
+    public:
         static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0; // UwU
         static inline auto ML_POR_PULSO = 0.5375f;
 
@@ -61,22 +55,39 @@ private:
 
         void preencher_tabela();
 
-        uint32_t melhor_valor_digital(float fluxo);
+        enum class SalvarNaFlash {
+            Sim,
+            Nao
+        };
+
+        void limpar_tabela(SalvarNaFlash salvar);
+
+        bool analisar_tabela();
+
+        uint32_t melhor_valor_digital(float fluxo) const;
 
     private:
+        static constexpr auto FLUXO_MIN = 5;
+        static constexpr auto FLUXO_MAX = 15;
+        static_assert(FLUXO_MAX > FLUXO_MIN, "FLUXO_MAX deve ser maior que FLUXO_MIN");
+
+        static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
+
         ControladorFluxo() = default;
 
-        void limpar_tabela();
+        void salvar_tabela_na_flash();
+        void copiar_tabela_da_flash();
 
-        std::tuple<float, uint32_t> primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal);
+        std::tuple<float, uint32_t> primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) const;
 
-        std::tuple<float, uint32_t> primeiro_fluxo_acima(int fluxo_index, int casa_decimal);
+        std::tuple<float, uint32_t> primeiro_fluxo_acima(int fluxo_index, int casa_decimal) const;
 
-        int casa_decimal_apropriada(float fluxo);
+        int casa_decimal_apropriada(float fluxo) const;
 
-        std::tuple<int, uint32_t> decompor_fluxo(float fluxo);
+        std::tuple<int, uint32_t> decompor_fluxo(float fluxo) const;
 
-        uint32_t& valor_na_tabela(float fluxo);
+        uint32_t valor_na_tabela(float fluxo) const;
+        void set_valor_na_tabela(float fluxo, uint32_t valor_digital);
 
         size_t numero_celulas() const {
             size_t num = 0;
@@ -111,6 +122,7 @@ private:
         std::array<std::array<uint32_t, 10>, RANGE_FLUXO> m_tabela = { {} };
     };
 
+private:
     void aplicar_forca(uint32_t);
 
     void iniciar_despejo(millis_t duracao);

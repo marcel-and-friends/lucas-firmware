@@ -9,6 +9,7 @@ namespace lucas {
 void setup() {
     util::FiltroUpdatesTemporario f{ Filtros::Todos };
 
+    cfg::setup();
     serial::setup();
     info::setup();
 

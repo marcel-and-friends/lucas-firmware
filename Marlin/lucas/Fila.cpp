@@ -194,7 +194,7 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
     m_estacao_executando = estacao.index();
 
     {
-        util::FiltroUpdatesTemporario f{ Filtros::Fila }; // nada de tick()not
+        util::FiltroUpdatesTemporario f{ Filtros::Fila }; // nada de tick()!
         receita.executar_passo_atual();
     }
 

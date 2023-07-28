@@ -92,7 +92,7 @@ void Estacao::tick() {
 				break;
 			case Status::ConfirmandoEscaldo:
 			case Status::ConfirmandoAtaques:
-				Fila::the().mapear_receita_para_estacao(estacao.index());
+				Fila::the().mapear_receita_da_estacao(estacao.index());
 				break;
 			case Status::Pronto:
 				estacao.set_status(Status::Livre);
@@ -115,10 +115,14 @@ void Estacao::atualizar_leds() {
     static bool ultimo_estado = true;
     static millis_t ultimo_tick_atualizado = 0;
 
+    auto const valida = [](Estacao const& estacao) {
+        return estacao.aguardando_input() and not estacao.bloqueada();
+    };
+
     if (millis() - ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
         ultimo_estado = not ultimo_estado;
         ultimo_tick_atualizado = millis();
-        for_each_if(&Estacao::aguardando_input, [](Estacao const& estacao) {
+        for_each_if(valida, [](Estacao const& estacao) {
             // aguardando input do usuário - led piscando
             WRITE(estacao.led(), ultimo_estado);
             return util::Iter::Continue;

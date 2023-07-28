@@ -8,8 +8,7 @@
 namespace lucas {
 void tick() {
     static millis_t ultimo_tick = 0;
-    //  a 'idle' pode ser chamada mais de uma vez em um milésimo
-    //  precisamos fitrar esses casos para nao mudarmos o estado das estacoes/leds mais de uma vez por ms
+    // a taxa de atualização da máquina é de 1mhz, ou seja, 1 tick a cada 1 millisegundo
     if (ultimo_tick == millis())
         return;
 

@@ -29,31 +29,30 @@
  */
 template<typename T, uint8_t N>
 class CircularQueue {
-  private:
-
+private:
     /**
      * @brief   Buffer structure
      * @details This structure consolidates all the overhead required to handle
      *          a circular queue such as the pointers and the buffer vector.
      */
     struct buffer_t {
-      uint8_t head;
-      uint8_t tail;
-      uint8_t count;
-      uint8_t size;
-      T queue[N];
+        uint8_t head;
+        uint8_t tail;
+        uint8_t count;
+        uint8_t size;
+        T queue[N];
     } buffer;
 
-  public:
+public:
     /**
      * @brief   Class constructor
      * @details This class requires two template parameters, T defines the type
      *          of item this queue will handle and N defines the maximum number of
      *          items that can be stored on the queue.
      */
-    CircularQueue<T, N>() {
-      buffer.size = N;
-      buffer.count = buffer.head = buffer.tail = 0;
+    CircularQueue() {
+        buffer.size = N;
+        buffer.count = buffer.head = buffer.tail = 0;
     }
 
     /**
@@ -63,15 +62,16 @@ class CircularQueue {
      * @return  type T item
      */
     T dequeue() {
-      if (isEmpty()) return T();
+        if (isEmpty())
+            return T();
 
-      uint8_t index = buffer.head;
+        uint8_t index = buffer.head;
 
-      --buffer.count;
-      if (++buffer.head == buffer.size)
-        buffer.head = 0;
+        --buffer.count;
+        if (++buffer.head == buffer.size)
+            buffer.head = 0;
 
-      return buffer.queue[index];
+        return buffer.queue[index];
     }
 
     /**
@@ -81,16 +81,17 @@ class CircularQueue {
      * @param   item Item to be added to the queue
      * @return  true if the operation was successful
      */
-    bool enqueue(T const &item) {
-      if (isFull()) return false;
+    bool enqueue(const T& item) {
+        if (isFull())
+            return false;
 
-      buffer.queue[buffer.tail] = item;
+        buffer.queue[buffer.tail] = item;
 
-      ++buffer.count;
-      if (++buffer.tail == buffer.size)
-        buffer.tail = 0;
+        ++buffer.count;
+        if (++buffer.tail == buffer.size)
+            buffer.tail = 0;
 
-      return true;
+        return true;
     }
 
     /**

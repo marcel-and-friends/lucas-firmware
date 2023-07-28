@@ -74,7 +74,11 @@
 		"typeindex": "cpp",
 		"variant": "cpp",
 		"span": "cpp",
-		"numbers": "cpp"
+		"numbers": "cpp",
+		"stdlib.h": "c",
+		"stdio.h": "c",
+		"string.h": "c",
+		"stddef.h": "c"
 	},
 	"C_Cpp.intelliSenseMemoryLimit": 16384
 }
