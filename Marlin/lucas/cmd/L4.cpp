@@ -13,7 +13,7 @@ void L4() {
     }
 
     if (parser.seenval('Z')) {
-        const auto pino = parser.value_int();
+        auto const pino = parser.value_int();
         SET_INPUT(pino);
         LOG("PINO = ", analogRead(pino));
     }

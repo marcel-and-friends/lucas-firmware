@@ -10,23 +10,23 @@
 namespace lucas::cmd {
 void L0() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    const auto diametro_total = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    auto const diametro_total = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
     if (diametro_total == 0.f)
         return;
 
-    const auto raio = diametro_total / 2.f;
-    const auto num_circulos = parser.intval('N');
+    auto const raio = diametro_total / 2.f;
+    auto const num_circulos = parser.intval('N');
     if (num_circulos == 0)
         return;
 
     // cada circulo é composto por 2 arcos
-    const auto num_arcos = num_circulos * 2;
-    const auto offset_por_arco = raio / static_cast<float>(num_circulos);
-    const auto repeticoes = parser.intval('R', 0);
-    const auto series = repeticoes + 1;
-    const auto comecar_na_borda = parser.seen_test('B');
+    auto const num_arcos = num_circulos * 2;
+    auto const offset_por_arco = raio / static_cast<float>(num_circulos);
+    auto const repeticoes = parser.intval('R', 0);
+    auto const series = repeticoes + 1;
+    auto const comecar_na_borda = parser.seen_test('B');
 
-    const auto duracao = parser.ulongval('T');
+    auto const duracao = parser.ulongval('T');
 
     if (CFG(ModoGiga) and duracao) {
         LOG("iniciando L0 em modo giga");
@@ -35,13 +35,13 @@ void L0() {
         return;
     }
 
-    const auto volume_agua = parser.floatval('G');
-    const auto despejar_agua = duracao and volume_agua;
+    auto const volume_agua = parser.floatval('G');
+    auto const despejar_agua = duracao and volume_agua;
 
-    const bool associado_a_estacao = Fila::the().executando();
+    bool const associado_a_estacao = Fila::the().executando();
     bool vaza = false;
 
-    const auto posicao_inicial = planner.get_axis_positions_mm();
+    auto const posicao_inicial = planner.get_axis_positions_mm();
     auto posicao_final = posicao_inicial;
 
     auto for_each_arco = [&](util::IterFn<float, float, int> auto&& callback) {
@@ -74,7 +74,7 @@ void L0() {
         return util::Iter::Continue;
     });
 
-    const auto steps_por_mm_ratio = duracao ? util::MS_POR_MM / (duracao / total_percorrido) : 1.f;
+    auto const steps_por_mm_ratio = duracao ? util::MS_POR_MM / (duracao / total_percorrido) : 1.f;
 
     soft_endstop._enabled = false;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X * steps_por_mm_ratio;

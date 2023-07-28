@@ -26,7 +26,7 @@ void Fila::tick() {
 
         auto& receita = m_fila[m_estacao_executando].receita;
         auto& estacao = Estacao::lista().at(m_estacao_executando);
-        const auto comeco = receita.passo_atual().comeco_abs;
+        auto const comeco = receita.passo_atual().comeco_abs;
         if (comeco == millis()) {
             executar_passo_atual(receita, estacao);
         } else if (comeco < millis()) {
@@ -87,7 +87,7 @@ void Fila::agendar_receita_para_estacao(Receita& receita, size_t index) {
         return;
     }
 
-    const auto status = receita.possui_escaldo() ? Estacao::Status::ConfirmandoEscaldo : Estacao::Status::ConfirmandoAtaques;
+    auto const status = receita.possui_escaldo() ? Estacao::Status::ConfirmandoEscaldo : Estacao::Status::ConfirmandoAtaques;
     estacao.set_status(status, receita.id());
     adicionar_receita(index);
     LOG_IF(LogFila, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
@@ -113,7 +113,7 @@ void Fila::mapear_receita_da_estacao(size_t index) {
 
     // por conta do if acima nesse momento a receita só pode estar em um de dois estados - 'ConfirmandoEscaldo' e 'ConfirmandoAtaques'
     // os próximo estados após esses são 'Escaldando' e 'FazendoCafe', respectivamente
-    const auto proximo_status = int(estacao.status()) + 1;
+    auto const proximo_status = int(estacao.status()) + 1;
     estacao.set_status(Estacao::Status(proximo_status), receita.id());
     mapear_receita(receita, estacao);
 }
@@ -126,7 +126,7 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras receita
     // esse processo é feito de forma bruta, homem das cavernas, mas como o número de receitas/passos é pequeno, não chega a ser um problema
     for_each_receita_mapeada(
-        [&](const Receita& receita_mapeada) {
+        [&](Receita const& receita_mapeada) {
             receita_mapeada.for_each_passo_pendente([&](const Receita::Passo& passo) {
                 // temos que sempre levar a margem de viagem em consideração quando procuramos pelo tick magico
                 for (auto offset_intervalo = util::MARGEM_DE_VIAGEM; offset_intervalo <= passo.intervalo - util::MARGEM_DE_VIAGEM; offset_intervalo += util::MARGEM_DE_VIAGEM) {
@@ -172,7 +172,7 @@ static bool timer_valido(millis_t timer, millis_t tick = millis()) {
 void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
     LOG_IF(LogFila, "executando passo - [estacao = ", estacao.index(), " | passo = ", receita.passo_atual_index(), " | tick = ", millis(), "]");
 
-    const auto& passo_executado = receita.passo_atual();
+    auto const& passo_executado = receita.passo_atual();
     const size_t passo_executando_index = receita.passo_atual_index();
     auto despachar_evento_passo = [](size_t estacao_index, size_t passo_index, millis_t comeco_primeiro_ataque, bool fim = false) {
         info::evento(
@@ -208,9 +208,9 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
 
     m_estacao_executando = Estacao::INVALIDA;
 
-    const auto duracao_real = millis() - passo_executado.comeco_abs;
-    const auto duracao_ideal = passo_executado.duracao;
-    const auto erro = (duracao_ideal > duracao_real) ? (duracao_ideal - duracao_real) : (duracao_real - duracao_ideal);
+    auto const duracao_real = millis() - passo_executado.comeco_abs;
+    auto const duracao_ideal = passo_executado.duracao;
+    auto const erro = (duracao_ideal > duracao_real) ? (duracao_ideal - duracao_real) : (duracao_real - duracao_ideal);
     LOG_IF(LogFila, "passo acabou - [duracao = ", duracao_real, "ms | erro = ", erro, "ms]");
 
     s_tick_comeco_de_inatividade = millis();
@@ -235,9 +235,9 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
 void Fila::compensar_passo_atrasado(Receita& receita, Estacao& estacao) {
     Bico::the().viajar_para_estacao(estacao);
 
-    const auto comeco = receita.passo_atual().comeco_abs;
+    auto const comeco = receita.passo_atual().comeco_abs;
     // esse delta já leva em consideração o tempo de viagem para a estacão em atraso
-    const auto delta = millis() - comeco;
+    auto const delta = millis() - comeco;
 
     LOG_IF(LogFila, "perdeu um passo, compensando - [estacao = ", estacao.index(), " | comeco = ", comeco, " | delta =  ", delta, "ms]");
 
@@ -283,9 +283,9 @@ void Fila::remapear_receitas_apos_mudanca_na_fila() {
 
 // esse algoritmo é basicamente um hit-test 2d de cada passo da receita nova com cada passo das receitas já mapeadas
 // é verificado se qualquer um dos passos da receita nova colide com qualquer um dos passos de qualquer uma das receitas já mapeada
-bool Fila::possui_colisoes_com_outras_receitas(const Receita& receita_nova) const {
+bool Fila::possui_colisoes_com_outras_receitas(Receita const& receita_nova) const {
     bool colide = false;
-    receita_nova.for_each_passo_pendente([&](const Receita::Passo& passo_novo) {
+    receita_nova.for_each_passo_pendente([&](Receita::Passo const& passo_novo) {
         for_each_receita_mapeada(
             [&](const Receita& receita_mapeada) {
                 receita_mapeada.for_each_passo_pendente([&](const Receita::Passo& passo_mapeado) {
@@ -327,7 +327,7 @@ void Fila::remover_receitas_finalizadas() {
     if (m_num_receitas == 0) [[likely]]
         return;
 
-    for_each_receita([this](const Receita& receita, size_t index) {
+    for_each_receita([this](Receita const& receita, size_t index) {
         auto& estacao = Estacao::lista().at(index);
         if (estacao.status() == Estacao::Status::Finalizando) [[unlikely]] {
             const auto delta = millis() - receita.inicio_tempo_de_finalizacao();
@@ -351,9 +351,9 @@ void Fila::tentar_aquecer_mangueira_apos_inatividade() const {
     constexpr float volume_a_despejar = 10 * (tempo_de_despejo / 1000); // 10 g/s
 
     if (s_tick_comeco_de_inatividade and millis() > s_tick_comeco_de_inatividade) {
-        const auto delta = millis() - s_tick_comeco_de_inatividade;
+        auto const delta = millis() - s_tick_comeco_de_inatividade;
         if (delta >= tempo_de_espera_apos_execucao) {
-            const auto delta_em_min = delta / 60000;
+            auto const delta_em_min = delta / 60000;
             LOG_IF(LogFila, "aquecendo mangueira apos ", delta_em_min, "min de inatividade");
 
             Bico::the().viajar_para_esgoto();
@@ -383,7 +383,7 @@ void Fila::receita_cancelada(size_t index) {
 // consequentemente, não são consideradas como "em execucao"
 size_t Fila::numero_de_receitas_em_execucao() const {
     size_t num = 0;
-    for_each_receita_mapeada([&num](const auto&) {
+    for_each_receita_mapeada([&num](auto const&) {
         ++num;
         return util::Iter::Continue;
     });

@@ -58,9 +58,9 @@ public:
 
     static size_t num_estacoes() { return s_num_estacoes; }
 
-    Estacao(const Estacao&) = delete;
+    Estacao(Estacao const&) = delete;
     Estacao(Estacao&&) = delete;
-    Estacao& operator=(const Estacao&) = delete;
+    Estacao& operator=(Estacao const&) = delete;
     Estacao& operator=(Estacao&&) = delete;
 
 public:

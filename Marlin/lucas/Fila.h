@@ -37,7 +37,7 @@ public:
     bool executando() const { return m_estacao_executando != Estacao::INVALIDA; }
 
 public:
-    void for_each_receita(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita(util::IterFn<Receita const&, size_t> auto&& callback, Receita const* excecao = nullptr) const {
         if (m_num_receitas == 0) [[likely]]
             return;
 
@@ -51,7 +51,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterFn<Receita&> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita_mapeada(util::IterFn<Receita&> auto&& callback, Receita const* excecao = nullptr) {
         if (m_num_receitas == 0) [[likely]]
             return;
 
@@ -64,7 +64,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterFn<const Receita&> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita_mapeada(util::IterFn<Receita const&> auto&& callback, Receita const* excecao = nullptr) const {
         if (m_num_receitas == 0) [[likely]]
             return;
 
@@ -77,7 +77,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterFn<Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) {
+    void for_each_receita_mapeada(util::IterFn<Receita&, size_t> auto&& callback, Receita const* excecao = nullptr) {
         if (m_num_receitas == 0) [[likely]]
             return;
 
@@ -91,7 +91,7 @@ public:
         }
     };
 
-    void for_each_receita_mapeada(util::IterFn<const Receita&, size_t> auto&& callback, const Receita* excecao = nullptr) const {
+    void for_each_receita_mapeada(util::IterFn<Receita const&, size_t> auto&& callback, Receita const* excecao = nullptr) const {
         if (m_num_receitas == 0) [[likely]]
             return;
 
@@ -114,7 +114,7 @@ private:
 
     void remapear_receitas_apos_mudanca_na_fila();
 
-    bool possui_colisoes_com_outras_receitas(const Receita&) const;
+    bool possui_colisoes_com_outras_receitas(Receita const&) const;
 
     void adicionar_receita(size_t);
 

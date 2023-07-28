@@ -34,7 +34,7 @@ public:
             return comeco_abs + duracao;
         }
 
-        bool colide_com(const Passo& outro) const;
+        bool colide_com(Passo const& outro) const;
     };
 
 public:
@@ -42,9 +42,9 @@ public:
 
     void montar_com_json(JsonObjectConst);
 
-    Receita(const Receita&) = delete;
+    Receita(Receita const&) = delete;
     Receita(Receita&&) = delete;
-    Receita& operator=(const Receita&) = delete;
+    Receita& operator=(Receita const&) = delete;
     Receita& operator=(Receita&&) = delete;
 
 public:
@@ -85,7 +85,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterFn<const Passo&> auto&& callback) const {
+    void for_each_passo_pendente(util::IterFn<Passo const&> auto&& callback) const {
         if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
@@ -96,7 +96,7 @@ public:
                 return;
     }
 
-    void for_each_passo_pendente(util::IterFn<const Passo&, size_t> auto&& callback) const {
+    void for_each_passo_pendente(util::IterFn<Passo const&, size_t> auto&& callback) const {
         if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());
             return;
@@ -109,7 +109,7 @@ public:
 
 public:
     bool possui_escaldo() const { return m_possui_escaldo; }
-    const Passo& escaldo() const { return m_passos.front(); }
+    Passo const& escaldo() const { return m_passos.front(); }
     Passo& escaldo() { return m_passos.front(); }
 
     millis_t tempo_de_finalizacao() const { return m_tempo_de_finalizacao; }
@@ -121,21 +121,21 @@ public:
 
     bool escaldou() const { return m_possui_escaldo and m_passo_atual > 0; }
 
-    std::span<const Passo> ataques() const { return { m_passos.begin() + m_possui_escaldo, m_num_passos - m_possui_escaldo }; }
+    std::span<Passo const> ataques() const { return { m_passos.begin() + m_possui_escaldo, m_num_passos - m_possui_escaldo }; }
     std::span<Passo> ataques() { return { m_passos.begin() + m_possui_escaldo, m_num_passos - m_possui_escaldo }; }
 
-    const Passo& primeiro_ataque() const { return m_passos[m_possui_escaldo]; }
+    Passo const& primeiro_ataque() const { return m_passos[m_possui_escaldo]; }
 
-    const Passo& passo_atual() const { return m_passos[m_passo_atual]; }
+    Passo const& passo_atual() const { return m_passos[m_passo_atual]; }
     Passo& passo_atual() { return m_passos[m_passo_atual]; }
 
     size_t passo_atual_index() const { return m_passo_atual; }
 
     bool acabou() const { return m_passo_atual == m_num_passos; }
 
-    const Passo& primeiro_passo() const { return m_passos.front(); }
+    Passo const& primeiro_passo() const { return m_passos.front(); }
 
-    const Passo& passo(size_t index) const { return m_passos[index]; }
+    Passo const& passo(size_t index) const { return m_passos[index]; }
 
 private:
     void resetar();

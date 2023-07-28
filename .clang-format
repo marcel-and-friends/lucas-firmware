@@ -19,7 +19,7 @@ IncludeBlocks: Merge
 IndentPPDirectives: BeforeHash
 IndentWidth: 4
 Language: Cpp
-QualifierAlignment: Left
+QualifierAlignment: Right
 PointerAlignment: Left
 SeparateDefinitionBlocks: Leave
 SortIncludes: false

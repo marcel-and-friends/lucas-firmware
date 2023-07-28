@@ -28,13 +28,13 @@ concept IterFn = Fn<FN, Iter, Args...>;
 
 #define FWD(x) std::forward<decltype(x)>(x)
 
-inline const char* fmt(const char* fmt, auto... args) {
+inline char const* fmt(char const* fmt, auto... args) {
     static char buffer[256] = {};
     sprintf(buffer, fmt, args...);
     return buffer;
 }
 
-const char* ff(const char* str, float valor);
+char const* ff(char const* str, float valor);
 
 bool segurando(int pino);
 

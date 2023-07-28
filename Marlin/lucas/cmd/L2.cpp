@@ -11,7 +11,7 @@ void L2() {
     else
         Bico::the().despejar_com_volume_desejado(parser.ulongval('T'), parser.floatval('G'));
 
-    const bool associado_a_estacao = Fila::the().executando();
+    bool const associado_a_estacao = Fila::the().executando();
     util::aguardar_enquanto([&] {
         // receita foi cancelada por meios externos
         if (associado_a_estacao and not Fila::the().executando())

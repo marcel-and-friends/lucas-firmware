@@ -14,9 +14,9 @@ void tick();
 
 void interpretar_json(std::span<char> buffer);
 
-void print_json(const DocumentoJson& doc);
+void print_json(DocumentoJson const& doc);
 
-void evento(const char* nome, util::Fn<void, JsonObject> auto&& callback) {
+void evento(char const* nome, util::Fn<void, JsonObject> auto&& callback) {
     DocumentoJson evento_doc;
     std::invoke(FWD(callback), evento_doc.createNestedObject(nome));
     print_json(evento_doc);

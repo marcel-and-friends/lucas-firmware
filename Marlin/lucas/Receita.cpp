@@ -43,7 +43,7 @@ JsonObjectConst Receita::padrao() {
 
     static bool once = false;
     if (not once) {
-        const auto err = deserializeJson(doc, json, sizeof(json));
+        auto const err = deserializeJson(doc, json, sizeof(json));
         if (err) {
             LOG_ERR("DESSERIALIZACAO DA RECEITA PADRAO FALHOU - [", err.c_str(), "]");
             kill();
@@ -54,7 +54,7 @@ JsonObjectConst Receita::padrao() {
     return doc.as<JsonObjectConst>();
 }
 
-bool Receita::Passo::colide_com(const Passo& outro) const {
+bool Receita::Passo::colide_com(Passo const& outro) const {
     // dois ataques colidem se:
 
     // 1. um comeca dentro do outro
@@ -88,7 +88,7 @@ void Receita::montar_com_json(JsonObjectConst json) {
         auto& escaldo = m_passos[0];
 
         escaldo.duracao = escaldo_obj["duracao"].as<millis_t>();
-        strcpy(escaldo.gcode, escaldo_obj["gcode"].as<const char*>());
+        strcpy(escaldo.gcode, escaldo_obj["gcode"].as<char const*>());
 
         m_possui_escaldo = true;
     }
@@ -100,7 +100,7 @@ void Receita::montar_com_json(JsonObjectConst json) {
 
         ataque.duracao = ataque_obj["duracao"].as<millis_t>();
         ataque.intervalo = ataque_obj.containsKey("intervalo") ? ataque_obj["intervalo"].as<millis_t>() : 0;
-        strcpy(ataque.gcode, ataque_obj["gcode"].as<const char*>());
+        strcpy(ataque.gcode, ataque_obj["gcode"].as<char const*>());
     }
 
     m_num_passos = ataques_obj.size() + m_possui_escaldo;

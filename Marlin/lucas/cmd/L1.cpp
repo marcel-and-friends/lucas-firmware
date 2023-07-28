@@ -10,18 +10,18 @@
 namespace lucas::cmd {
 void L1() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    const auto diametro_circulo = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    auto const diametro_circulo = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
     if (diametro_circulo == 0.f)
         return;
 
-    const auto raio_circulo = diametro_circulo / 2.f;
-    const auto num_repeticoes = parser.intval('N');
+    auto const raio_circulo = diametro_circulo / 2.f;
+    auto const num_repeticoes = parser.intval('N');
     if (num_repeticoes == 0)
         return;
 
     // cada circulo é composto por 2 arcos
-    const auto num_arcos = num_repeticoes * 2;
-    const auto duracao = parser.ulongval('T');
+    auto const num_arcos = num_repeticoes * 2;
+    auto const duracao = parser.ulongval('T');
 
     if (CFG(ModoGiga) and duracao) {
         LOG("iniciando L1 em modo giga");
@@ -30,19 +30,19 @@ void L1() {
         return;
     }
 
-    const auto volume_agua = parser.floatval('G');
-    const auto despejar_agua = duracao and volume_agua;
-    const bool associado_a_estacao = Fila::the().executando();
+    auto const volume_agua = parser.floatval('G');
+    auto const despejar_agua = duracao and volume_agua;
+    bool const associado_a_estacao = Fila::the().executando();
     bool vaza = false;
 
-    const auto posicao_inicial = planner.get_axis_positions_mm();
+    auto const posicao_inicial = planner.get_axis_positions_mm();
     auto posicao_final = posicao_inicial;
 
     executar_ff("G0 F10000 X%s", -raio_circulo);
     Bico::the().aguardar_viagem_terminar();
 
-    const float total_percorrido = (2.f * std::numbers::pi_v<float> * raio_circulo) * num_repeticoes;
-    const float steps_por_mm_ratio = duracao ? util::MS_POR_MM / (duracao / total_percorrido) : 1.f;
+    float const total_percorrido = (2.f * std::numbers::pi_v<float> * raio_circulo) * num_repeticoes;
+    float const steps_por_mm_ratio = duracao ? util::MS_POR_MM / (duracao / total_percorrido) : 1.f;
 
     soft_endstop._enabled = false;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X * steps_por_mm_ratio;
@@ -91,7 +91,7 @@ void L1() {
     if (vaza)
         return;
 
-    const auto offset = posicao_inicial.x - posicao_final.x;
+    auto const offset = posicao_inicial.x - posicao_final.x;
     executar_ff("G0 F10000 X%s", offset);
     Bico::the().aguardar_viagem_terminar();
 

@@ -19,7 +19,7 @@ bool hooks() {
     static HookDelimitado* s_hook_ativo = nullptr;
 
     while (SERIAL_IMPL.available()) {
-        const auto peek = SERIAL_IMPL.peek();
+        auto const peek = SERIAL_IMPL.peek();
         if (not s_hook_ativo) {
             LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
 

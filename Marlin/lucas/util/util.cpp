@@ -5,7 +5,7 @@
 
 namespace lucas::util {
 // isso aqui é uma desgraça mas é o que tem pra hoje
-const char* ff(const char* str, float valor) {
+char const* ff(char const* str, float valor) {
     char buffer[16] = {};
     dtostrf(valor, 0, 2, buffer);
     return fmt(str, buffer);
@@ -44,7 +44,7 @@ void set_hysteresis(float valor) {
 void aguardar_por(millis_t tempo, Filtros filtros) {
     FiltroUpdatesTemporario f{ filtros };
 
-    const auto comeco = millis();
+    auto const comeco = millis();
     while (millis() - comeco < tempo)
         idle();
 }

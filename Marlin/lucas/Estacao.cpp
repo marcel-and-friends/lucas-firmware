@@ -118,7 +118,7 @@ void Estacao::atualizar_leds() {
     if (millis() - ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
         ultimo_estado = not ultimo_estado;
         ultimo_tick_atualizado = millis();
-        for_each_if(&Estacao::aguardando_input, [](const Estacao& estacao) {
+        for_each_if(&Estacao::aguardando_input, [](Estacao const& estacao) {
             // aguardando input do usuário - led piscando
             WRITE(estacao.led(), ultimo_estado);
             return util::Iter::Continue;

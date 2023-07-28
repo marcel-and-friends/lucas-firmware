@@ -6,7 +6,7 @@
 #include <lucas/Estacao.h>
 
 namespace lucas::cmd {
-void executar(const char* gcode) {
+void executar(char const* gcode) {
     LOG_IF(LogGcode, "executando gcode: ", gcode);
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);

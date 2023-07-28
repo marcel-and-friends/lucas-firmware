@@ -54,22 +54,22 @@ enum ComandoDoApp {
 
 void interpretar_json(std::span<char> buffer) {
     DocumentoJson doc;
-    const auto err = deserializeJson(doc, buffer.data(), buffer.size());
+    auto const err = deserializeJson(doc, buffer.data(), buffer.size());
     if (err) {
         LOG_ERR("desserializacao json falhou - [", err.c_str(), "]");
         return;
     }
 
-    const auto root = doc.as<JsonObjectConst>();
-    for (const auto obj : root) {
-        const auto chave = obj.key();
+    auto const root = doc.as<JsonObjectConst>();
+    for (auto const obj : root) {
+        auto const chave = obj.key();
         if (chave.size() > 1) {
             LOG_ERR("chave invalida - [", chave.c_str(), "]");
             continue;
         }
 
-        const auto comando = ComandoDoApp(*chave.c_str() - '0');
-        const auto v = obj.value();
+        auto const comando = ComandoDoApp(*chave.c_str() - '0');
+        auto const v = obj.value();
         switch (comando) {
         case InicializarEstacoes: {
             if (not v.is<size_t>()) {
@@ -80,13 +80,13 @@ void interpretar_json(std::span<char> buffer) {
             Estacao::inicializar(v.as<size_t>());
         } break;
         case TempTargetBoiler: {
-            if (not v.is<const char*>()) {
+            if (not v.is<char const*>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
 
             if (not CFG(ModoGiga))
-                cmd::executar_fmt("M140 S%s", v.as<const char*>());
+                cmd::executar_fmt("M140 S%s", v.as<char const*>());
         } break;
         case BloquearEstacoes: {
             if (not v.is<JsonArrayConst>()) {
@@ -178,7 +178,7 @@ void interpretar_json(std::span<char> buffer) {
     }
 }
 
-void print_json(const DocumentoJson& doc) {
+void print_json(DocumentoJson const& doc) {
     SERIAL_CHAR('#');
     serializeJson(doc, SERIAL_IMPL);
     SERIAL_ECHOLNPGM("#");
