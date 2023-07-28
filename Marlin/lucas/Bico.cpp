@@ -1,11 +1,9 @@
 #include "Bico.h"
+#include <lucas/Estacao.h>
 #include <lucas/lucas.h>
 #include <lucas/cmd/cmd.h>
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
-#include <cmath>
-#include <bit>
-#include <climits>
 
 namespace lucas {
 namespace pino {
@@ -27,7 +25,7 @@ void Bico::tick() {
         if (m_tempo_decorrido > 1000) {
             if ((m_tempo_decorrido % 1000) == 0) {
                 auto const volume_total_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
-                if (m_volume_total_desejado) {
+                if (m_volume_total_desejado and m_corrigir_fluxo_durante_despejo == CorrigirFluxo::Sim) {
                     auto const fluxo_ideal = (m_volume_total_desejado - volume_total_despejado) / ((m_duracao - m_tempo_decorrido) / 1000);
                     aplicar_forca(ControladorFluxo::the().melhor_valor_digital(fluxo_ideal));
                 }
@@ -47,22 +45,24 @@ void Bico::tick() {
     }
 }
 
-void Bico::despejar_com_volume_desejado(millis_t duracao, float volume_desejado) {
+void Bico::despejar_volume(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir) {
     if (not duracao or not volume_desejado)
         return;
 
     iniciar_despejo(duracao);
     aplicar_forca(ControladorFluxo::the().melhor_valor_digital(volume_desejado / (duracao / 1000)));
     m_volume_total_desejado = volume_desejado;
+    m_corrigir_fluxo_durante_despejo = corrigir;
     LOG_IF(LogDespejoBico, "iniciando despejo - [volume desejado = ", volume_desejado, " | forca = ", m_forca, "]");
 }
 
-void Bico::despejar_volume_e_aguardar(millis_t duracao, float volume_desejado) {
-    despejar_com_volume_desejado(duracao, volume_desejado);
+float Bico::despejar_volume_e_aguardar(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir) {
+    despejar_volume(duracao, volume_desejado, corrigir);
     util::aguardar_enquanto([] { return Bico::the().ativo(); }, Filtros::Interacao);
+    return (m_pulsos_no_final_do_despejo - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
 }
 
-void Bico::desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital) {
+void Bico::despejar_valor_digital(millis_t duracao, uint32_t valor_digital) {
     if (not duracao or not valor_digital)
         return;
 
@@ -72,19 +72,20 @@ void Bico::desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital)
 }
 
 void Bico::desligar() {
-    auto const volume_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
-    auto const pulsos = s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo;
-    LOG_IF(LogDespejoBico, "finalizando despejo - [delta = ", m_tempo_decorrido, "ms | volume = ", volume_despejado, " | pulsos = ", pulsos, "]");
-
     aplicar_forca(0);
     m_ativo = false;
     m_tick_comeco = 0;
     m_tick_final = millis();
     m_duracao = 0;
     m_volume_total_desejado = 0.f;
-    m_tempo_decorrido = 0;
-    m_pulsos_no_inicio_do_despejo = 0;
+    m_corrigir_fluxo_durante_despejo = CorrigirFluxo::Nao;
+
     m_pulsos_no_final_do_despejo = s_contador_de_pulsos;
+    auto const volume_despejado = (m_pulsos_no_final_do_despejo - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
+    auto const pulsos = m_pulsos_no_final_do_despejo - m_pulsos_no_inicio_do_despejo;
+    LOG_IF(LogDespejoBico, "finalizando despejo - [delta = ", m_tempo_decorrido, "ms | volume = ", volume_despejado, " | pulsos = ", pulsos, "]");
+
+    m_tempo_decorrido = 0;
 }
 
 void Bico::setup() {
@@ -189,9 +190,12 @@ void Bico::nivelar() const {
     if (CFG(SetarTemperaturaTargetNoNivelamento))
         setar_temperatura_boiler(93.f);
 
-    if (not ControladorFluxo::the().analisar_tabela())
-        if (CFG(PreencherTabelaDeFluxoNoNivelamento))
-            ControladorFluxo::the().preencher_tabela();
+    if (CFG(AnalisarTabelaSalvaNoNivelamento))
+        if (ControladorFluxo::the().possui_tabela_usavel_na_flash())
+            return;
+
+    if (CFG(PreencherTabelaDeFluxoNoNivelamento))
+        ControladorFluxo::the().preencher_tabela();
 
     LOG_IF(LogNivelamento, "nivelamento finalizado");
 }
@@ -205,6 +209,21 @@ void Bico::aplicar_forca(uint32_t v) {
     m_forca = v;
     digitalWrite(pino::BREAK, m_forca > 0 ? HIGH : LOW);
     analogWrite(pino::SV, m_forca);
+}
+
+void Bico::preencher_mangueira(float volume_desejado) {
+    constexpr auto FALLBACK_FORCA = 1400;
+    constexpr auto TEMPO_DE_PREENCHER_MANGUEIRA = 1000 * 20;
+
+    Bico::the().viajar_para_esgoto();
+
+    if (volume_desejado)
+        despejar_volume(TEMPO_DE_PREENCHER_MANGUEIRA, volume_desejado, CorrigirFluxo::Sim);
+    else
+        despejar_valor_digital(TEMPO_DE_PREENCHER_MANGUEIRA, FALLBACK_FORCA);
+
+    LOG_IF(LogNivelamento, "preenchendo a mangueira com agua - [duracao = ", TEMPO_DE_PREENCHER_MANGUEIRA / 1000, "s]");
+    util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
 }
 
 void Bico::iniciar_despejo(millis_t duracao) {
@@ -222,7 +241,6 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     constexpr auto TEMPO_DE_ANALISAR_FLUXO = 1000 * 10;
     static_assert(TEMPO_DE_ANALISAR_FLUXO >= 1000, "tempo de analise deve ser no minimo 1 minuto");
-    constexpr auto TEMPO_DE_PREENCHER_MANGUEIRA = 1000 * 20;
 
     util::FiltroUpdatesTemporario f{ Filtros::Interacao };
 
@@ -230,13 +248,8 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     auto const inicio = millis();
 
-    { // prepara o bico na posição correta e preenche a mangueira com água quente, para evitarmos resultados erroneos
-        Bico::the().viajar_para_esgoto();
-
-        LOG_IF(LogNivelamento, "preenchendo a mangueira com agua quente - [duracao = ", TEMPO_DE_PREENCHER_MANGUEIRA / 1000, "s]");
-        Bico::the().aplicar_forca(1400);
-        util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
-    }
+    // prepara o bico na posição correta e preenche a mangueira com água quente, para evitarmos resultados erroneos
+    Bico::the().preencher_mangueira();
 
     // valor enviado para o driver do motor
     int valor_digital = VALOR_DIGITAL_INICIAL;
@@ -329,9 +342,9 @@ void Bico::ControladorFluxo::preencher_tabela() {
             fluxo_medio_do_ultimo_despejo = fluxo_medio;
             if (valor_na_tabela(fluxo_medio) == VALOR_DIGITAL_INVALIDO) {
                 set_valor_na_tabela(fluxo_medio, valor_digital);
-                auto const [volume_inteiro, casa_decimal] = decompor_fluxo(fluxo_medio);
-                LOG_IF(LogNivelamento, "valor digital salvo - m_tabela[", volume_inteiro - FLUXO_MIN, "][", casa_decimal, "] = ", valor_digital);
+                LOG_IF(LogNivelamento, "valor digital salvo - [valor = ", valor_digital, "]");
             }
+
             valor_digital += modificacao_valor_digital;
 
             LOG_IF(LogNivelamento, "analise completa");
@@ -342,25 +355,50 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     LOG_IF(LogNivelamento, "tabela preenchida - [duracao = ", (millis() - inicio) / 60000.f, "min | numero de celulas = ", numero_celulas(), "]");
 
-    LOG_IF(LogTabelaNivelamento, "resultado da tabela: ");
+    LOG_IF(LogNivelamento, "resultado da tabela: ");
     for_each_celula([](uint32_t valor_digital, size_t i, size_t j) {
-        LOG_IF(LogTabelaNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
+        LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", valor_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
         return util::Iter::Continue;
     });
 
     salvar_tabela_na_flash();
 }
 
-bool Bico::ControladorFluxo::analisar_tabela() {
+bool Bico::ControladorFluxo::possui_tabela_usavel_na_flash() {
     util::fill_flash_buffer();
 
     uint32_t valor_salvo_fluxo_minimo = util::buffered_read_flash<uint32_t>(0);
-    if (valor_salvo_fluxo_minimo == 0 or valor_salvo_fluxo_minimo > 4095 or valor_salvo_fluxo_minimo == VALOR_DIGITAL_INVALIDO)
+    if (valor_salvo_fluxo_minimo == 0 or
+        valor_salvo_fluxo_minimo == VALOR_DIGITAL_INVALIDO or
+        valor_salvo_fluxo_minimo > 4095)
+        // nao temos um valor salvo
         return false;
 
     LOG_IF(LogNivelamento, "fluxo minimo encontrado na flash - [valor = ", valor_salvo_fluxo_minimo, "]");
 
     copiar_tabela_da_flash();
+
+    // como temos uma tabela salva na flash podemos usar ela como parametro para desepjarmos 100g de agua
+    Bico::the().preencher_mangueira(200.f);
+
+    // agora que temos a tabela na memoria vamos testar
+
+    constexpr auto PASSOS = 2.f;
+    constexpr auto DURACAO_ANALISE = 1000 * 10;
+    static_assert(DURACAO_ANALISE >= 1000, "pelo menos um minuto de analise");
+    constexpr auto MARGEM_ERRO_ACEITAVEL = 5.f; // porcentagem
+
+    for (float fluxo = FLUXO_MIN; fluxo <= FLUXO_MAX; fluxo += float(RANGE_FLUXO) / PASSOS) {
+        auto const volume_total = fluxo * (DURACAO_ANALISE / 1000);
+        auto const volume_despejado = Bico::the().despejar_volume_e_aguardar(DURACAO_ANALISE, volume_total, CorrigirFluxo::Nao);
+        auto const pct_erro = (std::abs(volume_despejado - volume_total) / volume_total) * 100.f;
+        if (pct_erro > MARGEM_ERRO_ACEITAVEL) {
+            LOG_IF(LogNivelamento, "erro muito grande na tabela salva, criando uma nova - [pct_erro = ", pct_erro, " | volume_despejado = ", volume_despejado, "]");
+            return false;
+        }
+
+        LOG_IF(LogNivelamento, "margem de erro aceitavel - [pct_erro = ", pct_erro, " | volume_total = ", volume_total, " | volume_despejado = ", volume_despejado, "]");
+    }
 
     return true;
 }

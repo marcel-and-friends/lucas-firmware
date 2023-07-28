@@ -1,5 +1,6 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/Fila.h>
+#include <lucas/Bico.h>
 #include <lucas/Receita.h>
 #include <lucas/cfg/cfg.h>
 
@@ -17,13 +18,14 @@ void L4() {
     if (atualizou)
         cfg::salvar_opcoes_na_flash();
 
-    if (parser.seenval('Z')) {
-        auto const pino = parser.value_int();
-        SET_INPUT(pino);
-        LOG("PINO = ", analogRead(pino));
+    if (parser.seen('Y')) {
+        cfg::resetar_opcoes();
+        LOG("opcoes foram resetadas e salvas na flash");
     }
 
-    if (parser.seen('Y'))
-        cfg::resetar_opcoes();
+    if (parser.seen('Z')) {
+        Bico::ControladorFluxo::the().limpar_tabela(Bico::ControladorFluxo::SalvarNaFlash::Sim);
+        LOG("tabela foi limpa e salva na flash");
+    }
 }
 }

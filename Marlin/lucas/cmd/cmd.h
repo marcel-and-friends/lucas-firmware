@@ -41,5 +41,4 @@ void L2();
 /* ~comandos de desenvolvimento~ */
 void L3();
 void L4();
-void L5();
 }

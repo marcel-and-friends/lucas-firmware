@@ -3,19 +3,21 @@
 
 namespace lucas::cfg {
 constexpr auto OPCOES_DEFAULT = std::to_array<Opcao>({
-    [LogSerial] = { .id = 'S', .ativo = false },
-    [LogDespejoBico] = { .id = 'D', .ativo = true },
+    [LogDespejoBico] = {.id = 'D',  .ativo = true },
     [LogViagemBico] = { .id = 'V', .ativo = true },
     [LogFila] = { .id = 'F', .ativo = true },
     [LogNivelamento] = { .id = 'N', .ativo = true },
-    [LogTabelaNivelamento] = { .id = 'T', .ativo = true },
-    [LogWifi] = { .id = 'W', .ativo = false },
-    [LogGcode] = { .id = 'G', .ativo = false },
     [LogEstacoes] = { .id = 'E', .ativo = true },
-    [ModoGiga] = { .id = 'M', .ativo = false },
 
-    [SetarTemperaturaTargetNoNivelamento] = { .ativo = false },
-    [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = true },
+    [LogSerial] = { .id = 'S', .ativo = false},
+    [LogWifi] = { .id = 'W', .ativo = false},
+    [LogGcode] = { .id = 'G', .ativo = false},
+
+    [ModoGiga] = { .id = 'M', .ativo = false},
+
+    [SetarTemperaturaTargetNoNivelamento] = { .id = 'T', .ativo = true },
+    [AnalisarTabelaSalvaNoNivelamento] = { .id = 'A', .ativo = true },
+    [PreencherTabelaDeFluxoNoNivelamento] = { .id = 'X', .ativo = true },
 });
 
 consteval bool nao_possui_opcoes_duplicadas(ListaOpcoes const& opcoes) {
@@ -83,11 +85,9 @@ void resetar_opcoes() {
     }
 
     util::flush_flash();
-
-    LOG("opcoes resetadas");
 }
 
-Opcao const& get(Opcoes opcao) {
+Opcao get(Opcoes opcao) {
     return s_opcoes[size_t(opcao)];
 }
 

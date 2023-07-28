@@ -111,11 +111,11 @@ int8_t GcodeSuite::active_coordinate_system = -1; // machine space
 xyz_pos_t GcodeSuite::coordinate_system[MAX_COORDINATE_SYSTEMS];
 #endif
 
-void GcodeSuite::report_echo_start(const bool forReplay) {
+void GcodeSuite::report_echo_start(bool const forReplay) {
     if (!forReplay)
         SERIAL_ECHO_START();
 }
-void GcodeSuite::report_heading(const bool forReplay, FSTR_P const fstr, const bool eol /*=true*/) {
+void GcodeSuite::report_heading(bool const forReplay, FSTR_P const fstr, bool const eol /*=true*/) {
     if (forReplay)
         return;
     if (fstr) {
@@ -186,7 +186,7 @@ void GcodeSuite::get_destination_from_command() {
     xyze_bool_t seen{ false };
 
 #if ENABLED(CANCEL_OBJECTS)
-    const bool& skip_move = cancelable.skipping;
+    bool const& skip_move = cancelable.skipping;
 #else
     constexpr bool skip_move = false;
 #endif
@@ -194,7 +194,7 @@ void GcodeSuite::get_destination_from_command() {
     // Get new XYZ position, whether absolute or relative
     LOOP_NUM_AXES(i) {
         if ((seen[i] = parser.seenval(AXIS_CHAR(i)))) {
-            const float v = parser.value_axis_units((AxisEnum)i);
+            float const v = parser.value_axis_units((AxisEnum)i);
             if (skip_move)
                 destination[i] = current_position[i];
             else
@@ -206,7 +206,7 @@ void GcodeSuite::get_destination_from_command() {
 #if HAS_EXTRUDERS
     // Get new E position, whether absolute or relative
     if ((seen.e = parser.seenval('E'))) {
-        const float v = parser.value_axis_units(E_AXIS);
+        float const v = parser.value_axis_units(E_AXIS);
         destination.e = axis_is_relative(E_AXIS) ? current_position.e + v : v;
     } else
         destination.e = current_position.e;
@@ -243,7 +243,7 @@ void GcodeSuite::get_destination_from_command() {
             if (parser.seen('I'))
                 cutter.set_enabled(true); // This is set for backward LightBurn compatibility.
             if (parser.seenval('S')) {
-                const float v = parser.value_float(),
+                float const v = parser.value_float(),
                             u = TERN(LASER_POWER_TRAP, v, cutter.power_to_range(v));
                 cutter.menuPower = cutter.unitPower = u;
                 cutter.inline_power(TERN(SPINDLE_LASER_USE_PWM, cutter.upower_to_ocr(u), u > 0 ? 255 : 0));
@@ -333,7 +333,7 @@ void GcodeSuite::G29_with_retry() {
 /**
  * Process the parsed command and dispatch it to its handler
  */
-void GcodeSuite::process_parsed_command(const bool no_ok /*=false*/) {
+void GcodeSuite::process_parsed_command(bool const no_ok /*=false*/) {
     TERN_(HAS_FANCHECK, fan_check.check_deferred_error());
 
     KEEPALIVE_STATE(IN_HANDLER);
@@ -1694,7 +1694,7 @@ void GcodeSuite::process_parsed_command(const bool no_ok /*=false*/) {
 }
 
 #if ENABLED(M100_FREE_MEMORY_DUMPER)
-void M100_dump_routine(FSTR_P const title, const char* const start, const uintptr_t size);
+void M100_dump_routine(FSTR_P const title, char const* const start, const uintptr_t size);
 #endif
 
 /**
@@ -1713,7 +1713,7 @@ void GcodeSuite::process_next_command() {
         SERIAL_ECHOLN(command.buffer);
 #if ENABLED(M100_FREE_MEMORY_DUMPER)
         SERIAL_ECHOPGM("slot:", queue.ring_buffer.index_r);
-        M100_dump_routine(F("   Command Queue:"), (const char*)&queue.ring_buffer, sizeof(queue.ring_buffer));
+        M100_dump_routine(F("   Command Queue:"), (char const*)&queue.ring_buffer, sizeof(queue.ring_buffer));
 #endif
     }
 

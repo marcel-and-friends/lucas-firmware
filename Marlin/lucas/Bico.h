@@ -1,9 +1,10 @@
 #pragma once
 
 #include <src/MarlinCore.h>
-#include <lucas/Estacao.h>
+#include <lucas/util/util.h>
 
 namespace lucas {
+class Estacao;
 class Bico {
 public:
     static Bico& the() {
@@ -13,11 +14,16 @@ public:
 
     void tick();
 
-    void despejar_com_volume_desejado(millis_t duracao, float volume_desejado);
+    enum class CorrigirFluxo {
+        Sim,
+        Nao
+    };
 
-    void despejar_volume_e_aguardar(millis_t duracao, float volume_desejado);
+    void despejar_volume(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir);
 
-    void desepejar_com_valor_digital(millis_t duracao, uint32_t valor_digital);
+    float despejar_volume_e_aguardar(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir);
+
+    void despejar_valor_digital(millis_t duracao, uint32_t valor_digital);
 
     void desligar();
 
@@ -58,7 +64,7 @@ public:
 
         void limpar_tabela(SalvarNaFlash salvar);
 
-        bool analisar_tabela();
+        bool possui_tabela_usavel_na_flash();
 
         uint32_t melhor_valor_digital(float fluxo) const;
 
@@ -123,6 +129,8 @@ private:
 
     void iniciar_despejo(millis_t duracao);
 
+    void preencher_mangueira(float possivel_fluxo_desejado = 0.f);
+
     static volatile inline uint32_t s_contador_de_pulsos = 0;
     uint32_t m_pulsos_no_inicio_do_despejo = 0;
     uint32_t m_pulsos_no_final_do_despejo = 0;
@@ -130,6 +138,7 @@ private:
     millis_t m_duracao = 0;
 
     float m_volume_total_desejado = 0.f;
+    CorrigirFluxo m_corrigir_fluxo_durante_despejo = CorrigirFluxo::Nao;
 
     millis_t m_tempo_decorrido = 0;
 

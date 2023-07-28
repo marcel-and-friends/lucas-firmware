@@ -50,7 +50,7 @@ void L1() {
     planner.refresh_positioning();
 
     if (despejar_agua)
-        Bico::the().despejar_com_volume_desejado(duracao, volume_agua);
+        Bico::the().despejar_volume(duracao, volume_agua, Bico::CorrigirFluxo::Sim);
 
     for (int i = 0; i < num_arcos; i++) {
         float diametro = diametro_circulo;

@@ -7,9 +7,9 @@
 namespace lucas::cmd {
 void L2() {
     if (parser.seenval('D'))
-        Bico::the().desepejar_com_valor_digital(parser.ulongval('T'), parser.ulongval('D'));
+        Bico::the().despejar_valor_digital(parser.ulongval('T'), parser.ulongval('D'));
     else
-        Bico::the().despejar_com_volume_desejado(parser.ulongval('T'), parser.floatval('G'));
+        Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'), Bico::CorrigirFluxo::Sim);
 
     bool const associado_a_estacao = Fila::the().executando();
     util::aguardar_enquanto([&] {

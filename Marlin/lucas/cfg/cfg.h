@@ -12,20 +12,23 @@ struct Opcao {
 };
 
 enum Opcoes {
-    LogSerial = 0,
-    LogDespejoBico,
+    LogDespejoBico = 0,
     LogViagemBico,
     LogFila,
     LogNivelamento,
-    LogTabelaNivelamento,
+    LogEstacoes,
+
+    LogSerial,
     LogWifi,
     LogGcode,
-    LogEstacoes,
+
     ModoGiga,
 
     SetarTemperaturaTargetNoNivelamento,
+    AnalisarTabelaSalvaNoNivelamento,
     PreencherTabelaDeFluxoNoNivelamento,
-    __Count,
+
+    __Count
 };
 
 using ListaOpcoes = std::array<Opcao, size_t(Opcoes::__Count)>;
@@ -36,7 +39,7 @@ void salvar_opcoes_na_flash();
 
 void resetar_opcoes();
 
-Opcao const& get(Opcoes opcao);
+Opcao get(Opcoes opcao);
 ListaOpcoes& opcoes();
 
 #define CFG(opcao) cfg::get(cfg::Opcoes::opcao).ativo

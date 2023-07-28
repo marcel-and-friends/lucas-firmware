@@ -357,7 +357,7 @@ void Fila::tentar_aquecer_mangueira_apos_inatividade() const {
             LOG_IF(LogFila, "aquecendo mangueira apos ", delta_em_min, "min de inatividade");
 
             Bico::the().viajar_para_esgoto();
-            Bico::the().despejar_com_volume_desejado(tempo_de_despejo, volume_a_despejar);
+            Bico::the().despejar_volume(tempo_de_despejo, volume_a_despejar, Bico::CorrigirFluxo::Sim);
 
             util::aguardar_enquanto(
                 // se é recebido um pedido de receita enquanto a maquina está no processo de aquecimento
