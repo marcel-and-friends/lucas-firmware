@@ -11,7 +11,6 @@
 namespace lucas {
 class Estacao {
 public:
-    using Index = size_t;
     static constexpr size_t INVALIDA = static_cast<size_t>(-1);
 
     static constexpr size_t NUM_MAX_ESTACOES = 5;
@@ -85,7 +84,7 @@ public:
     };
 
     size_t numero() const;
-    Index index() const;
+    size_t index() const;
 
     bool aguardando_confirmacao() const { return m_status == Status::ConfirmandoEscaldo or m_status == Status::ConfirmandoAtaques; }
     bool aguardando_input() const { return aguardando_confirmacao() or m_status == Status::Pronto; }

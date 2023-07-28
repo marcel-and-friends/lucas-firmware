@@ -165,17 +165,31 @@ void Fila::mapear_receita(Receita& receita, Estacao& estacao) {
     LOG_IF(LogFila, "receita mapeada - [estacao = ", estacao.index(), " | candidatos = ", num_candidatos, " | tick_inicial = ", tick_inicial, "]");
 }
 
+static bool timer_valido(millis_t timer, millis_t tick = millis()) {
+    return timer and tick >= timer;
+};
+
 void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
     LOG_IF(LogFila, "executando passo - [estacao = ", estacao.index(), " | passo = ", receita.passo_atual_index(), " | tick = ", millis(), "]");
 
-    const auto& passo = receita.passo_atual();
-    const auto passo_atual_index = receita.passo_atual_index();
-    info::evento(
-        "eventoPasso",
-        [passo_atual_index, &estacao](JsonObject o) {
-            o["estacao"] = estacao.index();
-            o["passo"] = passo_atual_index;
-        });
+    const auto& passo_executado = receita.passo_atual();
+    const size_t passo_executando_index = receita.passo_atual_index();
+    auto despachar_evento_passo = [](size_t estacao_index, size_t passo_index, millis_t comeco_primeiro_ataque, bool fim = false) {
+        info::evento(
+            "eventoPasso",
+            [&](JsonObject o) {
+                o["estacao"] = estacao_index;
+                o["passo"] = passo_index;
+
+                if (timer_valido(comeco_primeiro_ataque))
+                    o["tempoTotalAtaques"] = millis() - comeco_primeiro_ataque;
+
+                if (fim)
+                    o["fim"] = true;
+            });
+    };
+
+    despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs);
 
     m_estacao_executando = estacao.index();
 
@@ -190,18 +204,12 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
         return;
     }
 
-    info::evento(
-        "eventoPasso",
-        [passo_atual_index, &estacao](JsonObject o) {
-            o["estacao"] = estacao.index();
-            o["passo"] = passo_atual_index;
-            o["fim"] = true;
-        });
+    despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs, true);
 
     m_estacao_executando = Estacao::INVALIDA;
 
-    const auto duracao_real = millis() - passo.comeco_abs;
-    const auto duracao_ideal = passo.duracao;
+    const auto duracao_real = millis() - passo_executado.comeco_abs;
+    const auto duracao_ideal = passo_executado.duracao;
     const auto erro = (duracao_ideal > duracao_real) ? (duracao_ideal - duracao_real) : (duracao_real - duracao_ideal);
     LOG_IF(LogFila, "passo acabou - [duracao = ", duracao_real, "ms | erro = ", erro, "ms]");
 
@@ -408,16 +416,12 @@ void Fila::gerar_informacoes_da_fila(JsonArrayConst estacoes) const {
                     auto receita_obj = obj.createNestedObject("infoReceita");
                     receita_obj["receitaId"] = receita.id();
 
-                    auto timer_valido = [tick](millis_t timer) {
-                        return timer and tick > timer;
-                    };
-
                     const auto& primeiro_passo = receita.primeiro_passo();
-                    if (timer_valido(primeiro_passo.comeco_abs))
+                    if (timer_valido(primeiro_passo.comeco_abs, tick))
                         receita_obj["tempoTotalReceita"] = tick - receita.primeiro_passo().comeco_abs;
 
                     const auto& primeiro_ataque = receita.primeiro_ataque();
-                    if (timer_valido(primeiro_ataque.comeco_abs))
+                    if (timer_valido(primeiro_ataque.comeco_abs, tick))
                         receita_obj["tempoTotalAtaques"] = tick - primeiro_ataque.comeco_abs;
 
                     if (estacao.status() == Estacao::Status::Finalizando)

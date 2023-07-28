@@ -25,11 +25,11 @@ public:
 
     void viajar_para_estacao(Estacao&, float offset = 0.f) const;
 
-    void viajar_para_estacao(Estacao::Index, float offset = 0.f) const;
+    void viajar_para_estacao(size_t, float offset = 0.f) const;
 
     void viajar_para_lado_da_estacao(Estacao&) const;
 
-    void viajar_para_lado_da_estacao(Estacao::Index) const;
+    void viajar_para_lado_da_estacao(size_t) const;
 
     void aguardar_viagem_terminar() const;
 
@@ -38,8 +38,6 @@ public:
     void setar_temperatura_boiler(float target) const;
 
     void nivelar() const;
-
-    void preencher_tabela_de_controle_de_fluxo() const;
 
     bool ativo() const {
         return m_ativo;

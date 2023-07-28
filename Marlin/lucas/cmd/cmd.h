@@ -20,21 +20,25 @@ inline void executar_ff(const char* str, float value) {
     executar(util::ff(str, value));
 }
 
-// L1 -> Controla o bico
-// G - Volume total de água a ser despejado
-// T - Tempo, em milisegundos, que o bico deve ficar ligado
-void L1();
-// L3 -> Espiral
+// L0 -> Espiral
 // D - Diâmetro máximo do circulo gerado
 // N - Número de espirais dentro desse diâmetro
 // [G] - Volume de água a ser despejado durante a espiral (requer o parâmetro T)
-// [T] - Tempo aproximado, em milisegundos, que o movimento e despejo vai durar
+// [T] - Tempo aproximado, em milisegundos, que o movimento e despejo irão durar
 // [R] - Quantidade de vezes que o movimento deve ser repetido
 // [B] - Iniciar na borda
+void L0();
+// L1 -> Círculo
+// D - Diâmetro máximo do circulo gerado
+// N - Número de repetições
+// [G] - Volume de água a ser despejado durante a espiral (requer o parâmetro T)
+// [T] - Tempo aproximado, em milisegundos, que o movimento e despejo irão durar
+void L1();
+// L2 -> Despejo de água
+// G - Volume total de água a ser despejado
+// T - Tempo, em milisegundos, que o bico deve ficar ligado
+void L2();
+/* ~comandos de desenvolvimento~ */
 void L3();
-// L5 -> Viajar para uma estacao (pelo numero)
-// N - Número da estação
-void L5();
-void L6();
-void L7();
+void L4();
 }

@@ -118,7 +118,7 @@ void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
     viajar_para_estacao(estacao.index(), offset);
 }
 
-void Bico::viajar_para_estacao(Estacao::Index index, float offset) const {
+void Bico::viajar_para_estacao(size_t index, float offset) const {
     LOG_IF(LogViagemBico, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     const auto comeco = millis();
@@ -137,7 +137,7 @@ void Bico::viajar_para_lado_da_estacao(Estacao& estacao) const {
     viajar_para_lado_da_estacao(estacao.index());
 }
 
-void Bico::viajar_para_lado_da_estacao(Estacao::Index index) const {
+void Bico::viajar_para_lado_da_estacao(size_t index) const {
     const auto offset = -(util::distancia_entre_estacoes() / 2.f);
     viajar_para_estacao(index, offset);
 }
@@ -163,12 +163,17 @@ void Bico::setar_temperatura_boiler(float target) const {
     constexpr auto HYSTERESIS_INICIAL = 1.5f;
     constexpr auto HYSTERESIS_FINAL = 0.5f;
 
-    const auto delta = std::abs(target - thermalManager.degBed());
+    thermalManager.setTargetBed(target);
+
+    const auto temp_boiler = thermalManager.degBed();
+    if (temp_boiler >= target)
+        return;
+
+    const auto delta = std::abs(target - temp_boiler);
     util::set_hysteresis(delta < HYSTERESIS_INICIAL ? HYSTERESIS_FINAL : HYSTERESIS_INICIAL);
 
     LOG_IF(LogNivelamento, "iniciando nivelamento de temperatura - [hysteresis = ", util::hysteresis(), "]");
 
-    thermalManager.setTargetBed(target);
     util::aguardar_enquanto([target] {
         constexpr auto INTERVALO_LOG = 5000;
         static auto ultimo_log = millis();
@@ -191,17 +196,13 @@ void Bico::nivelar() const {
 
     cmd::executar("G28 XY");
 
-    if (CFG(SetarTemperaturaTargetInicial))
+    if (CFG(SetarTemperaturaTargetNoNivelamento))
         setar_temperatura_boiler(93.f);
 
     if (CFG(PreencherTabelaDeFluxoNoNivelamento))
-        preencher_tabela_de_controle_de_fluxo();
+        ControladorFluxo::the().preencher_tabela();
 
     LOG_IF(LogNivelamento, "nivelamento finalizado");
-}
-
-void Bico::preencher_tabela_de_controle_de_fluxo() const {
-    ControladorFluxo::the().preencher_tabela();
 }
 
 void Bico::aplicar_forca(uint32_t v) {
@@ -244,6 +245,8 @@ void Bico::ControladorFluxo::preencher_tabela() {
     static_assert(TEMPO_DE_ANALISAR_FLUXO >= 1000, "tempo de analise deve ser no minimo 1 minuto");
     constexpr auto TEMPO_DE_PREENCHER_MANGUEIRA = 1000 * 20;
 
+    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
+
     limpar_tabela();
 
     const auto inicio = millis();
@@ -252,7 +255,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
         Bico::the().viajar_para_esgoto();
 
         LOG_IF(LogNivelamento, "preenchendo a mangueira com agua quente - [duracao = ", TEMPO_DE_PREENCHER_MANGUEIRA / 1000, "s]");
-        Bico::the().aplicar_forca(1650);
+        Bico::the().aplicar_forca(1400);
         util::aguardar_por(TEMPO_DE_PREENCHER_MANGUEIRA);
     }
 
@@ -264,6 +267,8 @@ void Bico::ControladorFluxo::preencher_tabela() {
     float fluxo_medio_do_ultimo_despejo = 0.f;
     // flag para sabermos se ja temos o valor minimo e podemos prosseguir com o restante do nivelamento
     bool obteve_fluxo_minimo = false;
+    // flag que diz se o ultimo despejo em busca do fluxo minimo foi maior ou menor que o fluxo minimo
+    bool ultimo_maior_minimo = false;
 
     while (true) {
         // chegamos no limite, não podemos mais aumentar a força
@@ -285,9 +290,9 @@ void Bico::ControladorFluxo::preencher_tabela() {
         { // primeiro precisamos obter o fluxo minimo
             if (not obteve_fluxo_minimo) {
                 const auto delta = fluxo_medio - float(FLUXO_MIN);
-                // valores entre FLUXO_MIN e FLUXO_MIN + 0.1 são aceitados
+                // valores entre FLUXO_MIN - 0.1 e FLUXO_MIN + 0.1 são aceitados
                 // caso contrario, aumentamos ou diminuimos o valor digital ate chegarmos no fluxo minimo
-                if (delta > 0.f && delta < 0.1f) {
+                if (delta > -0.1f and delta < 0.1f) {
                     obteve_fluxo_minimo = true;
                     m_tabela[0][0] = valor_digital;
 
@@ -296,12 +301,20 @@ void Bico::ControladorFluxo::preencher_tabela() {
                     modificacao_valor_digital = MODIFICACAO_VALOR_DIGITAL_APOS_OBTER_FLUXO_MINIMO;
                     valor_digital += modificacao_valor_digital;
                 } else {
-                    const bool maior = fluxo_medio > float(FLUXO_MIN);
+                    const bool maior_minimo = fluxo_medio > float(FLUXO_MIN);
+                    if (maior_minimo != ultimo_maior_minimo) {
+                        if (modificacao_valor_digital < 0)
+                            modificacao_valor_digital = std::min(modificacao_valor_digital / 2, -1);
+                        else
+                            modificacao_valor_digital = std::max(modificacao_valor_digital / 2, 1);
+                        modificacao_valor_digital *= -1;
+                    }
 
-                    modificacao_valor_digital = std::max(maior ? modificacao_valor_digital / 2 : modificacao_valor_digital, 1);
-                    valor_digital += modificacao_valor_digital * (maior ? -1 : 1);
+                    valor_digital += modificacao_valor_digital;
 
-                    LOG_IF(LogNivelamento, "fluxo minimo nao obtido - ", maior ? "diminuindo" : "aumentando", " o valor digital para ", valor_digital, " - [modificacao = ", modificacao_valor_digital, "]");
+                    LOG_IF(LogNivelamento, "fluxo minimo nao obtido - ", maior_minimo ? "diminuindo" : "aumentando", " o valor digital para ", valor_digital, " - [modificacao = ", modificacao_valor_digital, "]");
+
+                    ultimo_maior_minimo = maior_minimo;
                 }
                 continue;
             }

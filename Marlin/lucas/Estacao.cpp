@@ -134,7 +134,7 @@ size_t Estacao::numero() const {
     return index() + 1;
 }
 
-Estacao::Index Estacao::index() const {
+size_t Estacao::index() const {
     // cute
     return ((uintptr_t)this - (uintptr_t)&s_lista) / sizeof(Estacao);
 }

@@ -16,27 +16,27 @@ JsonObjectConst Receita::padrao() {
   "tempoFinalizacao": 60000,
   "escaldo": {
     "duracao": 6000,
-    "gcode": "L3 D9 N3 R1 T6000 G80"
+    "gcode": "L0 D9 N3 R1 T6000 G80"
   },
   "ataques": [
     {
       "duracao": 6000,
-      "gcode": "L3 D7 N3 R1 T6000 G60",
+      "gcode": "L0 D7 N3 R1 T6000 G60",
       "intervalo": 24000
     },
     {
       "duracao": 9000,
-      "gcode": "L3 D7 N5 R1 T9000 G90",
+      "gcode": "L0 D7 N5 R1 T9000 G90",
       "intervalo": 30000
     },
     {
       "duracao": 10000,
-      "gcode": "L3 D7 N5 R1 T10000 G100",
+      "gcode": "L0 D7 N5 R1 T10000 G100",
       "intervalo": 35000
     },
     {
       "duracao": 9000,
-      "gcode": "L3 D7 N5 R1 T9000 G100"
+      "gcode": "L0 D7 N5 R1 T9000 G100"
     }
   ]
 })";

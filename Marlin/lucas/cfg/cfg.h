@@ -20,7 +20,7 @@ enum Opcoes {
     ModoGiga,
 
     PreencherTabelaDeFluxoNoNivelamento,
-    SetarTemperaturaTargetInicial
+    SetarTemperaturaTargetNoNivelamento
 };
 
 inline auto opcoes = std::to_array<Opcao>({
@@ -35,7 +35,7 @@ inline auto opcoes = std::to_array<Opcao>({
     [ModoGiga] = { .id = 'M', .ativo = false },
 
     [PreencherTabelaDeFluxoNoNivelamento] = { .ativo = true },
-    [SetarTemperaturaTargetInicial] = { .ativo = true },
+    [SetarTemperaturaTargetNoNivelamento] = { .ativo = true },
 });
 }
 

@@ -4,7 +4,7 @@
 #include <lucas/cfg/cfg.h>
 
 namespace lucas::cmd {
-void L7() {
+void L4() {
     for (auto& opcao : cfg::opcoes) {
         if (opcao.id and parser.seen(opcao.id)) {
             opcao.ativo = not opcao.ativo;
