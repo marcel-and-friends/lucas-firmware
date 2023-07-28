@@ -27,10 +27,6 @@ public:
 
     void viajar_para_estacao(size_t, float offset = 0.f) const;
 
-    void viajar_para_lado_da_estacao(Estacao&) const;
-
-    void viajar_para_lado_da_estacao(size_t) const;
-
     void aguardar_viagem_terminar() const;
 
     void viajar_para_esgoto() const;

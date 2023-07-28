@@ -87,8 +87,10 @@ inline void flush_flash() {
     eeprom_buffer_flush();
 }
 
-inline void fill_buffered_flash() {
+inline void fill_flash_buffer() {
     eeprom_buffer_fill();
 }
 
+#define LOG SERIAL_ECHOLNPGM
+#define LOG_ERR(...) LOG("", "ERRO: ", __VA_ARGS__);
 }

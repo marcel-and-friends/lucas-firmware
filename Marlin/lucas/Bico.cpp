@@ -118,7 +118,7 @@ void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
     viajar_para_estacao(estacao.index(), offset);
 }
 
-void Bico::viajar_para_estacao(Estacao::Index index, float offset) const {
+void Bico::viajar_para_estacao(size_t index, float offset) const {
     LOG_IF(LogViagemBico, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     auto const comeco = millis();
@@ -131,15 +131,6 @@ void Bico::viajar_para_estacao(Estacao::Index index, float offset) const {
     aguardar_viagem_terminar();
 
     LOG_IF(LogViagemBico, "viagem completa - [duracao = ", millis() - comeco, "ms]");
-}
-
-void Bico::viajar_para_lado_da_estacao(Estacao& estacao) const {
-    viajar_para_lado_da_estacao(estacao.index());
-}
-
-void Bico::viajar_para_lado_da_estacao(Estacao::Index index) const {
-    auto const offset = -(util::distancia_entre_estacoes() / 2.f);
-    viajar_para_estacao(index, offset);
 }
 
 void Bico::viajar_para_esgoto() const {
@@ -163,9 +154,7 @@ void Bico::setar_temperatura_boiler(float target) const {
     constexpr auto HYSTERESIS_INICIAL = 1.5f;
     constexpr auto HYSTERESIS_FINAL = 0.5f;
 
-    auto const delta = std::abs(target - thermalManager.degBed());
     thermalManager.setTargetBed(target);
-
     auto const temp_boiler = thermalManager.degBed();
     if (temp_boiler >= target)
         return;
@@ -363,7 +352,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
 }
 
 bool Bico::ControladorFluxo::analisar_tabela() {
-    eeprom_buffer_fill();
+    util::fill_flash_buffer();
 
     uint32_t valor_salvo_fluxo_minimo = util::buffered_read_flash<uint32_t>(0);
     if (valor_salvo_fluxo_minimo == 0 or valor_salvo_fluxo_minimo > 4095 or valor_salvo_fluxo_minimo == VALOR_DIGITAL_INVALIDO)
@@ -410,7 +399,7 @@ void Bico::ControladorFluxo::limpar_tabela(SalvarNaFlash salvar) {
 }
 
 void Bico::ControladorFluxo::salvar_tabela_na_flash() {
-    auto const bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
+    auto const bloco_tabela = reinterpret_cast<uint32_t*>(&m_tabela);
     for (size_t i = 0; i < sizeof(m_tabela) / sizeof(uint32_t); ++i)
         util::buffered_write_flash<uint32_t>(i * sizeof(uint32_t), bloco_tabela[i]);
 
@@ -418,9 +407,9 @@ void Bico::ControladorFluxo::salvar_tabela_na_flash() {
 }
 
 void Bico::ControladorFluxo::copiar_tabela_da_flash() {
-    util::fill_buffered_flash();
+    util::fill_flash_buffer();
 
-    auto bloco_tabela = std::bit_cast<uint32_t*>(&m_tabela);
+    auto bloco_tabela = reinterpret_cast<uint32_t*>(&m_tabela);
     for (size_t i = 0; i < sizeof(m_tabela) / sizeof(uint32_t); ++i)
         bloco_tabela[i] = util::buffered_read_flash<uint32_t>(i * sizeof(uint32_t));
 }

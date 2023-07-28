@@ -6,6 +6,7 @@
 namespace lucas::cfg {
 struct Opcao {
     static constexpr char ID_DEFAULT = 0x47;
+
     char id = ID_DEFAULT;
     bool ativo = true;
 };
@@ -22,7 +23,7 @@ enum Opcoes {
     LogEstacoes,
     ModoGiga,
 
-    SetarTemperaturaTargetInicial,
+    SetarTemperaturaTargetNoNivelamento,
     PreencherTabelaDeFluxoNoNivelamento,
     __Count,
 };
@@ -31,8 +32,11 @@ using ListaOpcoes = std::array<Opcao, size_t(Opcoes::__Count)>;
 
 void setup();
 
-Opcao const& get(Opcoes opcao);
+void salvar_opcoes_na_flash();
 
+void resetar_opcoes();
+
+Opcao const& get(Opcoes opcao);
 ListaOpcoes& opcoes();
 
 #define CFG(opcao) cfg::get(cfg::Opcoes::opcao).ativo
@@ -47,5 +51,4 @@ ListaOpcoes& opcoes();
             LOG("", ": ", __VA_ARGS__);                           \
         }                                                         \
     } while (false)
-
 }
