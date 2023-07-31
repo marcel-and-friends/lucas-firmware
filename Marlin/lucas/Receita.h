@@ -29,7 +29,7 @@ public:
         char gcode[48] = {};
 
         millis_t fim() const {
-            if (not comeco_abs)
+            if (comeco_abs == 0)
                 return 0;
             return comeco_abs + duracao;
         }

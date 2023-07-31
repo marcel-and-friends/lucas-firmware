@@ -28,10 +28,10 @@ enum Opcoes {
     AnalisarTabelaSalvaNoNivelamento,
     PreencherTabelaDeFluxoNoNivelamento,
 
-    __Count
+    Count
 };
 
-using ListaOpcoes = std::array<Opcao, size_t(Opcoes::__Count)>;
+using ListaOpcoes = std::array<Opcao, size_t(Opcoes::Count)>;
 
 void setup();
 
@@ -47,7 +47,7 @@ ListaOpcoes& opcoes();
     do {                                                          \
         if (CFG(opcao)) {                                         \
             const auto& opcao_cfg = cfg::get(cfg::Opcoes::opcao); \
-            if (opcao_cfg.id)                                     \
+            if (opcao_cfg.id != cfg::Opcao::ID_DEFAULT)           \
                 SERIAL_ECHO(AS_CHAR(opcao_cfg.id));               \
             else                                                  \
                 SERIAL_ECHO(AS_CHAR('?'));                        \

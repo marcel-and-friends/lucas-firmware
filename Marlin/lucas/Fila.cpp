@@ -181,8 +181,9 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
                 o["estacao"] = estacao_index;
                 o["passo"] = passo_index;
 
-                if (timer_valido(comeco_primeiro_ataque))
-                    o["tempoTotalAtaques"] = millis() - comeco_primeiro_ataque;
+                const auto tick = millis();
+                if (timer_valido(comeco_primeiro_ataque, tick))
+                    o["tempoTotalAtaques"] = tick - comeco_primeiro_ataque;
 
                 if (fim)
                     o["fim"] = true;
@@ -344,28 +345,32 @@ void Fila::remover_receitas_finalizadas() {
 // se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
 void Fila::tentar_aquecer_mangueira_apos_inatividade() const {
-    constexpr millis_t tempo_de_espera_apos_execucao = 60000 * 10; // 10min
-    static_assert(tempo_de_espera_apos_execucao >= 60000, "minimo de 1 minuto");
+    constexpr millis_t TEMPO_DE_INATIVIDADE = 60000 * 10; // 10min
+    static_assert(TEMPO_DE_INATIVIDADE >= 60000, "minimo de 1 minuto");
 
-    constexpr millis_t tempo_de_despejo = 1000 * 20;                    // 20s
-    constexpr float volume_a_despejar = 10 * (tempo_de_despejo / 1000); // 10 g/s
+    constexpr millis_t TEMPO_DESPEJO = 1000 * 20;                   // 20s
+    constexpr float VOLUME_DESPEJO = 10.f * (TEMPO_DESPEJO / 1000); // 10 g/s
 
     if (s_tick_comeco_de_inatividade and millis() > s_tick_comeco_de_inatividade) {
         auto const delta = millis() - s_tick_comeco_de_inatividade;
-        if (delta >= tempo_de_espera_apos_execucao) {
+        if (delta >= TEMPO_DE_INATIVIDADE) {
             auto const delta_em_min = delta / 60000;
             LOG_IF(LogFila, "aquecendo mangueira apos ", delta_em_min, "min de inatividade");
 
             Bico::the().viajar_para_esgoto();
-            Bico::the().despejar_volume(tempo_de_despejo, volume_a_despejar, Bico::CorrigirFluxo::Sim);
+            Bico::the().despejar_volume(TEMPO_DESPEJO, VOLUME_DESPEJO, Bico::CorrigirFluxo::Sim);
 
             util::aguardar_enquanto(
-                // se é recebido um pedido de receita enquanto a maquina está no processo de aquecimento
-                // o numero de receitas em execucao aumenta, o bico é desligado e a receita é executada
-                [this] { return numero_de_receitas_em_execucao() == 0 and Bico::the().ativo(); },
+                [this] {
+                    // se é recebido um pedido de receita enquanto a maquina está no processo de aquecimento
+                    // o numero de receitas em execucao aumenta, o bico é desligado e a receita é executada
+                    if (numero_de_receitas_em_execucao() != 0) {
+                        Bico::the().desligar();
+                        return false;
+                    }
+                    return Bico::the().ativo();
+                },
                 Filtros::Fila);
-
-            Bico::the().desligar();
 
             LOG_IF(LogFila, "aquecimento finalizado");
             s_tick_comeco_de_inatividade = millis();
@@ -380,7 +385,7 @@ void Fila::receita_cancelada(size_t index) {
 
 // o conceito de uma receita "em execucao" engloba somente os despejos em sí (escaldo e ataques)
 // estacões que estão aguardando input do usuário ou finalizando não possuem seus passos pendentes mapeados
-// consequentemente, não são consideradas como "em execucao"
+// consequentemente, não são consideradas como "em execucao" por mais que estejão na fila
 size_t Fila::numero_de_receitas_em_execucao() const {
     size_t num = 0;
     for_each_receita_mapeada([&num](auto const&) {
@@ -408,6 +413,7 @@ void Fila::gerar_informacoes_da_fila(JsonArrayConst estacoes) const {
                 obj["estacao"] = estacao.index();
                 obj["status"] = int(estacao.status());
 
+                // os campos seguintes só aparecem para receitas em execução
                 if (not m_fila[i].ativa)
                     continue;
 
@@ -425,8 +431,8 @@ void Fila::gerar_informacoes_da_fila(JsonArrayConst estacoes) const {
                         receita_obj["tempoTotalAtaques"] = tick - primeiro_ataque.comeco_abs;
 
                     if (estacao.status() == Estacao::Status::Finalizando)
-                        if (timer_valido(receita.inicio_tempo_de_finalizacao()))
-                            receita_obj["progressoFinalizacao"] = millis() - receita.inicio_tempo_de_finalizacao();
+                        if (timer_valido(receita.inicio_tempo_de_finalizacao(), tick))
+                            receita_obj["progressoFinalizacao"] = tick - receita.inicio_tempo_de_finalizacao();
                 }
                 {
                     auto passo_obj = obj.createNestedObject("infoPasso");

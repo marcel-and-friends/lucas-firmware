@@ -135,10 +135,8 @@ void Receita::mapear_passos_pendentes(millis_t tick) {
 }
 
 void Receita::desmapear_passos() {
-    for_each_passo([](Passo& passo) {
+    for (auto& passo : m_passos)
         passo.comeco_abs = 0;
-        return util::Iter::Continue;
-    });
 }
 
 bool Receita::passos_pendentes_estao_mapeados() const {

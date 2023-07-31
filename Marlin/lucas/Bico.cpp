@@ -46,7 +46,7 @@ void Bico::tick() {
 }
 
 void Bico::despejar_volume(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir) {
-    if (not duracao or not volume_desejado)
+    if (duracao == 0 or volume_desejado == 0)
         return;
 
     iniciar_despejo(duracao);
@@ -63,7 +63,7 @@ float Bico::despejar_volume_e_aguardar(millis_t duracao, float volume_desejado, 
 }
 
 void Bico::despejar_valor_digital(millis_t duracao, uint32_t valor_digital) {
-    if (not duracao or not valor_digital)
+    if (duracao == 0 or valor_digital == 0)
         return;
 
     iniciar_despejo(duracao);
@@ -124,7 +124,6 @@ void Bico::viajar_para_estacao(size_t index, float offset) const {
 
     auto const comeco = millis();
     auto const movimento = util::ff("G0 F50000 Y60 X%s", Estacao::posicao_absoluta(index) + offset);
-
     cmd::executar_cmds("G90",
                        movimento,
                        "G91");

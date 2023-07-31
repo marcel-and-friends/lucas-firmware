@@ -30,7 +30,7 @@ consteval bool nao_possui_opcoes_duplicadas(ListaOpcoes const& opcoes) {
     return true;
 }
 
-static_assert(OPCOES_DEFAULT.size() == Opcoes::__Count, "tamanho errado irmao");
+static_assert(OPCOES_DEFAULT.size() == Opcoes::Count, "tamanho errado irmao");
 static_assert(nao_possui_opcoes_duplicadas(OPCOES_DEFAULT), "opcoes duplicadas irmao");
 
 // vai ser inicializado na 'setup()'
