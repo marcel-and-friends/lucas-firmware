@@ -57,12 +57,6 @@ public:
     bool passos_pendentes_estao_mapeados() const;
 
 public:
-    void for_each_passo(util::IterFn<Passo&> auto&& callback) {
-        for (size_t i = 0; i < m_num_passos; ++i)
-            if (std::invoke(FWD(callback), m_passos[i]) == util::Iter::Break)
-                return;
-    }
-
     void for_each_passo_pendente(util::IterFn<Passo&> auto&& callback) {
         if (m_possui_escaldo and not escaldou()) {
             std::invoke(FWD(callback), m_passos.front());

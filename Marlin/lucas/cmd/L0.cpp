@@ -7,6 +7,38 @@
 #include <src/module/planner.h>
 #include <numbers>
 
+#define L0_LOG(...) LOG_IF(LogLn, "", "L0: ", __VA_ARGS__);
+
+static void report_logical_position(xyze_pos_t const& rpos) {
+    const xyze_pos_t lpos = rpos.asLogical();
+    SERIAL_ECHOLNPGM_P(
+        LIST_N(DOUBLE(NUM_AXES),
+               X_LBL,
+               lpos.x,
+               SP_Y_LBL,
+               lpos.y,
+               SP_Z_LBL,
+               lpos.z,
+               SP_I_LBL,
+               lpos.i,
+               SP_J_LBL,
+               lpos.j,
+               SP_K_LBL,
+               lpos.k,
+               SP_U_LBL,
+               lpos.u,
+               SP_V_LBL,
+               lpos.v,
+               SP_W_LBL,
+               lpos.w)
+#if HAS_EXTRUDERS
+            ,
+        SP_E_LBL,
+        lpos.e
+#endif
+    );
+}
+
 namespace lucas::cmd {
 void L0() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
@@ -25,13 +57,14 @@ void L0() {
     auto const repeticoes = parser.intval('R', 0);
     auto const series = repeticoes + 1;
     auto const comecar_na_borda = parser.seen_test('B');
-
     auto const duracao = parser.ulongval('T');
 
+    L0_LOG("!opcoes!\ndiametro = ", diametro_total, "\nraio = ", raio, "\nnum_circulos = ", num_circulos, "\nnum_arcos = ", num_arcos, "\noffset_por_arco = ", offset_por_arco, "\nrepeticoes = ", repeticoes, "\nseries = ", series, "\ncomecar_na_borda = ", comecar_na_borda, "\nduracao = ", duracao);
+
     if (CFG(ModoGiga) and duracao) {
-        LOG("iniciando L0 em modo giga");
+        L0_LOG("iniciado no modo giga");
         util::aguardar_por(duracao);
-        LOG("L0 finalizado");
+        L0_LOG("finalizado no modo giga");
         return;
     }
 
@@ -42,9 +75,11 @@ void L0() {
     bool vaza = false;
 
     auto const posicao_inicial = planner.get_axis_positions_mm();
+    L0_LOG("posicao inicial: ");
+    report_logical_position(posicao_inicial);
     auto posicao_final = posicao_inicial;
 
-    auto for_each_arco = [&](util::IterFn<float, float, int> auto&& callback) {
+    auto const for_each_arco = [&](util::IterFn<float, float, int> auto&& callback) {
         for (auto serie = 0; serie < series; serie++) {
             const bool fora_pra_dentro = serie % 2 != comecar_na_borda;
             for (auto arco = 0; arco < num_arcos; arco++) {
@@ -93,13 +128,9 @@ void L0() {
 
         executar_fmt("G2 F5000 X%s I%s", buffer_diametro, buffer_raio);
 
-        auto offset_x = float(offset_por_arco + ((arco / 2) * offset_por_arco));
-        if (arco % 2)
-            offset_x = -offset_x;
-
-        posicao_final.x = posicao_inicial.x + offset_x;
-
+        posicao_final.x += diametro;
         if (associado_a_estacao and not Fila::the().executando()) {
+            L0_LOG("receita foi cancelada, abortando");
             vaza = true;
             return util::Iter::Break;
         }
@@ -113,6 +144,8 @@ void L0() {
     Bico::the().aguardar_viagem_terminar();
 
     current_position = posicao_final;
+    L0_LOG("posicao para o marlin:");
+    report_logical_position(current_position);
 
     soft_endstop._enabled = true;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X;

@@ -14,8 +14,6 @@ public:
         return instance;
     }
 
-    void setup();
-
     void tick();
 
     void agendar_receita(JsonObjectConst receita_json);

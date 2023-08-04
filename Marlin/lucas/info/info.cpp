@@ -4,6 +4,7 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/serial/serial.h>
 #include <lucas/Fila.h>
+#include <lucas/Bico.h>
 #include <src/module/temperature.h>
 
 namespace lucas::info {
@@ -47,9 +48,12 @@ enum ComandoDoApp {
     BloquearEstacoes,        // estacoes bloqueadas
     CancelarReceita,         // cancelar receita da estacao
     AgendarReceita,          // enviar uma receita para uma estacao
-    RequisicaoDeInfo,        // requisicao de informacao de todas as estacoes
-    AgendarReceitaPadrao,    // enviar a receita padrao para uma ou mais estacoes
-    ApertarBotao,            // simula os efeitos de apertar um botao
+    RequisicaoDeInfoFila,    // requisicao de informacao de todas as estacoes na fila
+    RequisicaoDeNivelamento, // requisicao de informacao do nivelamento
+
+    /* ~comandos de desenvolvimento~ */
+    AgendarReceitaPadrao, // enviar a receita padrao para uma ou mais estacoes
+    ApertarBotao,         // simula os efeitos de apertar um botao
 };
 
 void interpretar_json(std::span<char> buffer) {
@@ -80,13 +84,13 @@ void interpretar_json(std::span<char> buffer) {
             Estacao::inicializar(v.as<size_t>());
         } break;
         case TempTargetBoiler: {
-            if (not v.is<char const*>()) {
+            if (not v.is<float>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
 
             if (not CFG(ModoGiga))
-                cmd::executar_fmt("M140 S%s", v.as<char const*>());
+                Bico::the().nivelar(v.as<float>());
         } break;
         case BloquearEstacoes: {
             if (not v.is<JsonArrayConst>()) {
@@ -132,13 +136,18 @@ void interpretar_json(std::span<char> buffer) {
 
             Fila::the().agendar_receita(v.as<JsonObjectConst>());
         } break;
-        case RequisicaoDeInfo: {
+        case RequisicaoDeInfoFila: {
             if (not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para requisicao de informacoes");
                 break;
             }
             Fila::the().gerar_informacoes_da_fila(v.as<JsonArrayConst>());
         } break;
+        case RequisicaoDeNivelamento: {
+            if (!Bico::the().nivelado())
+                SERIAL_ECHOLN("jujuba");
+        } break;
+        /* ~comandos de desenvolvimento~ */
         case AgendarReceitaPadrao: {
             if (not v.is<size_t>()) {
                 LOG_ERR("valor json invalido para envio da receita padrao");

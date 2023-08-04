@@ -6,4 +6,6 @@
 
 namespace lucas {
 void setup();
+
+bool inicializado();
 }

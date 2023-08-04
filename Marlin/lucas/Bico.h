@@ -39,11 +39,11 @@ public:
 
     void setar_temperatura_boiler(float target) const;
 
-    void nivelar() const;
+    void nivelar(float temp_target);
 
-    bool ativo() const {
-        return m_ativo;
-    }
+    bool nivelado() const { return m_nivelado; }
+
+    bool ativo() const { return m_ativo; }
 
     class ControladorFluxo {
     public:
@@ -64,7 +64,7 @@ public:
 
         void limpar_tabela(SalvarNaFlash salvar);
 
-        bool possui_tabela_usavel_na_flash();
+        void tentar_copiar_tabela_da_flash();
 
         uint32_t melhor_valor_digital(float fluxo) const;
 
@@ -151,5 +151,7 @@ private:
 
     // se estamos despejando ou nao
     bool m_ativo = false;
+
+    bool m_nivelado = false;
 };
 }

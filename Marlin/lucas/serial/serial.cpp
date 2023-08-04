@@ -4,9 +4,6 @@
 
 namespace lucas::serial {
 void setup() {
-    while (SERIAL_IMPL.available())
-        SERIAL_IMPL.read();
-
     HookDelimitado::make(
         '#',
         [](std::span<char> buffer) {
@@ -74,5 +71,10 @@ bool hooks() {
             break;
     }
     return s_hook_ativo;
+}
+
+void limpar_serial() {
+    while (SERIAL_IMPL.available())
+        SERIAL_IMPL.read();
 }
 }

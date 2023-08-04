@@ -8,7 +8,7 @@ struct Opcao {
     static constexpr char ID_DEFAULT = 0x47;
 
     char id = ID_DEFAULT;
-    bool ativo = true;
+    bool ativo = false;
 };
 
 enum Opcoes {
@@ -21,11 +21,11 @@ enum Opcoes {
     LogSerial,
     LogWifi,
     LogGcode,
+    LogLn,
 
     ModoGiga,
 
     SetarTemperaturaTargetNoNivelamento,
-    AnalisarTabelaSalvaNoNivelamento,
     PreencherTabelaDeFluxoNoNivelamento,
 
     Count

@@ -10,10 +10,6 @@
 namespace lucas {
 static millis_t s_tick_comeco_de_inatividade = 0;
 
-void Fila::setup() {
-    s_tick_comeco_de_inatividade = millis();
-}
-
 void Fila::tick() {
     tentar_aquecer_mangueira_apos_inatividade();
 
@@ -190,24 +186,26 @@ void Fila::executar_passo_atual(Receita& receita, Estacao& estacao) {
             });
     };
 
-    despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs);
-
-    m_estacao_executando = estacao.index();
-
     {
-        util::FiltroUpdatesTemporario f{ Filtros::Fila }; // nada de tick()!
-        receita.executar_passo_atual();
+        despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs);
+
+        m_estacao_executando = estacao.index();
+
+        {
+            util::FiltroUpdatesTemporario f{ Filtros::Fila }; // nada de tick()!
+            receita.executar_passo_atual();
+        }
+
+        // receita foi cancelada por meios externos
+        if (m_estacao_executando == Estacao::INVALIDA) [[unlikely]] {
+            receita_cancelada(estacao.index());
+            return;
+        }
+
+        m_estacao_executando = Estacao::INVALIDA;
+
+        despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs, true);
     }
-
-    // receita foi cancelada por meios externos
-    if (m_estacao_executando == Estacao::INVALIDA) [[unlikely]] {
-        receita_cancelada(estacao.index());
-        return;
-    }
-
-    despachar_evento_passo(estacao.index(), passo_executando_index, receita.primeiro_ataque().comeco_abs, true);
-
-    m_estacao_executando = Estacao::INVALIDA;
 
     auto const duracao_real = millis() - passo_executado.comeco_abs;
     auto const duracao_ideal = passo_executado.duracao;
@@ -317,8 +315,14 @@ void Fila::cancelar_receita_da_estacao(size_t index) {
     Estacao::lista().at(index).set_status(Estacao::Status::Livre);
 
     if (index == m_estacao_executando) {
+        auto& receita = m_fila[m_estacao_executando].receita;
+        if (not timer_valido(receita.passo_atual().comeco_abs)) {
+            // o passo ainda não foi iniciado, ou seja, não estamos dentro da 'Fila::executar_passo_atual'
+            receita_cancelada(index);
+        } else {
+            // 'receita_cancelada' vai ser chamada dentro da 'Fila::executar_passo_atual'
+        }
         m_estacao_executando = Estacao::INVALIDA;
-        // 'receita_cancelada' vai ser chamada dentro da 'Fila::executar_passo_atual'
     } else {
         receita_cancelada(index);
     }
@@ -403,20 +407,21 @@ void Fila::gerar_informacoes_da_fila(JsonArrayConst estacoes) const {
                 o["estacaoAtiva"] = m_estacao_executando;
 
             auto arr = o.createNestedArray("info");
-            for (size_t i = 0; i < m_fila.size(); ++i) {
+            for (size_t i = 0; i < estacoes.size(); ++i) {
                 const auto index = estacoes[i].as<size_t>();
+                const auto& estacao = Estacao::lista().at(index);
+                if (estacao.bloqueada())
+                    continue;
 
                 auto obj = arr.createNestedObject();
-                const auto tick = millis();
-
-                const auto& estacao = Estacao::lista().at(index);
                 obj["estacao"] = estacao.index();
                 obj["status"] = int(estacao.status());
 
                 // os campos seguintes só aparecem para receitas em execução
-                if (not m_fila[i].ativa)
+                if (not m_fila[index].ativa)
                     continue;
 
+                const auto tick = millis();
                 const auto& receita = m_fila[index].receita;
                 {
                     auto receita_obj = obj.createNestedObject("infoReceita");

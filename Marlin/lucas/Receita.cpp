@@ -79,7 +79,7 @@ bool Receita::Passo::colide_com(Passo const& outro) const {
 void Receita::montar_com_json(JsonObjectConst json) {
     resetar();
 
-    m_id = json["id"].as<size_t>();
+    m_id = json["id"].as<uint32_t>();
     m_tempo_de_finalizacao = json["tempoFinalizacao"].as<millis_t>();
 
     // o escaldo é opcional

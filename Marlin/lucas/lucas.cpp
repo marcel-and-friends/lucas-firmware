@@ -6,6 +6,8 @@
 #include <lucas/wifi/wifi.h>
 
 namespace lucas {
+static bool s_inicializado = false;
+
 void setup() {
     util::FiltroUpdatesTemporario f{ Filtros::Interacao };
 
@@ -14,6 +16,14 @@ void setup() {
     info::setup();
 
     Bico::the().setup();
-    Fila::the().setup();
+
+    serial::limpar_serial();
+    SERIAL_ECHOLN("jujuba");
+
+    s_inicializado = true;
+}
+
+bool inicializado() {
+    return s_inicializado;
 }
 }

@@ -110,9 +110,6 @@ void Bico::setup() {
             ++s_contador_de_pulsos;
         },
         RISING);
-
-    if (not CFG(ModoGiga))
-        nivelar();
 }
 
 void Bico::viajar_para_estacao(Estacao& estacao, float offset) const {
@@ -181,22 +178,24 @@ void Bico::setar_temperatura_boiler(float target) const {
     util::set_hysteresis(HYSTERESIS_FINAL);
 }
 
-void Bico::nivelar() const {
+void Bico::nivelar(float temp_target) {
+    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
+
     LOG_IF(LogNivelamento, "iniciando rotina de nivelamento");
 
     cmd::executar("G28 XY");
 
     if (CFG(SetarTemperaturaTargetNoNivelamento))
-        setar_temperatura_boiler(93.f);
-
-    if (CFG(AnalisarTabelaSalvaNoNivelamento))
-        if (ControladorFluxo::the().possui_tabela_usavel_na_flash())
-            return;
+        setar_temperatura_boiler(temp_target);
 
     if (CFG(PreencherTabelaDeFluxoNoNivelamento))
         ControladorFluxo::the().preencher_tabela();
+    else
+        ControladorFluxo::the().tentar_copiar_tabela_da_flash();
 
     LOG_IF(LogNivelamento, "nivelamento finalizado");
+
+    m_nivelado = true;
 }
 
 void Bico::aplicar_forca(uint32_t v) {
@@ -363,7 +362,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
     salvar_tabela_na_flash();
 }
 
-bool Bico::ControladorFluxo::possui_tabela_usavel_na_flash() {
+void Bico::ControladorFluxo::tentar_copiar_tabela_da_flash() {
     util::fill_flash_buffer();
 
     uint32_t valor_salvo_fluxo_minimo = util::buffered_read_flash<uint32_t>(0);
@@ -371,35 +370,10 @@ bool Bico::ControladorFluxo::possui_tabela_usavel_na_flash() {
         valor_salvo_fluxo_minimo == VALOR_DIGITAL_INVALIDO or
         valor_salvo_fluxo_minimo > 4095)
         // nao temos um valor salvo
-        return false;
+        return;
 
-    LOG_IF(LogNivelamento, "fluxo minimo encontrado na flash - [valor = ", valor_salvo_fluxo_minimo, "]");
-
+    LOG_IF(LogNivelamento, "tabela de fluxo sera copiada da flash - [minimo = ", valor_salvo_fluxo_minimo, "]");
     copiar_tabela_da_flash();
-
-    // como temos uma tabela salva na flash podemos usar ela como parametro para desepjarmos 100g de agua
-    Bico::the().preencher_mangueira(200.f);
-
-    // agora que temos a tabela na memoria vamos testar
-
-    constexpr auto PASSOS = 2.f;
-    constexpr auto DURACAO_ANALISE = 1000 * 10;
-    static_assert(DURACAO_ANALISE >= 1000, "pelo menos um minuto de analise");
-    constexpr auto MARGEM_ERRO_ACEITAVEL = 5.f; // porcentagem
-
-    for (float fluxo = FLUXO_MIN; fluxo <= FLUXO_MAX; fluxo += float(RANGE_FLUXO) / PASSOS) {
-        auto const volume_total = fluxo * (DURACAO_ANALISE / 1000);
-        auto const volume_despejado = Bico::the().despejar_volume_e_aguardar(DURACAO_ANALISE, volume_total, CorrigirFluxo::Nao);
-        auto const pct_erro = (std::abs(volume_despejado - volume_total) / volume_total) * 100.f;
-        if (pct_erro > MARGEM_ERRO_ACEITAVEL) {
-            LOG_IF(LogNivelamento, "erro muito grande na tabela salva, criando uma nova - [pct_erro = ", pct_erro, " | volume_despejado = ", volume_despejado, "]");
-            return false;
-        }
-
-        LOG_IF(LogNivelamento, "margem de erro aceitavel - [pct_erro = ", pct_erro, " | volume_total = ", volume_total, " | volume_despejado = ", volume_despejado, "]");
-    }
-
-    return true;
 }
 
 uint32_t Bico::ControladorFluxo::melhor_valor_digital(float fluxo) const {

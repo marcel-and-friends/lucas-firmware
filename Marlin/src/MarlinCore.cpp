@@ -265,7 +265,7 @@ bool wait_for_heatup = true;
 #if HAS_RESUME_CONTINUE
 bool wait_for_user; // = false;
 
-void wait_for_user_response(millis_t ms /*=0*/, const bool no_sleep /*=false*/) {
+void wait_for_user_response(millis_t ms /*=0*/, bool const no_sleep /*=false*/) {
     UNUSED(no_sleep);
     KEEPALIVE_STATE(PAUSED_FOR_USER);
     wait_for_user = true;
@@ -321,7 +321,7 @@ bool pin_is_protected(const pin_t pin) {
     static const pin_t(&sensitive_pins)[pincount] PROGMEM = OnlyPins<SENSITIVE_PINS>::table;
 #endif
     LOOP_L_N(i, pincount) {
-        const pin_t* const pptr = &sensitive_pins[i];
+        pin_t const* const pptr = &sensitive_pins[i];
         if (pin == (sizeof(pin_t) == 2 ? (pin_t)pgm_read_word(pptr) : (pin_t)pgm_read_byte(pptr)))
             return true;
     }
@@ -418,17 +418,19 @@ inline void finishSDPrinting() {
  */
 #include <lucas/lucas.h>
 #include <lucas/serial/serial.h>
-inline void manage_inactivity(const bool no_stepper_sleep = false) {
-    if (!lucas::filtrado(lucas::Filtros::SerialHooks)) {
-        bool hook_ativo = lucas::serial::hooks();
-        if (!hook_ativo)
-            queue.get_available_commands();
+inline void manage_inactivity(bool const no_stepper_sleep = false) {
+    if (lucas::inicializado()) {
+        if (not lucas::filtrado(lucas::Filtros::SerialHooks)) {
+            bool hook_ativo = lucas::serial::hooks();
+            if (!hook_ativo)
+                queue.get_available_commands();
+        }
     }
 
     const millis_t ms = millis();
 
     // Prevent steppers timing-out
-    const bool do_reset_timeout = no_stepper_sleep || TERN0(PAUSE_PARK_NO_STEPPER_TIMEOUT, did_pause_print);
+    bool const do_reset_timeout = no_stepper_sleep || TERN0(PAUSE_PARK_NO_STEPPER_TIMEOUT, did_pause_print);
 
     // Reset both the M18/M84 activity timeout and the M85 max 'kill' timeout
     if (do_reset_timeout)
@@ -441,7 +443,7 @@ inline void manage_inactivity(const bool no_stepper_sleep = false) {
         kill();
     }
 
-    const bool has_blocks = planner.has_blocks_queued(); // Any moves in the planner?
+    bool const has_blocks = planner.has_blocks_queued(); // Any moves in the planner?
     if (has_blocks)
         gcode.reset_stepper_timeout(ms); // Reset timeout for M18/M84, M85 max 'kill', and laser.
 
@@ -488,7 +490,7 @@ inline void manage_inactivity(const bool no_stepper_sleep = false) {
     // key kill key press
     // -------------------------------------------------------------------------------
     static int killCount = 0; // make the inactivity button a bit less responsive
-    const int KILL_DELAY = 750;
+    int const KILL_DELAY = 750;
     if (kill_state())
         killCount++;
     else if (killCount > 0)
@@ -524,7 +526,7 @@ inline void manage_inactivity(const bool no_stepper_sleep = false) {
 
 #if ENABLED(CUSTOM_USER_BUTTONS)
     // Handle a custom user button if defined
-    const bool printer_not_busy = !printingIsActive();
+    bool const printer_not_busy = !printingIsActive();
     #define HAS_CUSTOM_USER_BUTTON(N) (PIN_EXISTS(BUTTON##N) && defined(BUTTON##N##_HIT_STATE) && defined(BUTTON##N##_GCODE))
     #define HAS_BETTER_USER_BUTTON(N) HAS_CUSTOM_USER_BUTTON(N) && defined(BUTTON##N##_DESC)
     #define _CHECK_CUSTOM_USER_BUTTON(N, CODE)                                                                                \
@@ -723,7 +725,7 @@ inline void manage_inactivity(const bool no_stepper_sleep = false) {
         }
     #endif
 
-        const float olde = current_position.e;
+        float const olde = current_position.e;
         current_position.e += EXTRUDER_RUNOUT_EXTRUDE;
         line_to_current_position(MMM_TO_MMS(EXTRUDER_RUNOUT_SPEED));
         current_position.e = olde;
@@ -940,13 +942,10 @@ void idle(bool no_stepper_sleep /*=false*/) {
     // Update the LVGL interface
     // TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-    static bool setup = false;
-    if (!setup) {
-        setup = true;
+    if (not lucas::inicializado())
         lucas::setup();
-    }
-
-    lucas::tick();
+    else
+        lucas::tick();
 
 IDLE_DONE:
     TERN_(MARLIN_DEV_MODE, idle_depth--);
@@ -957,7 +956,7 @@ IDLE_DONE:
  * Kill all activity and lock the machine.
  * After this the machine will need to be reset.
  */
-void kill(FSTR_P const lcd_error /*=nullptr*/, FSTR_P const lcd_component /*=nullptr*/, const bool steppers_off /*=false*/) {
+void kill(FSTR_P const lcd_error /*=nullptr*/, FSTR_P const lcd_component /*=nullptr*/, bool const steppers_off /*=false*/) {
     thermalManager.disable_all_heaters();
 
     TERN_(HAS_CUTTER, cutter.kill()); // Full cutter shutdown including ISR control
@@ -987,7 +986,7 @@ void kill(FSTR_P const lcd_error /*=nullptr*/, FSTR_P const lcd_component /*=nul
     minkill(steppers_off);
 }
 
-void minkill(const bool steppers_off /*=false*/) {
+void minkill(bool const steppers_off /*=false*/) {
     // Wait a short time (allows messages to get out before shutting down.
     for (int i = 1000; i--;)
         DELAY_US(600);

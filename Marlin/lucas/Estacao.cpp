@@ -15,7 +15,7 @@ void Estacao::inicializar(size_t num) {
         return;
     }
 
-    if (s_num_estacoes) {
+    if (s_num_estacoes != 0) {
         LOG_IF(LogEstacoes, "estacoes ja foram inicializadas");
         return;
     }
@@ -38,7 +38,6 @@ void Estacao::inicializar(size_t num) {
         auto& estacao = s_lista.at(i);
         estacao.set_botao(info.pino_botao);
         estacao.set_led(info.pino_led);
-        // todas as maquinas começam livres
         estacao.set_status(Status::Livre);
     }
 
@@ -112,19 +111,19 @@ void Estacao::atualizar_leds() {
     // é necessario manter um estado geral para que as leds pisquem juntas.
     // poderiamos simplificar essa funcao substituindo o 'WRITE(estacao.led(), ultimo_estado)' por 'TOGGLE(estacao.led())'
     // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
-    static bool ultimo_estado = true;
-    static millis_t ultimo_tick_atualizado = 0;
+    static bool s_ultimo_estado = true;
+    static millis_t s_ultimo_tick_atualizado = 0;
 
     auto const valida = [](Estacao const& estacao) {
         return estacao.aguardando_input() and not estacao.bloqueada();
     };
 
-    if (millis() - ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
-        ultimo_estado = not ultimo_estado;
-        ultimo_tick_atualizado = millis();
+    if (millis() - s_ultimo_tick_atualizado >= INTERVALO_PISCADELA) {
+        s_ultimo_estado = not s_ultimo_estado;
+        s_ultimo_tick_atualizado = millis();
         for_each_if(valida, [](Estacao const& estacao) {
             // aguardando input do usuário - led piscando
-            WRITE(estacao.led(), ultimo_estado);
+            WRITE(estacao.led(), s_ultimo_estado);
             return util::Iter::Continue;
         });
     }
