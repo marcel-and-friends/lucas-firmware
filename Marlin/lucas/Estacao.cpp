@@ -165,6 +165,8 @@ void Estacao::set_bloqueada(bool b) {
         return;
 
     m_bloqueada = b;
+    if (m_bloqueada)
+        WRITE(m_pino_led, LOW);
     LOG_IF(LogEstacoes, "estacao foi ", m_bloqueada ? "" : "des", "bloqueada", " - [index = ", index(), "]");
 }
 

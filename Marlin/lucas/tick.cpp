@@ -7,13 +7,6 @@
 
 namespace lucas {
 void tick() {
-    static millis_t ultimo_tick = 0;
-    // a taxa de atualização da máquina é de 1mhz, ou seja, 1 tick a cada 1 millisegundo
-    if (ultimo_tick == millis())
-        return;
-
-    ultimo_tick = millis();
-
     { // fila
         if (not filtrado(Filtros::Fila))
             Fila::the().tick();

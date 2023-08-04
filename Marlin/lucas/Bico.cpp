@@ -22,13 +22,11 @@ void Bico::tick() {
             return;
         }
 
-        if (m_tempo_decorrido > 1000) {
-            if ((m_tempo_decorrido % 1000) == 0) {
-                auto const volume_total_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
-                if (m_volume_total_desejado and m_corrigir_fluxo_durante_despejo == CorrigirFluxo::Sim) {
-                    auto const fluxo_ideal = (m_volume_total_desejado - volume_total_despejado) / ((m_duracao - m_tempo_decorrido) / 1000);
-                    aplicar_forca(ControladorFluxo::the().melhor_valor_digital(fluxo_ideal));
-                }
+        if ((m_tempo_decorrido % 1000) == 0) {
+            auto const volume_total_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
+            if (m_volume_total_desejado and m_corrigir_fluxo_durante_despejo == CorrigirFluxo::Sim) {
+                auto const fluxo_ideal = (m_volume_total_desejado - volume_total_despejado) / ((m_duracao - m_tempo_decorrido) / 1000);
+                aplicar_forca(ControladorFluxo::the().melhor_valor_digital(fluxo_ideal));
             }
         }
     } else {
