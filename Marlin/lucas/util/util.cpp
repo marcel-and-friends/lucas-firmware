@@ -31,16 +31,6 @@ float distancia_entre_estacoes() {
     return 160.f / step_ratio_x();
 }
 
-static float s_hysteresis = 0.5f;
-
-float hysteresis() {
-    return s_hysteresis;
-}
-
-void set_hysteresis(float valor) {
-    s_hysteresis = valor;
-}
-
 void aguardar_por(millis_t tempo, Filtros filtros) {
     FiltroUpdatesTemporario f{ filtros };
 

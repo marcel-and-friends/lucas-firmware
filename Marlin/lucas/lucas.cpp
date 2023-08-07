@@ -1,5 +1,7 @@
 #include "lucas.h"
+#include <lucas/core/core.h>
 #include <lucas/Bico.h>
+#include <lucas/Boiler.h>
 #include <lucas/Fila.h>
 #include <lucas/serial/serial.h>
 #include <lucas/info/info.h>
@@ -14,11 +16,7 @@ void setup() {
     cfg::setup();
     serial::setup();
     info::setup();
-
-    Bico::the().setup();
-
-    serial::limpar_serial();
-    SERIAL_ECHOLN("jujuba");
+    core::setup();
 
     s_inicializado = true;
 }

@@ -7,7 +7,7 @@
 namespace lucas::cmd {
 void L2() {
     if (parser.seenval('D'))
-        Bico::the().despejar_valor_digital(parser.ulongval('T'), parser.ulongval('D'));
+        Bico::the().despejar_forca_digital(parser.ulongval('T'), parser.ulongval('D'));
     else
         Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'), Bico::CorrigirFluxo::Sim);
 

@@ -19,11 +19,13 @@ public:
         Nao
     };
 
+    using ForcaDigital = uint32_t;
+
     void despejar_volume(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir);
 
     float despejar_volume_e_aguardar(millis_t duracao, float volume_desejado, CorrigirFluxo corrigir);
 
-    void despejar_valor_digital(millis_t duracao, uint32_t valor_digital);
+    void despejar_forca_digital(millis_t duracao, ForcaDigital forca_digital);
 
     void desligar();
 
@@ -37,17 +39,13 @@ public:
 
     void viajar_para_esgoto() const;
 
-    void setar_temperatura_boiler(float target) const;
-
-    void nivelar(float temp_target);
-
-    bool nivelado() const { return m_nivelado; }
+    void home() const;
 
     bool ativo() const { return m_ativo; }
 
     class ControladorFluxo {
     public:
-        static constexpr auto VALOR_DIGITAL_INVALIDO = 0xF0F0; // UwU
+        static constexpr auto FORCA_DIGITAL_INVALIDA = 0xF0F0; // UwU
         static inline auto ML_POR_PULSO = 0.5375f;
 
         static ControladorFluxo& the() {
@@ -66,30 +64,37 @@ public:
 
         void tentar_copiar_tabela_da_flash();
 
-        uint32_t melhor_valor_digital(float fluxo) const;
+        ForcaDigital melhor_forca_digital(float fluxo) const;
 
-    private:
         static constexpr auto FLUXO_MIN = 5;
         static constexpr auto FLUXO_MAX = 15;
+        static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
+        static constexpr auto NUMERO_CELULAS = RANGE_FLUXO * 10;
         static_assert(FLUXO_MAX > FLUXO_MIN, "FLUXO_MAX deve ser maior que FLUXO_MIN");
 
-        static constexpr auto RANGE_FLUXO = FLUXO_MAX - FLUXO_MIN;
+        using Tabela = std::array<std::array<ForcaDigital, 10>, RANGE_FLUXO>;
+        static_assert(sizeof(Tabela) == sizeof(ForcaDigital) * NUMERO_CELULAS, "tamanho de tabela inesperado");
 
+    private:
         ControladorFluxo() = default;
 
         void salvar_tabela_na_flash();
         void copiar_tabela_da_flash();
 
-        std::tuple<float, uint32_t> primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) const;
+        struct Fluxo {
+            float fluxo;
+            ForcaDigital forca_digital;
+        };
 
-        std::tuple<float, uint32_t> primeiro_fluxo_acima(int fluxo_index, int casa_decimal) const;
+        Fluxo primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) const;
+        Fluxo primeiro_fluxo_acima(int fluxo_index, int casa_decimal) const;
 
-        int casa_decimal_apropriada(float fluxo) const;
+        struct FluxoDecomposto {
+            int fluxo_inteiro;
+            int casa_decimal;
+        };
 
-        std::tuple<int, uint32_t> decompor_fluxo(float fluxo) const;
-
-        uint32_t valor_na_tabela(float fluxo) const;
-        void set_valor_na_tabela(float fluxo, uint32_t valor_digital);
+        FluxoDecomposto decompor_fluxo(float fluxo) const;
 
         size_t numero_celulas() const {
             size_t num = 0;
@@ -97,35 +102,41 @@ public:
             return num;
         }
 
-        void for_each_celula(util::IterFn<uint32_t> auto&& callback) const {
+        void for_each_celula(util::IterFn<ForcaDigital> auto&& callback) const {
             for (size_t i = 0; i < m_tabela.size(); ++i) {
                 auto& linha = m_tabela[i];
                 for (size_t j = 0; j < linha.size(); ++j) {
-                    auto valor_digital = linha[j];
-                    if (valor_digital != VALOR_DIGITAL_INVALIDO)
-                        if (std::invoke(FWD(callback), valor_digital) == util::Iter::Break)
+                    auto forca_digital = linha[j];
+                    if (forca_digital != FORCA_DIGITAL_INVALIDA)
+                        if (std::invoke(FWD(callback), forca_digital) == util::Iter::Break)
                             return;
                 }
             }
         }
 
-        void for_each_celula(util::IterFn<uint32_t, size_t, size_t> auto&& callback) const {
+        void for_each_celula(util::IterFn<ForcaDigital, size_t, size_t> auto&& callback) const {
             for (size_t i = 0; i < m_tabela.size(); ++i) {
                 auto& linha = m_tabela[i];
                 for (size_t j = 0; j < linha.size(); ++j) {
-                    auto valor_digital = linha[j];
-                    if (valor_digital != VALOR_DIGITAL_INVALIDO)
-                        if (std::invoke(FWD(callback), valor_digital, i, j) == util::Iter::Break)
+                    auto forca_digital = linha[j];
+                    if (forca_digital != FORCA_DIGITAL_INVALIDA)
+                        if (std::invoke(FWD(callback), forca_digital, i, j) == util::Iter::Break)
                             return;
                 }
             }
         }
 
-        std::array<std::array<uint32_t, 10>, RANGE_FLUXO> m_tabela = { {} };
+        // essa tabela é como uma matriz de todos os valores digitais que produzem os fluxos disponiveis entre FLUXO_MIN e FLUXO_MAX, com 1 digito de precisão
+        // por exemplo, assumindo que FLUXO_MIN == 5:
+        // 		- a forca digital para o fluxo `5.5` se encontra em `m_tabela[0][4]`
+        // 		- a forca digital para o fluxo `10.3` se encontra em `m_tabela[5][2]`
+        // os fluxos encontrados são arrendondados apropriadamente e encaixados na célula mais próxima
+        // @ref `decompor_fluxo` - `valor_na_tabela`
+        Tabela m_tabela = { {} };
     };
 
 private:
-    void aplicar_forca(uint32_t);
+    void aplicar_forca(ForcaDigital);
 
     void iniciar_despejo(millis_t duracao);
 
@@ -138,20 +149,16 @@ private:
     millis_t m_duracao = 0;
 
     float m_volume_total_desejado = 0.f;
+
     CorrigirFluxo m_corrigir_fluxo_durante_despejo = CorrigirFluxo::Nao;
 
     millis_t m_tempo_decorrido = 0;
 
-    // instante onde o despejo comeca/acaba
     millis_t m_tick_comeco = 0;
     millis_t m_tick_final = 0;
 
-    // valor digital enviado para o driver do motor
-    uint32_t m_forca = 0;
+    ForcaDigital m_forca = 0;
 
-    // se estamos despejando ou nao
     bool m_ativo = false;
-
-    bool m_nivelado = false;
 };
 }

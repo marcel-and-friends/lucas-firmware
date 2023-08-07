@@ -1,5 +1,7 @@
 #include <lucas/cfg/cfg.h>
-#include <lucas/util/util.h>
+#include <lucas/Bico.h>
+#include <lucas/mem/FlashReader.h>
+#include <lucas/mem/FlashWriter.h>
 
 namespace lucas::cfg {
 constexpr auto OPCOES_DEFAULT = std::to_array<Opcao>({
@@ -36,25 +38,14 @@ static_assert(nao_possui_opcoes_duplicadas(OPCOES_DEFAULT), "opcoes duplicadas i
 // vai ser propriamente inicializado na 'setup()'
 static ListaOpcoes s_opcoes = {};
 
-constexpr auto INICIO_FLASH = 400; // sizeof(Fila::ControladorFluxo::m_tabela)
+constexpr auto INICIO_FLASH = sizeof(Bico::ControladorFluxo::Tabela);
 constexpr auto OPCAO_SIZE = sizeof(char) + sizeof(bool);
 
-static void ler_opcoes_da_flash() {
-    util::fill_flash_buffer();
-
-    for (size_t i = 0; i < s_opcoes.size(); ++i) {
-        auto& opcao = s_opcoes[i];
-        auto const offset = INICIO_FLASH + (i * OPCAO_SIZE);
-        opcao.id = util::buffered_read_flash<char>(offset);
-        opcao.ativo = util::buffered_read_flash<bool>(offset + sizeof(char));
-    }
-
-    LOG("opcoes lidas da flash");
-}
+void ler_opcoes_da_flash();
 
 void setup() {
-    util::fill_flash_buffer();
-    auto const primeiro_id = util::buffered_read_flash<char>(INICIO_FLASH);
+    auto reader = mem::FlashReader::at_offset(INICIO_FLASH);
+    auto const primeiro_id = reader.read<char>(INICIO_FLASH);
     if (primeiro_id == Opcao::ID_DEFAULT) {
         LOG("cfg ainda nao foi salva na flash, usando valores padroes");
         s_opcoes = OPCOES_DEFAULT;
@@ -65,26 +56,37 @@ void setup() {
 }
 
 void salvar_opcoes_na_flash() {
+    auto writer = mem::FlashWriter::at_offset(INICIO_FLASH);
     for (size_t i = 0; i < s_opcoes.size(); ++i) {
         auto const& opcao = s_opcoes[i];
-        auto const offset = INICIO_FLASH + (i * OPCAO_SIZE);
-        util::buffered_write_flash<char>(offset, opcao.id);
-        util::buffered_write_flash<bool>(offset + sizeof(char), opcao.ativo);
+        auto const offset = i * OPCAO_SIZE;
+        writer.write<char>(offset, opcao.id);
+        writer.write<bool>(offset + sizeof(char), opcao.ativo);
     }
 
-    util::flush_flash();
     LOG("opcoes escritas na flash");
+}
+
+void ler_opcoes_da_flash() {
+    auto reader = mem::FlashReader::at_offset(INICIO_FLASH);
+    for (size_t i = 0; i < s_opcoes.size(); ++i) {
+        auto& opcao = s_opcoes[i];
+        auto const offset = i * OPCAO_SIZE;
+        opcao.id = reader.read<char>(offset);
+        opcao.ativo = reader.read<bool>(offset + sizeof(char));
+    }
+
+    LOG("opcoes lidas da flash");
 }
 
 void resetar_opcoes() {
     s_opcoes = OPCOES_DEFAULT;
+    auto writer = mem::FlashWriter::at_offset(INICIO_FLASH);
     for (size_t i = 0; i < s_opcoes.size(); ++i) {
-        auto const offset = INICIO_FLASH + (i * OPCAO_SIZE);
-        util::buffered_write_flash<char>(offset, Opcao::ID_DEFAULT);
-        util::buffered_write_flash<bool>(offset + sizeof(char), false);
+        auto const offset = i * OPCAO_SIZE;
+        writer.write<char>(offset, Opcao::ID_DEFAULT);
+        writer.write<bool>(offset + sizeof(char), false);
     }
-
-    util::flush_flash();
 }
 
 Opcao get(Opcoes opcao) {

@@ -9,6 +9,8 @@ void setup() {
         [](std::span<char> buffer) {
             info::interpretar_json(buffer);
         });
+
+    limpar_serial();
 }
 
 bool hooks() {

@@ -24,9 +24,9 @@ void L1() {
     auto const duracao = parser.ulongval('T');
 
     if (CFG(ModoGiga) and duracao) {
-        LOG("iniciando L1 em modo giga");
+        LOG_IF(LogLn, "iniciando L1 em modo giga");
         util::aguardar_por(duracao);
-        LOG("L1 finalizado");
+        LOG_IF(LogLn, "L1 finalizado");
         return;
     }
 

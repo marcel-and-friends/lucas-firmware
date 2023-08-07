@@ -1,5 +1,6 @@
 #include "info.h"
 #include <lucas/lucas.h>
+#include <lucas/core/core.h>
 #include <lucas/Estacao.h>
 #include <lucas/cmd/cmd.h>
 #include <lucas/serial/serial.h>
@@ -50,6 +51,7 @@ enum ComandoDoApp {
     AgendarReceita,          // enviar uma receita para uma estacao
     RequisicaoDeInfoFila,    // requisicao de informacao de todas as estacoes na fila
     RequisicaoDeNivelamento, // requisicao de informacao do nivelamento
+    FixarReceitaEmEstacao,   // fixar uma receita especifica em uma estacao especifica
 
     /* ~comandos de desenvolvimento~ */
     AgendarReceitaPadrao, // enviar a receita padrao para uma ou mais estacoes
@@ -72,8 +74,8 @@ void interpretar_json(std::span<char> buffer) {
             continue;
         }
 
-        auto const comando = ComandoDoApp(*chave.c_str() - '0');
         auto const v = obj.value();
+        auto const comando = ComandoDoApp(*chave.c_str() - '0');
         switch (comando) {
         case InicializarEstacoes: {
             if (not v.is<size_t>()) {
@@ -90,7 +92,7 @@ void interpretar_json(std::span<char> buffer) {
             }
 
             if (not CFG(ModoGiga))
-                Bico::the().nivelar(v.as<float>());
+                core::nivelar(v.as<float>());
         } break;
         case BloquearEstacoes: {
             if (not v.is<JsonArrayConst>()) {
@@ -144,8 +146,8 @@ void interpretar_json(std::span<char> buffer) {
             Fila::the().gerar_informacoes_da_fila(v.as<JsonArrayConst>());
         } break;
         case RequisicaoDeNivelamento: {
-            if (!Bico::the().nivelado())
-                SERIAL_ECHOLN("jujuba");
+            if (not core::nivelado())
+                core::solicitar_nivelamento();
         } break;
         /* ~comandos de desenvolvimento~ */
         case AgendarReceitaPadrao: {
