@@ -44,7 +44,7 @@ constexpr auto OPCAO_SIZE = sizeof(char) + sizeof(bool);
 void ler_opcoes_da_flash();
 
 void setup() {
-    auto reader = mem::FlashReader::at_offset(INICIO_FLASH);
+    auto reader = mem::FlashReader(INICIO_FLASH);
     auto const primeiro_id = reader.read<char>(INICIO_FLASH);
     if (primeiro_id == Opcao::ID_DEFAULT) {
         LOG("cfg ainda nao foi salva na flash, usando valores padroes");
@@ -56,7 +56,7 @@ void setup() {
 }
 
 void salvar_opcoes_na_flash() {
-    auto writer = mem::FlashWriter::at_offset(INICIO_FLASH);
+    auto writer = mem::FlashWriter(INICIO_FLASH);
     for (size_t i = 0; i < s_opcoes.size(); ++i) {
         auto const& opcao = s_opcoes[i];
         auto const offset = i * OPCAO_SIZE;
@@ -68,7 +68,7 @@ void salvar_opcoes_na_flash() {
 }
 
 void ler_opcoes_da_flash() {
-    auto reader = mem::FlashReader::at_offset(INICIO_FLASH);
+    auto reader = mem::FlashReader(INICIO_FLASH);
     for (size_t i = 0; i < s_opcoes.size(); ++i) {
         auto& opcao = s_opcoes[i];
         auto const offset = i * OPCAO_SIZE;
@@ -81,7 +81,7 @@ void ler_opcoes_da_flash() {
 
 void resetar_opcoes() {
     s_opcoes = OPCOES_DEFAULT;
-    auto writer = mem::FlashWriter::at_offset(INICIO_FLASH);
+    auto writer = mem::FlashWriter(INICIO_FLASH);
     for (size_t i = 0; i < s_opcoes.size(); ++i) {
         auto const offset = i * OPCAO_SIZE;
         writer.write<char>(offset, Opcao::ID_DEFAULT);

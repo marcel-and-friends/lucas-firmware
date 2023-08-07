@@ -1,31 +1,31 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <lucas/mem/mem.h>
+#include <concepts>
 
 namespace lucas::mem {
+template<typename T = void>
 class FlashWriter {
 public:
-    static FlashWriter at_offset(size_t offset) {
-        return FlashWriter{ offset };
+    constexpr explicit FlashWriter(size_t offset)
+        : m_offset{ offset } {
     }
 
     ~FlashWriter() {
         mem::flush_flash_buffer();
     }
 
-    template<typename T>
-    requires std::is_integral_v<T>
-    void write(size_t index, T value) {
-        return mem::buffered_write_flash(m_offset + index, value);
+    template<typename U = T>
+    requires std::is_integral_v<U>
+    void write(size_t index, U value) {
+        if constexpr (std::same_as<T, void>)
+            mem::buffered_write_flash(m_offset + index, value);
+        else
+            mem::buffered_write_flash(m_offset + (index * sizeof(T)), value);
     }
 
 private:
-    constexpr FlashWriter(size_t offset)
-        : m_offset{ offset } {
-    }
-
     size_t m_offset = 0;
 };
 }

@@ -318,7 +318,7 @@ void Bico::ControladorFluxo::preencher_tabela() {
 }
 
 void Bico::ControladorFluxo::tentar_copiar_tabela_da_flash() {
-    auto reader = mem::FlashReader::at_offset(0);
+    auto reader = mem::FlashReader(0);
     // o fluxo minimo (m_tabela[0][0]) é o único valor obrigatoriamente salvo durante o preenchimento
     auto const fluxo_min_salvo = reader.read<ForcaDigital>(0);
     if (fluxo_min_salvo == 0 or
@@ -363,17 +363,17 @@ void Bico::ControladorFluxo::limpar_tabela(SalvarNaFlash salvar) {
 }
 
 void Bico::ControladorFluxo::salvar_tabela_na_flash() {
-    auto writer = mem::FlashWriter::at_offset(0);
+    auto writer = mem::FlashWriter<ForcaDigital>(0);
     auto const celulas = reinterpret_cast<ForcaDigital*>(&m_tabela);
     for (size_t i = 0; i < NUMERO_CELULAS; ++i)
-        writer.write<ForcaDigital>(i * sizeof(ForcaDigital), celulas[i]);
+        writer.write(i, celulas[i]);
 }
 
 void Bico::ControladorFluxo::copiar_tabela_da_flash() {
-    auto reader = mem::FlashReader::at_offset(0);
+    auto reader = mem::FlashReader<ForcaDigital>(0);
     auto celulas = reinterpret_cast<ForcaDigital*>(&m_tabela);
     for (size_t i = 0; i < NUMERO_CELULAS; ++i)
-        celulas[i] = reader.read<ForcaDigital>(i * sizeof(ForcaDigital));
+        celulas[i] = reader.read(i);
 }
 
 Bico::ControladorFluxo::Fluxo Bico::ControladorFluxo::primeiro_fluxo_abaixo(int fluxo_index, int casa_decimal) const {
@@ -407,6 +407,6 @@ Bico::ControladorFluxo::Fluxo Bico::ControladorFluxo::primeiro_fluxo_acima(int f
 Bico::ControladorFluxo::FluxoDecomposto Bico::ControladorFluxo::decompor_fluxo(float fluxo) const {
     auto const arrendondado = std::round(fluxo * 10.f) / 10.f;
     auto const fluxo_no_range = std::clamp(arrendondado, float(FLUXO_MIN), float(FLUXO_MAX) - 0.1f);
-    return { fluxo_no_range, int(fluxo_no_range * 10) % 10 };
+    return { int(fluxo_no_range), int(fluxo_no_range * 10) % 10 };
 }
 }
