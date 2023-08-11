@@ -1,5 +1,6 @@
 #include "serial.h"
 #include <lucas/lucas.h>
+#include <lucas/core/core.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
@@ -9,6 +10,10 @@ void setup() {
         [](std::span<char> buffer) {
             info::interpretar_json(buffer);
         });
+
+    HookDelimitado::make('$', [](std::span<char> buffer) {
+        core::add_buffer_to_new_firmware_file(buffer);
+    });
 
     limpar_serial();
 }

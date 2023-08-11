@@ -37,7 +37,7 @@ public:
     char delimitador = 0;
 
     // isso aqui poderia ser um std::vector mas nao vale a pena pagar o preço de alocar
-    using Lista = std::array<HookDelimitado, 1>;
+    using Lista = std::array<HookDelimitado, 2>;
 
 private:
     static Lista s_hooks;
