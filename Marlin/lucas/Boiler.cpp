@@ -6,6 +6,9 @@
 namespace lucas {
 void Boiler::aguardar_temperatura(float target) {
     setar_temperatura(target);
+    auto const temp_boiler = thermalManager.degBed();
+    if (temp_boiler >= target)
+        return;
 
     util::aguardar_enquanto([this, target] {
         constexpr auto INTERVALO_LOG = 5000;
@@ -26,11 +29,8 @@ void Boiler::aguardar_temperatura(float target) {
 
 void Boiler::setar_temperatura(float target) {
     thermalManager.setTargetBed(target);
-    auto const temp_boiler = thermalManager.degBed();
-    if (temp_boiler >= target)
-        return;
 
-    auto const delta = std::abs(target - temp_boiler);
+    auto const delta = std::abs(target - thermalManager.degBed());
     m_hysteresis = delta < HYSTERESIS_INICIAL ? HYSTERESIS_FINAL : HYSTERESIS_INICIAL;
 
     LOG_IF(LogNivelamento, "temperatura target setada - [target = ", target, " | hysteresis = ", m_hysteresis, "]");

@@ -18,14 +18,17 @@ void L4() {
     if (atualizou)
         cfg::salvar_opcoes_na_flash();
 
-    if (parser.seen('Y')) {
-        cfg::resetar_opcoes();
-        LOG("opcoes foram resetadas e salvas na flash");
-    }
-
     if (parser.seen('Z')) {
-        Bico::ControladorFluxo::the().limpar_tabela(Bico::ControladorFluxo::SalvarNaFlash::Sim);
-        LOG("tabela foi limpa e salva na flash");
+        switch (parser.value_int()) {
+        case 0: {
+            Bico::ControladorFluxo::the().limpar_tabela(Bico::ControladorFluxo::SalvarNaFlash::Sim);
+            LOG("tabela foi limpa e salva na flash");
+        } break;
+        case 1: {
+            cfg::resetar_opcoes();
+            LOG("opcoes foram resetadas e salvas na flash");
+        } break;
+        }
     }
 }
 }

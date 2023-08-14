@@ -29,7 +29,7 @@ struct Report {
 
     millis_t delta(millis_t tick) const;
 
-    using Lista = std::array<Report, 1>;
+    using Lista = std::array<Report, 2>;
 
 private:
     static Lista s_reports;

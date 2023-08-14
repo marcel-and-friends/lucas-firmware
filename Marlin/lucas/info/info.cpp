@@ -18,6 +18,12 @@ void setup() {
                 obj["tempAtual"] = thermalManager.degBed();
             });
     }
+    Report::make(
+        "boaNoite",
+        5'000,
+        [](JsonObject obj) {
+            obj["oi"] = "boa noite";
+        });
 }
 
 void tick() {
@@ -44,14 +50,14 @@ void tick() {
 }
 
 enum ComandoDoApp {
-    InicializarEstacoes = 0, // inicializar estacoes
-    TempTargetBoiler,        // temperatura target do boiler
-    BloquearEstacoes,        // estacoes bloqueadas
-    CancelarReceita,         // cancelar receita da estacao
-    AgendarReceita,          // enviar uma receita para uma estacao
-    RequisicaoDeInfoFila,    // requisicao de informacao de todas as estacoes na fila
-    RequisicaoDeNivelamento, // requisicao de informacao do nivelamento
-    FixarReceitaEmEstacao,   // fixar uma receita especifica em uma estacao especifica
+    InicializarEstacoes = 0,     // inicializar estacoes
+    TempTargetBoiler,            // temperatura target do boiler
+    BloquearEstacoes,            // estacoes bloqueadas
+    CancelarReceita,             // cancelar receita da estacao
+    AgendarReceita,              // enviar uma receita para uma estacao
+    RequisicaoDeInfoFila,        // requisicao de informacao de todas as estacoes na fila
+    RequisicaoDeNivelamento,     // requisicao de informacao do nivelamento
+    InformarTamanhoFirmwareNovo, // fixar uma receita especifica em uma estacao especifica
 
     /* ~comandos de desenvolvimento~ */
     AgendarReceitaPadrao, // enviar a receita padrao para uma ou mais estacoes
@@ -148,6 +154,13 @@ void interpretar_json(std::span<char> buffer) {
         case RequisicaoDeNivelamento: {
             if (not core::nivelado())
                 core::solicitar_nivelamento();
+        } break;
+        case InformarTamanhoFirmwareNovo: {
+            if (not v.is<size_t>()) {
+                LOG_ERR("valor json invalido para tamanho do firmware novo");
+                break;
+            }
+            core::prepare_for_firmware_update(v.as<size_t>());
         } break;
         /* ~comandos de desenvolvimento~ */
         case AgendarReceitaPadrao: {

@@ -1,17 +1,13 @@
 #pragma once
 
 #include <array>
-#include <string>
-#include <functional>
-#include <span>
 #include <lucas/util/util.h>
-#include <lucas/info/info.h>
+#include <lucas/serial/Hook.h>
 
 namespace lucas::serial {
-using HookCallback = void (*)(std::span<char>);
-
-struct HookDelimitado {
-    static void make(char delimitador, HookCallback callback);
+class HookDelimitado : public Hook {
+public:
+    static void make(char delimitador, Hook::Callback callback);
 
     static void for_each(util::IterFn<HookDelimitado&> auto&& callback) {
         if (not s_num_hooks)
@@ -22,24 +18,16 @@ struct HookDelimitado {
                 break;
     }
 
-public:
-    void reset(bool hard = false) {
-        counter = 0;
-        buffer_size = 0;
-        if (hard)
-            memset(buffer, 0, sizeof(buffer));
-    }
+    char delimitador() const { return m_delimitador; }
 
-    size_t counter = 0;
-    HookCallback callback = nullptr;
-    char buffer[info::BUFFER_SIZE] = {};
-    size_t buffer_size = 0;
-    char delimitador = 0;
+    void begin() { m_counter = 1; }
 
     // isso aqui poderia ser um std::vector mas nao vale a pena pagar o preço de alocar
-    using Lista = std::array<HookDelimitado, 2>;
+    using Lista = std::array<HookDelimitado, 1>;
 
 private:
+    char m_delimitador = 0;
+
     static Lista s_hooks;
     static inline size_t s_num_hooks = 0;
     HookDelimitado() = default;

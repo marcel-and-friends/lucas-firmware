@@ -11,5 +11,5 @@ bool nivelado();
 
 void solicitar_nivelamento();
 
-void add_buffer_to_new_firmware_file(std::span<char>);
+void prepare_for_firmware_update(size_t size);
 }

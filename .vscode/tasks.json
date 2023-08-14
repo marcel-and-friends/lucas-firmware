@@ -27,7 +27,7 @@
 				"command": "Copy-Item",
 				"args": [
 					"-Path",
-					".pio\\build\\mks_robin_nano_v3_1_usb_flash_drive_msc\\Robin_nano_v3.bin",
+					".pio\\build\\mks_robin_nano_v3_1\\Robin_nano_v3.bin",
 					"-Destination",
 					"F:\\"
 				]
@@ -35,7 +35,7 @@
 			"osx": {
 				"command": "cp",
 				"args": [
-					".pio/build/mks_robin_nano_v3_1_usb_flash_drive_msc/Robin_nano_v3.bin",
+					".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
 					"/Volumes/SD"
 				]
 			},

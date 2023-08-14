@@ -152,6 +152,8 @@ private:
 
     CorrigirFluxo m_corrigir_fluxo_durante_despejo = CorrigirFluxo::Nao;
 
+    millis_t m_ultimo_ajuste_fluxo = 0;
+
     millis_t m_tempo_decorrido = 0;
 
     millis_t m_tick_comeco = 0;

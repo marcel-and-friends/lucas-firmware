@@ -1,6 +1,9 @@
 #include "serial.h"
 #include <lucas/lucas.h>
 #include <lucas/core/core.h>
+#include <lucas/info/info.h>
+#include <lucas/serial/HookDelimitado.h>
+#include <lucas/serial/UniquePriorityHook.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
@@ -11,10 +14,6 @@ void setup() {
             info::interpretar_json(buffer);
         });
 
-    HookDelimitado::make('$', [](std::span<char> buffer) {
-        core::add_buffer_to_new_firmware_file(buffer);
-    });
-
     limpar_serial();
 }
 
@@ -22,17 +21,26 @@ bool hooks() {
     constexpr auto MAX_BYTES = 64;
     static HookDelimitado* s_hook_ativo = nullptr;
 
+    if (UniquePriorityHook::the()) {
+        while (SERIAL_IMPL.available()) {
+            auto& hook = *UniquePriorityHook::the();
+            hook.receive_char(SERIAL_IMPL.read());
+        }
+
+        return true;
+    }
+
     while (SERIAL_IMPL.available()) {
         auto const peek = SERIAL_IMPL.peek();
         if (not s_hook_ativo) {
             LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
 
             HookDelimitado::for_each([&](auto& hook) {
-                if (hook.delimitador == peek) {
+                if (hook.delimitador() == peek) {
                     SERIAL_IMPL.read();
 
                     s_hook_ativo = &hook;
-                    s_hook_ativo->counter = 1;
+                    s_hook_ativo->begin();
 
                     LOG_IF(LogSerial, "iniciando leitura");
 
@@ -42,35 +50,15 @@ bool hooks() {
             });
         } else {
             auto& hook = *s_hook_ativo;
-            if (hook.delimitador == peek) {
+            if (hook.delimitador() == peek) {
                 SERIAL_IMPL.read();
-                if (hook.callback and hook.buffer_size) {
-                    hook.buffer[hook.buffer_size] = '\0';
 
-                    LOG_IF(LogSerial, "!BUFFER!\n", hook.buffer);
-                    LOG_IF(LogSerial, "!BUFFER!");
+                hook.dispatch();
 
-                    hook.callback({ hook.buffer, hook.buffer_size });
-                }
-
-                hook.reset();
                 s_hook_ativo = nullptr;
-
                 LOG_IF(LogSerial, "finalizando leitura");
-
-                SERIAL_ECHOLNPGM("ok");
             } else {
-                hook.buffer[hook.buffer_size++] = SERIAL_IMPL.read();
-                if (hook.buffer_size >= sizeof(hook.buffer)) {
-                    LOG_ERR("buffer nao tem espaco o suficiente!!");
-                    hook.reset(true);
-                    s_hook_ativo = nullptr;
-                    break;
-                }
-                if (++hook.counter >= MAX_BYTES) {
-                    hook.counter = 0;
-                    SERIAL_ECHOLNPGM("ok");
-                }
+                hook.add_to_buffer(SERIAL_IMPL.read());
             }
         }
 

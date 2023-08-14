@@ -49,7 +49,7 @@ if pioutil.is_pio_build():
     if variant_dir.is_dir():
         shutil.rmtree(variant_dir)
     if not variant_dir.is_dir():
-        variant_dir.mkdir()
+        variant_dir.mkdir(parents=True)
 
     # Source dir is a local variant sub-folder
     source_dir = Path("buildroot/share/PlatformIO/variants", variant)

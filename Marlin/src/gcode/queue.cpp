@@ -112,7 +112,7 @@ void GCodeQueue::RingBuffer::commit_command(bool skip_ok
  * Return true if the command was successfully added.
  * Return false for a full buffer, or if the 'command' is a comment.
  */
-bool GCodeQueue::RingBuffer::enqueue(const char* cmd, bool skip_ok /*=true*/
+bool GCodeQueue::RingBuffer::enqueue(char const* cmd, bool skip_ok /*=true*/
                                                           OPTARG(HAS_MULTI_SERIAL, serial_index_t serial_ind /*=-1*/)) {
     if (*cmd == ';' || length >= BUFSIZE)
         return false;
@@ -125,7 +125,7 @@ bool GCodeQueue::RingBuffer::enqueue(const char* cmd, bool skip_ok /*=true*/
  * Enqueue with Serial Echo
  * Return true if the command was consumed
  */
-bool GCodeQueue::enqueue_one(const char* const cmd) {
+bool GCodeQueue::enqueue_one(char const* const cmd) {
     // SERIAL_ECHOLNPGM("enqueue_one(\"", cmd, "\")");
 
     if (*cmd == 0 || ISEOL(*cmd))
@@ -200,7 +200,7 @@ bool GCodeQueue::process_injected_command() {
  * Enqueue and return only when commands are actually enqueued.
  * Never call this from a G-code handler!
  */
-void GCodeQueue::enqueue_one_now(const char* const cmd) {
+void GCodeQueue::enqueue_one_now(char const* const cmd) {
     while (!enqueue_one(cmd))
         idle();
 }
@@ -298,7 +298,7 @@ void GCodeQueue::flush_and_request_resend(const serial_index_t serial_ind) {
 }
 
 static bool serial_data_available(serial_index_t index) {
-    const int a = SERIAL_IMPL.available(index);
+    int const a = SERIAL_IMPL.available(index);
 #if ENABLED(RX_BUFFER_MONITOR) && RX_BUFFER_SIZE
     if (a > RX_BUFFER_SIZE - 2) {
         PORT_REDIRECT(SERIAL_PORTMASK(index));
@@ -332,8 +332,8 @@ void GCodeQueue::gcode_line_error(FSTR_P const ferr, const serial_index_t serial
     serial_state[serial_ind.index].count = 0;
 }
 
-FORCE_INLINE bool is_M29(const char* const cmd) { // matches "M29" & "M29 ", but not "M290", etc
-    const char* const m29 = strstr_P(cmd, PSTR("M29"));
+FORCE_INLINE bool is_M29(char const* const cmd) { // matches "M29" & "M29 ", but not "M290", etc
+    char const* const m29 = strstr_P(cmd, PSTR("M29"));
     return m29 && !NUMERIC(m29[3]);
 }
 
@@ -343,7 +343,7 @@ FORCE_INLINE bool is_M29(const char* const cmd) { // matches "M29" & "M29 ", but
 #define PS_PAREN 3
 #define PS_ESC 4
 
-inline void process_stream_char(const char c, uint8_t& sis, char (&buff)[MAX_CMD_SIZE], int& ind) {
+inline void process_stream_char(char const c, uint8_t& sis, char (&buff)[MAX_CMD_SIZE], int& ind) {
     if (sis == PS_EOL)
         return; // EOL comment or overflow
 
@@ -403,7 +403,7 @@ inline void process_stream_char(const char c, uint8_t& sis, char (&buff)[MAX_CMD
 inline bool process_line_done(uint8_t& sis, char (&buff)[MAX_CMD_SIZE], int& ind) {
     sis = PS_NORMAL;                  // "Normal" Serial Input State
     buff[ind] = '\0';                 // Of course, I'm a Terminator.
-    const bool is_empty = (ind == 0); // An empty line?
+    bool const is_empty = (ind == 0); // An empty line?
     if (is_empty) {
         thermalManager.task(); // Keep sensors satisfied
         SERIAL_ECHOLNPGM(STR_OK);
@@ -457,13 +457,13 @@ void GCodeQueue::get_serial_commands() {
             // é possível um delimitador de mensagem especial (json) passar despercebido pela 'serial::hooks'
             // pois entre aquela função retornar e essa aqui ser chamada uma nova mensagem pode ter sido enviada pelo app
             // FIXME: usar uma lista de delimitadores
-            if (SERIAL_IMPL.peek() == '#')
+            if (SERIAL_IMPL.peek() == '#' or SERIAL_IMPL.peek() == '$')
                 continue;
 
             // Ok, we have some data to process, let's make progress here
             hadData = true;
 
-            const int c = read_serial(p);
+            int const c = read_serial(p);
             if (c < 0) {
                 // This should never happen, let's log it
                 PORT_REDIRECT(SERIAL_PORTMASK(p)); // Reply to the serial port that sent the command
@@ -474,7 +474,7 @@ void GCodeQueue::get_serial_commands() {
                 continue;
             }
 
-            const char serial_char = (char)c;
+            char const serial_char = (char)c;
             SerialState& serial = serial_state[p];
 
             if (ISEOL(serial_char)) {
@@ -489,7 +489,7 @@ void GCodeQueue::get_serial_commands() {
                 char* npos = (*command == 'N') ? command : nullptr; // Require the N parameter to start the line
 
                 if (npos) {
-                    const bool M110 = !!strstr_P(command, PSTR("M110"));
+                    bool const M110 = !!strstr_P(command, PSTR("M110"));
 
                     if (M110) {
                         char* n2pos = strchr(command + 4, 'N');
@@ -497,7 +497,7 @@ void GCodeQueue::get_serial_commands() {
                             npos = n2pos;
                     }
 
-                    const long gcode_N = strtol(npos + 1, nullptr, 10);
+                    long const gcode_N = strtol(npos + 1, nullptr, 10);
 
                     // The line number must be in the correct sequence.
                     if (gcode_N != serial.last_N + 1 && !M110) {
@@ -606,15 +606,15 @@ inline void GCodeQueue::get_sdcard_commands() {
     int sd_count = 0;
     while (!ring_buffer.full() && !card.eof()) {
         const int16_t n = card.get();
-        const bool card_eof = card.eof();
+        bool const card_eof = card.eof();
         if (n < 0 && !card_eof) {
             SERIAL_ERROR_MSG(STR_SD_ERR_READ);
             continue;
         }
 
         CommandLine& command = ring_buffer.commands[ring_buffer.index_w];
-        const char sd_char = (char)n;
-        const bool is_eol = ISEOL(sd_char);
+        char const sd_char = (char)n;
+        bool const is_eol = ISEOL(sd_char);
         if (is_eol || card_eof) {
             // Reset stream state, terminate the buffer, and commit a non-empty command
             if (!is_eol && sd_count)

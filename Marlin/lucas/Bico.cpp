@@ -4,6 +4,7 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/mem/FlashReader.h>
 #include <lucas/mem/FlashWriter.h>
+#include <lucas/sec/sec.h>
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
 
@@ -24,11 +25,13 @@ void Bico::tick() {
             return;
         }
 
-        if ((m_tempo_decorrido % 1000) == 0) {
+        constexpr auto TEMPO_PARA_CORRIGIR_FLUXO = 1000;
+        if (m_tempo_decorrido - m_ultimo_ajuste_fluxo >= TEMPO_PARA_CORRIGIR_FLUXO) {
             auto const volume_total_despejado = (s_contador_de_pulsos - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
             if (m_volume_total_desejado and m_corrigir_fluxo_durante_despejo == CorrigirFluxo::Sim) {
                 auto const fluxo_ideal = (m_volume_total_desejado - volume_total_despejado) / ((m_duracao - m_tempo_decorrido) / 1000);
                 aplicar_forca(ControladorFluxo::the().melhor_forca_digital(fluxo_ideal));
+                m_ultimo_ajuste_fluxo = m_tempo_decorrido;
             }
         }
     } else {
@@ -77,15 +80,30 @@ void Bico::desligar() {
     m_tick_comeco = 0;
     m_tick_final = millis();
     m_duracao = 0;
-    m_volume_total_desejado = 0.f;
     m_corrigir_fluxo_durante_despejo = CorrigirFluxo::Nao;
+    m_ultimo_ajuste_fluxo = 0;
 
     m_pulsos_no_final_do_despejo = s_contador_de_pulsos;
     auto const volume_despejado = (m_pulsos_no_final_do_despejo - m_pulsos_no_inicio_do_despejo) * ControladorFluxo::ML_POR_PULSO;
+
+    if (m_volume_total_desejado) {
+        if (not volume_despejado) {
+            // sec::raise(sec::Error::DespejoSemFluxo);
+        } else {
+            auto const pct = volume_despejado / m_volume_total_desejado;
+            if (pct <= 0.5f) {
+                sec::raise(sec::Error::LowWaterAttack);
+            } else if (pct >= 1.5f) {
+                // sec::raise(sec::Error::DespejoComFluxoAlto);
+            }
+        }
+    }
+
     auto const pulsos = m_pulsos_no_final_do_despejo - m_pulsos_no_inicio_do_despejo;
     LOG_IF(LogDespejoBico, "finalizando despejo - [delta = ", m_tempo_decorrido, "ms | volume = ", volume_despejado, " | pulsos = ", pulsos, "]");
 
     m_tempo_decorrido = 0;
+    m_volume_total_desejado = 0.f;
 }
 
 void Bico::setup() {
@@ -306,6 +324,8 @@ void Bico::ControladorFluxo::preencher_tabela() {
 
     Bico::the().desligar();
 
+    salvar_tabela_na_flash();
+
     LOG_IF(LogNivelamento, "tabela preenchida - [duracao = ", (millis() - inicio) / 60000.f, "min | numero de celulas = ", numero_celulas(), "]");
 
     LOG_IF(LogNivelamento, "resultado da tabela: ");
@@ -313,14 +333,12 @@ void Bico::ControladorFluxo::preencher_tabela() {
         LOG_IF(LogNivelamento, "m_tabela[", i, "][", j, "] = ", forca_digital, " = ", i + FLUXO_MIN, ".", j, "g/s");
         return util::Iter::Continue;
     });
-
-    salvar_tabela_na_flash();
 }
 
 void Bico::ControladorFluxo::tentar_copiar_tabela_da_flash() {
-    auto reader = mem::FlashReader(0);
+    auto reader = mem::FlashReader<ForcaDigital>(0);
     // o fluxo minimo (m_tabela[0][0]) é o único valor obrigatoriamente salvo durante o preenchimento
-    auto const fluxo_min_salvo = reader.read<ForcaDigital>(0);
+    auto const fluxo_min_salvo = reader.read(0);
     if (fluxo_min_salvo == 0 or
         fluxo_min_salvo >= FORCA_DIGITAL_INVALIDA)
         // nao temos um valor salvo
