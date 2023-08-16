@@ -1,15 +1,15 @@
 #pragma once
 
-#include <span>
+#include <cstddef>
 
 namespace lucas::core {
 void setup();
 
-void nivelar(float temperatura_target);
+void calibrate(float target_temperature);
 
-bool nivelado();
+bool calibrated();
 
-void solicitar_nivelamento();
+void request_calibration();
 
 void prepare_for_firmware_update(size_t size);
 }

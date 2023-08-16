@@ -419,10 +419,10 @@ inline void finishSDPrinting() {
 #include <lucas/lucas.h>
 #include <lucas/serial/serial.h>
 inline void manage_inactivity(bool const no_stepper_sleep = false) {
-    if (lucas::inicializado()) {
-        if (not lucas::filtrado(lucas::Filtros::SerialHooks)) {
-            bool hook_ativo = lucas::serial::hooks();
-            if (!hook_ativo)
+    if (lucas::initialized()) {
+        if (not lucas::filtered(lucas::Filters::SerialHooks)) {
+            bool active_hook = lucas::serial::hooks();
+            if (not active_hook)
                 queue.get_available_commands();
         }
     }
@@ -942,7 +942,7 @@ void idle(bool no_stepper_sleep /*=false*/) {
     // Update the LVGL interface
     // TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-    if (not lucas::inicializado())
+    if (not lucas::initialized())
         lucas::setup();
     else
         lucas::tick();

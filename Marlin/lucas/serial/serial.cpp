@@ -2,45 +2,42 @@
 #include <lucas/lucas.h>
 #include <lucas/core/core.h>
 #include <lucas/info/info.h>
-#include <lucas/serial/HookDelimitado.h>
+#include <lucas/serial/DelimitedHook.h>
 #include <lucas/serial/UniquePriorityHook.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
 void setup() {
-    HookDelimitado::make(
+    DelimitedHook::make(
         '#',
         [](std::span<char> buffer) {
-            info::interpretar_json(buffer);
+            info::interpret_json(buffer);
         });
 
     limpar_serial();
 }
 
 bool hooks() {
-    constexpr auto MAX_BYTES = 64;
-    static HookDelimitado* s_hook_ativo = nullptr;
+    static DelimitedHook* s_active_hook = nullptr;
 
     if (UniquePriorityHook::the()) {
-        while (SERIAL_IMPL.available()) {
-            auto& hook = *UniquePriorityHook::the();
-            hook.receive_char(SERIAL_IMPL.read());
-        }
+        while (SERIAL_IMPL.available())
+            UniquePriorityHook::the()->receive_char(SERIAL_IMPL.read());
 
         return true;
     }
 
     while (SERIAL_IMPL.available()) {
         auto const peek = SERIAL_IMPL.peek();
-        if (not s_hook_ativo) {
+        if (not s_active_hook) {
             LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
 
-            HookDelimitado::for_each([&](auto& hook) {
-                if (hook.delimitador() == peek) {
+            DelimitedHook::for_each([&](auto& hook) {
+                if (hook.delimiter() == peek) {
                     SERIAL_IMPL.read();
 
-                    s_hook_ativo = &hook;
-                    s_hook_ativo->begin();
+                    s_active_hook = &hook;
+                    s_active_hook->begin();
 
                     LOG_IF(LogSerial, "iniciando leitura");
 
@@ -49,23 +46,23 @@ bool hooks() {
                 return util::Iter::Continue;
             });
         } else {
-            auto& hook = *s_hook_ativo;
-            if (hook.delimitador() == peek) {
+            auto& hook = *s_active_hook;
+            if (hook.delimiter() == peek) {
                 SERIAL_IMPL.read();
 
                 hook.dispatch();
 
-                s_hook_ativo = nullptr;
+                s_active_hook = nullptr;
                 LOG_IF(LogSerial, "finalizando leitura");
             } else {
                 hook.add_to_buffer(SERIAL_IMPL.read());
             }
         }
 
-        if (not s_hook_ativo)
+        if (not s_active_hook)
             break;
     }
-    return s_hook_ativo;
+    return s_active_hook;
 }
 
 void limpar_serial() {

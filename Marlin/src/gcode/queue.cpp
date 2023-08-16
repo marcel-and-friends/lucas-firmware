@@ -454,9 +454,9 @@ void GCodeQueue::get_serial_commands() {
             if (!serial_data_available(p))
                 continue;
 
-            // é possível um delimitador de mensagem especial (json) passar despercebido pela 'serial::hooks'
+            // é possível um delimiter de mensagem especial (json) passar despercebido pela 'serial::hooks'
             // pois entre aquela função retornar e essa aqui ser chamada uma nova mensagem pode ter sido enviada pelo app
-            // FIXME: usar uma lista de delimitadores
+            // FIXME: usar uma lista de delimiteres
             if (SERIAL_IMPL.peek() == '#' or SERIAL_IMPL.peek() == '$')
                 continue;
 

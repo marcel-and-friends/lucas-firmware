@@ -5,12 +5,12 @@
 
 namespace lucas::sec {
 void raise(Error error) {
-    util::FiltroUpdatesTemporario f{ Filtros::Todos };
+    util::TemporaryFilter f{ Filters::All };
 
-    info::evento("erro", [](JsonObject o) {
+    info::event("erro", [](JsonObject o) {
 
     });
 
-    util::aguardar_ate([] { return false; });
+    util::wait_until([] { return false; });
 }
 }

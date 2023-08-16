@@ -1,6 +1,6 @@
-#include <lucas/Estacao.h>
-#include <lucas/Bico.h>
-#include <lucas/Fila.h>
+#include <lucas/Station.h>
+#include <lucas/Spout.h>
+#include <lucas/RecipeQueue.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
 #include <lucas/cmd/cmd.h>
@@ -10,92 +10,92 @@
 namespace lucas::cmd {
 void L1() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    auto const diametro_circulo = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
-    if (diametro_circulo == 0.f)
+    auto const circle_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    if (circle_diameter == 0.f)
         return;
 
-    auto const raio_circulo = diametro_circulo / 2.f;
-    auto const num_repeticoes = parser.intval('N');
-    if (num_repeticoes == 0)
+    auto const circle_radius = circle_diameter / 2.f;
+    auto const number_of_repetitions = parser.intval('N');
+    if (number_of_repetitions == 0)
         return;
 
     // cada circulo é composto por 2 arcos
-    auto const num_arcos = num_repeticoes * 2;
-    auto const duracao = parser.ulongval('T');
+    auto const number_of_arcs = number_of_repetitions * 2;
+    auto const duration = parser.ulongval('T');
 
-    if (CFG(ModoGiga) and duracao) {
+    if (CFG(GigaMode) and duration) {
         LOG_IF(LogLn, "iniciando L1 em modo giga");
-        util::aguardar_por(duracao);
+        util::wait_for(duration);
         LOG_IF(LogLn, "L1 finalizado");
         return;
     }
 
-    auto const volume_agua = parser.floatval('G');
-    auto const despejar_agua = duracao and volume_agua;
-    bool const associado_a_estacao = Fila::the().executando();
-    bool vaza = false;
+    auto const volume_of_water = parser.floatval('G');
+    auto const should_pour = duration and volume_of_water;
+    bool const associated_with_station = RecipeQueue::the().executing();
+    bool dip = false;
 
-    auto const posicao_inicial = planner.get_axis_positions_mm();
-    auto posicao_final = posicao_inicial;
+    auto const initial_position = planner.get_axis_positions_mm();
+    auto final_position = initial_position;
 
-    executar_ff("G0 F10000 X%s", -raio_circulo);
-    Bico::the().aguardar_viagem_terminar();
+    execute_ff("G0 F10000 X%s", -circle_radius);
+    Spout::the().finish_movements();
 
-    float const total_percorrido = (2.f * std::numbers::pi_v<float> * raio_circulo) * num_repeticoes;
-    float const steps_por_mm_ratio = duracao ? util::MS_POR_MM / (duracao / total_percorrido) : 1.f;
+    float const total_to_move = (2.f * std::numbers::pi_v<float> * circle_radius) * number_of_repetitions;
+    float const steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
-    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X * steps_por_mm_ratio;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_POR_MM_Y * steps_por_mm_ratio;
+    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y * steps_por_mm_ratio;
     planner.refresh_positioning();
 
-    if (despejar_agua)
-        Bico::the().despejar_volume(duracao, volume_agua, Bico::CorrigirFluxo::Sim);
+    if (should_pour)
+        Spout::the().pour_with_desired_volume(duration, volume_of_water, Spout::CorrectFlow::Yes);
 
-    for (int i = 0; i < num_arcos; i++) {
-        float diametro = diametro_circulo;
+    for (int i = 0; i < number_of_arcs; i++) {
+        float diameter = circle_diameter;
         if (i % 2 != 0)
-            diametro = -diametro;
+            diameter = -diameter;
 
-        float raio = diametro / 2.f;
+        float radius = diameter / 2.f;
 
-        posicao_final.x = posicao_inicial.x + raio;
+        final_position.x = initial_position.x + radius;
 
-        diametro /= steps_por_mm_ratio;
-        raio /= steps_por_mm_ratio;
+        diameter /= steps_por_mm_ratio;
+        radius /= steps_por_mm_ratio;
 
-        char buffer_diametro[16] = {};
-        dtostrf(diametro, 0, 2, buffer_diametro);
-        char buffer_raio[16] = {};
-        dtostrf(raio, 0, 2, buffer_raio);
+        char buffer_diameter[16] = {};
+        dtostrf(diameter, 0, 2, buffer_diameter);
+        char buffer_radius[16] = {};
+        dtostrf(radius, 0, 2, buffer_radius);
 
-        executar_fmt("G2 F5000 X%s I%s", buffer_diametro, buffer_raio);
+        execute_fmt("G2 F5000 X%s I%s", buffer_diameter, buffer_radius);
 
-        if (associado_a_estacao and not Fila::the().executando()) {
-            vaza = true;
+        if (associated_with_station and not RecipeQueue::the().executing()) {
+            dip = true;
             break;
         }
     }
 
-    if (despejar_agua)
-        Bico::the().desligar();
+    if (should_pour)
+        Spout::the().stop();
 
-    Bico::the().aguardar_viagem_terminar();
+    Spout::the().finish_movements();
 
-    current_position = posicao_final;
-    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_POR_MM_X;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_POR_MM_Y;
+    current_position = final_position;
+    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y;
     planner.refresh_positioning();
     soft_endstop._enabled = true;
 
-    if (vaza)
+    if (dip)
         return;
 
-    auto const offset = posicao_inicial.x - posicao_final.x;
-    executar_ff("G0 F10000 X%s", offset);
-    Bico::the().aguardar_viagem_terminar();
+    auto const offset = initial_position.x - final_position.x;
+    execute_ff("G0 F10000 X%s", offset);
+    Spout::the().finish_movements();
 
-    current_position = posicao_inicial;
+    current_position = initial_position;
     sync_plan_position();
 }
 }

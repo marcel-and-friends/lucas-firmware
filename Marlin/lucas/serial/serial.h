@@ -1,6 +1,6 @@
 #pragma once
 
-#include <lucas/serial/HookDelimitado.h>
+#include <lucas/serial/DelimitedHook.h>
 
 namespace lucas::serial {
 void setup();

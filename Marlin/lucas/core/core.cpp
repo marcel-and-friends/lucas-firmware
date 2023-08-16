@@ -1,47 +1,46 @@
 #include "core.h"
 #include <lucas/lucas.h>
-#include <lucas/Bico.h>
+#include <lucas/Spout.h>
 #include <lucas/Boiler.h>
 #include <lucas/serial/UniquePriorityHook.h>
 #include <src/sd/cardreader.h>
 #include <src/MarlinCore.h>
 
 namespace lucas::core {
-constexpr auto NIVELAMENTO_KEYWORD = "jujuba";
-static bool s_nivelado = false;
+constexpr auto CALIBRATION_KEYWORD = "jujuba";
+static bool s_calibrated = false;
 
 void setup() {
-    Bico::the().setup();
-
-    solicitar_nivelamento();
+    Spout::the().setup();
+    request_calibration();
 }
 
-void nivelar(float temperatura_target) {
-    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
+void calibrate(float target_temperature) {
+    util::TemporaryFilter f{ Filters::Interaction };
 
-    LOG_IF(LogNivelamento, "iniciando rotina de nivelamento");
+    LOG_IF(LogCalibration, "iniciando rotina de nivelamento");
 
-    Bico::the().home();
+    Spout::the().home();
 
-    if (CFG(SetarTemperaturaTargetNoNivelamento))
-        Boiler::the().aguardar_temperatura(temperatura_target);
+    if (CFG(SetTargetTemperatureOnCalibration))
+        Boiler::the().set_target_temperature_and_wait(target_temperature);
 
-    if (CFG(PreencherTabelaDeFluxoNoNivelamento))
-        Bico::ControladorFluxo::the().preencher_tabela();
+    if (CFG(FillDigitalSignalTableOnCalibration))
+        Spout::FlowController::the().fill_digital_signal_table();
     else
-        Bico::ControladorFluxo::the().tentar_copiar_tabela_da_flash();
+        Spout::FlowController::the().try_fetching_digital_signal_table_from_flash();
 
-    LOG_IF(LogNivelamento, "nivelamento finalizado");
+    LOG_IF(LogCalibration, "nivelamento finalizado");
 
-    s_nivelado = true;
+    s_calibrated = true;
 }
 
-bool nivelado() {
-    return s_nivelado;
+bool calibrated() {
+    return s_calibrated;
 }
 
-void solicitar_nivelamento() {
-    SERIAL_ECHOLN(NIVELAMENTO_KEYWORD);
+void request_calibration() {
+    SERIAL_ECHOLN(CALIBRATION_KEYWORD);
 }
 
 static bool s_is_updating_firmware = false;
@@ -67,11 +66,15 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
 
     static size_t s_total_bytes_written = 0;
     auto const bytes_to_write = static_cast<int16_t>(buffer.size());
-    auto const bytes_written = card.write(buffer.data(), buffer.size());
-    if (bytes_written == -1) {
-        LOG_ERR("erro ao escrever parte do firmware no cartao sd");
-        return;
+    auto bytes_written = card.write(buffer.data(), buffer.size());
+    auto attempts = 0;
+    while (bytes_written == -1 and attempts++ < 5) {
+        LOG_ERR("erro ao escrever parte do firmware no cartao sd, tentando novamente");
+        bytes_written = card.write(buffer.data(), buffer.size());
     }
+
+    if (bytes_written == -1)
+        return;
 
     s_total_bytes_written += bytes_written;
     LOG("escrito ", bytes_written, " bytes");
@@ -98,11 +101,7 @@ void prepare_for_firmware_update(size_t size) {
     s_new_firmware_size = size;
     s_is_updating_firmware = true;
 
-    serial::UniquePriorityHook::set(
-        [](std::span<char> buffer) {
-            add_buffer_to_new_firmware_file(buffer);
-        },
-        size);
+    serial::UniquePriorityHook::set(&add_buffer_to_new_firmware_file, size);
 
     LOG("novo firmware tera ", s_new_firmware_size, " bytes");
 }

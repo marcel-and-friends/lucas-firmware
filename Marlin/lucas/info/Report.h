@@ -11,12 +11,12 @@ struct Report {
     using CallbackCondicao = bool (*)();
 
     char const* nome = "";
-    millis_t intervalo = 0;
-    millis_t ultimo_tick_reportado = 0;
+    millis_t interval = 0;
+    millis_t last_reported_tick = 0;
     Callback callback = nullptr;
-    CallbackCondicao condicao = nullptr;
+    CallbackCondicao condition = nullptr;
 
-    static void make(char const* nome, millis_t intervalo, Callback, CallbackCondicao condicao = nullptr);
+    static void make(char const* nome, millis_t interval, Callback, CallbackCondicao condition = nullptr);
 
     static void for_each(util::IterFn<Report&> auto&& callback) {
         if (not s_num_reports)
@@ -29,10 +29,10 @@ struct Report {
 
     millis_t delta(millis_t tick) const;
 
-    using Lista = std::array<Report, 2>;
+    using List = std::array<Report, 2>;
 
 private:
-    static Lista s_reports;
+    static List s_reports;
     static inline size_t s_num_reports = 0;
 };
 }

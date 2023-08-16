@@ -1,31 +1,31 @@
 #include <lucas/cmd/cmd.h>
-#include <lucas/Fila.h>
-#include <lucas/Bico.h>
-#include <lucas/Receita.h>
+#include <lucas/RecipeQueue.h>
+#include <lucas/Spout.h>
+#include <lucas/Recipe.h>
 #include <lucas/cfg/cfg.h>
 
 namespace lucas::cmd {
 void L4() {
-    bool atualizou = false;
-    for (auto& opcao : cfg::opcoes()) {
-        if (opcao.id != cfg::Opcao::ID_DEFAULT and parser.seen(opcao.id)) {
-            opcao.ativo = not opcao.ativo;
-            LOG("opcao \'", AS_CHAR(opcao.id), "\' foi ", not opcao.ativo ? "des" : "", "ativada");
-            atualizou = true;
+    bool updated = false;
+    for (auto& option : cfg::opcoes()) {
+        if (option.id != cfg::Option::ID_DEFAULT and parser.seen(option.id)) {
+            option.active = not option.active;
+            LOG("option \'", AS_CHAR(option.id), "\' foi ", not option.active ? "des" : "", "ativada");
+            updated = true;
         }
     }
 
-    if (atualizou)
-        cfg::salvar_opcoes_na_flash();
+    if (updated)
+        cfg::save_options_to_flash();
 
     if (parser.seen('Z')) {
         switch (parser.value_int()) {
         case 0: {
-            Bico::ControladorFluxo::the().limpar_tabela(Bico::ControladorFluxo::SalvarNaFlash::Sim);
+            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::SaveToFlash::Yes);
             LOG("tabela foi limpa e salva na flash");
         } break;
         case 1: {
-            cfg::resetar_opcoes();
+            cfg::reset_options();
             LOG("opcoes foram resetadas e salvas na flash");
         } break;
         }

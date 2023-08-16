@@ -6,19 +6,19 @@
 
 namespace lucas::info {
 constexpr size_t BUFFER_SIZE = 1024;
-using DocumentoJson = StaticJsonDocument<BUFFER_SIZE>;
+using JsonDocument = StaticJsonDocument<BUFFER_SIZE>;
 
 void setup();
 
 void tick();
 
-void interpretar_json(std::span<char> buffer);
+void interpret_json(std::span<char> buffer);
 
-void print_json(DocumentoJson const& doc);
+void print_json(JsonDocument const& doc);
 
-void evento(char const* nome, util::Fn<void, JsonObject> auto&& callback) {
-    DocumentoJson evento_doc;
-    std::invoke(FWD(callback), evento_doc.createNestedObject(nome));
-    print_json(evento_doc);
+void event(char const* name, util::Fn<void, JsonObject> auto&& callback) {
+    JsonDocument doc;
+    std::invoke(FWD(callback), doc.createNestedObject(name));
+    print_json(doc);
 }
 }

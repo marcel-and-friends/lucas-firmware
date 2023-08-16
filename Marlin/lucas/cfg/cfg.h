@@ -4,54 +4,54 @@
 #include <cstddef>
 
 namespace lucas::cfg {
-struct Opcao {
+struct Option {
     static constexpr char ID_DEFAULT = 0x47;
 
     char id = ID_DEFAULT;
-    bool ativo = false;
+    bool active = false;
 };
 
-enum Opcoes {
-    LogDespejoBico = 0,
-    LogViagemBico,
-    LogFila,
-    LogNivelamento,
-    LogEstacoes,
+enum Options {
+    LogPour = 0,
+    LogTravel,
+    LogQueue,
+    LogCalibration,
+    LogStations,
 
     LogSerial,
     LogWifi,
     LogGcode,
     LogLn,
 
-    ModoGiga,
+    GigaMode,
 
-    SetarTemperaturaTargetNoNivelamento,
-    PreencherTabelaDeFluxoNoNivelamento,
+    SetTargetTemperatureOnCalibration,
+    FillDigitalSignalTableOnCalibration,
 
     Count
 };
 
-using ListaOpcoes = std::array<Opcao, size_t(Opcoes::Count)>;
+using OptionList = std::array<Option, size_t(Options::Count)>;
 
 void setup();
 
-void salvar_opcoes_na_flash();
+void save_options_to_flash();
 
-void resetar_opcoes();
+void reset_options();
 
-Opcao get(Opcoes opcao);
-ListaOpcoes& opcoes();
+Option get(Options option);
+OptionList& opcoes();
 
-#define CFG(opcao) cfg::get(cfg::Opcoes::opcao).ativo
-#define LOG_IF(opcao, ...)                                        \
-    do {                                                          \
-        if (CFG(opcao)) {                                         \
-            const auto& opcao_cfg = cfg::get(cfg::Opcoes::opcao); \
-            if (opcao_cfg.id != cfg::Opcao::ID_DEFAULT)           \
-                SERIAL_ECHO(AS_CHAR(opcao_cfg.id));               \
-            else                                                  \
-                SERIAL_ECHO(AS_CHAR('?'));                        \
-            LOG("", ": ", __VA_ARGS__);                           \
-        }                                                         \
+#define CFG(option) cfg::get(cfg::Options::option).active
+#define LOG_IF(option, ...)                                          \
+    do {                                                             \
+        if (CFG(option)) {                                           \
+            const auto& option_cfg = cfg::get(cfg::Options::option); \
+            if (option_cfg.id != cfg::Option::ID_DEFAULT)            \
+                SERIAL_ECHO(AS_CHAR(option_cfg.id));                 \
+            else                                                     \
+                SERIAL_ECHO(AS_CHAR('?'));                           \
+            LOG("", ": ", __VA_ARGS__);                              \
+        }                                                            \
     } while (false)
 }

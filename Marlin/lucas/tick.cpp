@@ -1,33 +1,33 @@
 #include "tick.h"
 #include <lucas/lucas.h>
-#include <lucas/Estacao.h>
-#include <lucas/Fila.h>
-#include <lucas/Bico.h>
+#include <lucas/Station.h>
+#include <lucas/RecipeQueue.h>
+#include <lucas/Spout.h>
 #include <lucas/info/info.h>
 
 namespace lucas {
 void tick() {
-    { // fila
-        if (not filtrado(Filtros::Fila))
-            Fila::the().tick();
+    { // queue
+        if (not filtered(Filters::RecipeQueue))
+            RecipeQueue::the().tick();
 
-        Fila::the().remover_receitas_finalizadas();
+        RecipeQueue::the().remove_finalized_recipes();
     }
 
-    { // estacoes
-        if (not filtrado(Filtros::Estacao))
-            Estacao::tick();
+    { // stations
+        if (not filtered(Filters::Station))
+            Station::tick();
 
-        Estacao::atualizar_leds();
+        Station::update_leds();
     }
 
-    { // bico
-        if (not filtrado(Filtros::Bico))
-            Bico::the().tick();
+    { // spout
+        if (not filtered(Filters::Spout))
+            Spout::the().tick();
     }
 
     { // info
-        if (not filtrado(Filtros::Info))
+        if (not filtered(Filters::Info))
             info::tick();
     }
 }

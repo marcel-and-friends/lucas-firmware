@@ -8,7 +8,7 @@
 
 namespace lucas::wifi {
 
-enum class Protocolo : byte {
+enum class Protocol : byte {
     /*
      * +--------------------------+--------------------------+----------------------------------------------------+
      * | Segmento                 | Tamanho (bytes)          | Significado                                        |
@@ -30,18 +30,18 @@ enum class Protocolo : byte {
      * |          |                 | 0x3: Esquecer senha da rede atual |
      * +----------+-----------------+-----------------------------------+
      */
-    Conectar = 0x09
+    Connect = 0x09
 };
 
 enum class ModoConexao : byte {
     AP = 0x1,
-    Cliente = 0x2
+    Client = 0x2
 };
 
 enum class Operacao : byte {
-    Conectar = 0x1,
-    Desconectar = 0x2,
-    Esquecer = 0x3
+    Connect = 0x1,
+    Disconnect = 0x2,
+    Forget = 0x3
 };
 
 template<typename It>
@@ -51,7 +51,7 @@ concept Iterator = requires(It it) {
 };
 
 template<Iterator It>
-static void enviar_protocolo(Protocolo tipo, It&& it) {
+static void send_protocol(Protocol tipo, It&& it) {
     /*
      * - Comunicação com o módulo WiFi da MakerBase -
      *
@@ -61,33 +61,33 @@ static void enviar_protocolo(Protocolo tipo, It&& it) {
      * | Segmento | Tamanho (bytes) | Descrição                                                          |
      * +----------+-----------------+--------------------------------------------------------------------+
      * | Início   | 1 (uint8_t)     | Início do protocolo - sempre 0xA5                                  |
-     * | Tipo     | 1 (uint8_t)     | Tipo da mensagem - veja o enum 'Protocolo'                          |
+     * | Tipo     | 1 (uint8_t)     | Tipo da mensagem - veja o enum 'Protocol'                          |
      * | Tamanho  | 2 (uint16_t)    | Tamanho da mensagem - máximo de 1024 - 5 (bytes reservados) = 1019 |
-     * | Protocolo | Tamanho         | Protocolo em sí                                                     |
+     * | Protocol | Tamanho         | Protocol em sí                                                     |
      * | Fim      | 1 (uint8_t)     | Fim do protocolo - sempre 0xFC                                     |
      * +----------+-----------------+--------------------------------------------------------------------+
      *
-     * Cada mensagem possui uma estrutura interna, documentadas no enum 'Protocolo'
+     * Cada mensagem possui uma estrutura interna, documentadas no enum 'Protocol'
      */
-    constexpr byte INICIO = 0xA5;
-    constexpr byte FIM = 0xFC;
-    constexpr auto BYTES_RESERVADOS = 5; // u8 + u8 + u16 + u8
+    constexpr byte BEGINNING = 0xA5;
+    constexpr byte ENDING = 0xFC;
+    constexpr auto RESERVED_BYTES = 5; // u8 + u8 + u16 + u8
 
-    uint16_t tamanho_msg = std::distance(it.begin(), it.end());
+    uint16_t message_size = std::distance(it.begin(), it.end());
 
     std::vector<byte> buffer;
-    buffer.reserve(BYTES_RESERVADOS + tamanho_msg);
+    buffer.reserve(RESERVED_BYTES + message_size);
     // Início
-    buffer.push_back(INICIO);
+    buffer.push_back(BEGINNING);
     // Tipo
     buffer.push_back(static_cast<byte>(tipo));
     // Tamanho (16 bytes divididos em 2)
-    buffer.push_back(tamanho_msg & 0xFF);
-    buffer.push_back((tamanho_msg >> 8) & 0xFF);
-    // Protocolo
+    buffer.push_back(message_size & 0xFF);
+    buffer.push_back((message_size >> 8) & 0xFF);
+    // Protocol
     buffer.insert(buffer.end(), it.begin(), it.end());
     // Fim
-    buffer.push_back(FIM);
+    buffer.push_back(ENDING);
 
 #ifdef MKS_WIFI_MODULE
     raw_send_to_wifi(buffer.data(), buffer.size());
@@ -95,56 +95,41 @@ static void enviar_protocolo(Protocolo tipo, It&& it) {
 }
 
 template<typename... Bytes>
-static void enviar_protocolo(Protocolo tipo, Bytes... bytes) {
+static void send_protocol(Protocol tipo, Bytes... bytes) {
     std::array msg = { static_cast<byte>(bytes)... };
-    enviar_protocolo(tipo, msg);
+    send_protocol(tipo, msg);
 }
 
 static bool g_conectando = false;
 
-void conectar(std::string_view nome_rede, std::string_view senha_rede) {
-    // u8 + u8 + nome_rede + u8 + senha_rede
-    auto tamanho_msg = 1 + 1 + nome_rede.size() + 1 + senha_rede.size();
+void connect(std::string_view network_name, std::string_view network_password) {
+    // u8 + u8 + network_name + u8 + network_password
+    auto message_size = 1 + 1 + network_name.size() + 1 + network_password.size();
 
     std::vector<byte> config_msg;
-    config_msg.reserve(tamanho_msg);
+    config_msg.reserve(message_size);
     // Modo
-    config_msg.push_back(static_cast<byte>(ModoConexao::Cliente));
+    config_msg.push_back(static_cast<byte>(ModoConexao::Client));
     // Tamanho do nome da rede
-    config_msg.push_back(nome_rede.size());
+    config_msg.push_back(network_name.size());
     // Nome da rede
-    config_msg.insert(config_msg.end(), nome_rede.begin(), nome_rede.end());
+    config_msg.insert(config_msg.end(), network_name.begin(), network_name.end());
     // Tamanho da senha da rede
-    config_msg.push_back(senha_rede.size());
+    config_msg.push_back(network_password.size());
     // Senha da rede
-    config_msg.insert(config_msg.end(), senha_rede.begin(), senha_rede.end());
+    config_msg.insert(config_msg.end(), network_password.begin(), network_password.end());
 
-    enviar_protocolo(Protocolo::Config, config_msg);
-    enviar_protocolo(Protocolo::Conectar, Operacao::Conectar);
+    send_protocol(Protocol::Config, config_msg);
+    send_protocol(Protocol::Connect, Operacao::Connect);
 
-    LOG_IF(LogWifi, "conectando wifi na rede '", nome_rede.data(), " - ", senha_rede.data(), "'");
-    g_conectando = true;
-}
-
-bool conectando() {
-    return g_conectando;
-}
-
-bool terminou_de_conectar() {
-#ifdef MKS_WIFI_MODULE
-    if (g_conectando)
-        return wifi_link_state == WIFI_CONNECTED;
-    return false;
-#else
-    return false;
-#endif
+    LOG_IF(LogWifi, "connecting wifi na rede '", network_name.data(), " - ", network_password.data(), "'");
 }
 
 void informar_sobre_rede() {
     g_conectando = false;
-    LOG_IF(LogWifi, "conectadonot ");
+    LOG_IF(LogWifi, "conectado ");
     LOG_IF(LogWifi, "-- informacoes da rede --");
-    LOG_IF(LogWifi, "ip = ", wifi::ip().data(), " \nnome = ", wifi::nome_rede().data(), " \nsenha = ", wifi::senha_rede().data());
+    LOG_IF(LogWifi, "ip = ", wifi::ip().data(), " \nnome = ", wifi::network_name().data(), " \nsenha = ", wifi::network_password().data());
     LOG_IF(LogWifi, "-------------------------");
 }
 
@@ -156,16 +141,15 @@ std::string_view ip() {
 #endif
 }
 
-std::string_view nome_rede() {
+std::string_view network_name() {
 #ifdef MKS_WIFI_MODULE
     return wifiPara.ap_name;
 #else
-
     return "";
 #endif
 }
 
-std::string_view senha_rede() {
+std::string_view network_password() {
 #ifdef MKS_WIFI_MODULE
     return wifiPara.keyCode;
 #else

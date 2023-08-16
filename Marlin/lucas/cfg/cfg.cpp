@@ -1,99 +1,99 @@
 #include <lucas/cfg/cfg.h>
-#include <lucas/Bico.h>
+#include <lucas/Spout.h>
 #include <lucas/mem/FlashReader.h>
 #include <lucas/mem/FlashWriter.h>
 
 namespace lucas::cfg {
-constexpr auto OPCOES_DEFAULT = std::to_array<Opcao>({
-    [LogDespejoBico] = {.id = 'D',  .ativo = true },
-    [LogViagemBico] = { .id = 'V', .ativo = true },
-    [LogFila] = { .id = 'F', .ativo = true },
-    [LogNivelamento] = { .id = 'N', .ativo = true },
-    [LogEstacoes] = { .id = 'E', .ativo = true },
+constexpr auto OPCOES_DEFAULT = std::to_array<Option>({
+    [LogPour] = {.id = 'D',  .active = true },
+    [LogTravel] = { .id = 'V', .active = true },
+    [LogQueue] = { .id = 'F', .active = true },
+    [LogCalibration] = { .id = 'N', .active = true },
+    [LogStations] = { .id = 'E', .active = true },
 
-    [LogSerial] = { .id = 'S', .ativo = false},
-    [LogWifi] = { .id = 'W', .ativo = false},
-    [LogGcode] = { .id = 'G', .ativo = false},
-    [LogLn] = { .id = 'L', .ativo = false},
+    [LogSerial] = { .id = 'S', .active = false},
+    [LogWifi] = { .id = 'W', .active = false},
+    [LogGcode] = { .id = 'G', .active = false},
+    [LogLn] = { .id = 'L', .active = false},
 
-    [ModoGiga] = { .id = 'M', .ativo = false},
+    [GigaMode] = { .id = 'M', .active = false},
 
-    [SetarTemperaturaTargetNoNivelamento] = { .id = 'T', .ativo = true },
-    [PreencherTabelaDeFluxoNoNivelamento] = { .id = 'X', .ativo = false},
+    [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
+    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = false},
 });
 
-consteval bool nao_possui_opcoes_duplicadas(ListaOpcoes const& opcoes) {
+consteval bool doesnt_have_duplicated_ids(OptionList const& opcoes) {
     for (size_t i = 1; i < opcoes.size(); ++i)
         for (size_t j = 0; j < i; ++j)
-            if (opcoes[i].id != Opcao::ID_DEFAULT and opcoes[j].id != Opcao::ID_DEFAULT)
+            if (opcoes[i].id != Option::ID_DEFAULT and opcoes[j].id != Option::ID_DEFAULT)
                 if (opcoes[i].id == opcoes[j].id)
                     return false;
 
     return true;
 }
 
-static_assert(OPCOES_DEFAULT.size() == Opcoes::Count, "tamanho errado irmao");
-static_assert(nao_possui_opcoes_duplicadas(OPCOES_DEFAULT), "opcoes duplicadas irmao");
+static_assert(OPCOES_DEFAULT.size() == Options::Count, "tamanho errado irmao");
+static_assert(doesnt_have_duplicated_ids(OPCOES_DEFAULT), "opcoes duplicadas irmao");
 
 // vai ser propriamente inicializado na 'setup()'
-static ListaOpcoes s_opcoes = {};
+static OptionList s_options = {};
 
-constexpr auto INICIO_FLASH = sizeof(Bico::ControladorFluxo::Tabela);
-constexpr auto OPCAO_SIZE = sizeof(char) + sizeof(bool);
+constexpr auto FLASH_ADDRESS_START = sizeof(Spout::FlowController::Tabela);
+constexpr auto OPTION_SIZE = sizeof(char) + sizeof(bool);
 
-void ler_opcoes_da_flash();
+static void fetch_options_from_flash();
 
 void setup() {
-    auto reader = mem::FlashReader(INICIO_FLASH);
-    auto const primeiro_id = reader.read<char>(INICIO_FLASH);
-    if (primeiro_id == Opcao::ID_DEFAULT) {
+    auto reader = mem::FlashReader(FLASH_ADDRESS_START);
+    auto const primeiro_id = reader.read<char>(FLASH_ADDRESS_START);
+    if (primeiro_id == Option::ID_DEFAULT) {
         LOG("cfg ainda nao foi salva na flash, usando valores padroes");
-        s_opcoes = OPCOES_DEFAULT;
-        salvar_opcoes_na_flash();
+        s_options = OPCOES_DEFAULT;
+        save_options_to_flash();
     } else {
-        ler_opcoes_da_flash();
+        fetch_options_from_flash();
     }
 }
 
-void salvar_opcoes_na_flash() {
-    auto writer = mem::FlashWriter(INICIO_FLASH);
-    for (size_t i = 0; i < s_opcoes.size(); ++i) {
-        auto const& opcao = s_opcoes[i];
-        auto const offset = i * OPCAO_SIZE;
-        writer.write<char>(offset, opcao.id);
-        writer.write<bool>(offset + sizeof(char), opcao.ativo);
+void save_options_to_flash() {
+    auto writer = mem::FlashWriter(FLASH_ADDRESS_START);
+    for (size_t i = 0; i < s_options.size(); ++i) {
+        auto const& option = s_options[i];
+        auto const offset = i * OPTION_SIZE;
+        writer.write<char>(offset, option.id);
+        writer.write<bool>(offset + sizeof(char), option.active);
     }
 
     LOG("opcoes escritas na flash");
 }
 
-void ler_opcoes_da_flash() {
-    auto reader = mem::FlashReader(INICIO_FLASH);
-    for (size_t i = 0; i < s_opcoes.size(); ++i) {
-        auto& opcao = s_opcoes[i];
-        auto const offset = i * OPCAO_SIZE;
-        opcao.id = reader.read<char>(offset);
-        opcao.ativo = reader.read<bool>(offset + sizeof(char));
+static void fetch_options_from_flash() {
+    auto reader = mem::FlashReader(FLASH_ADDRESS_START);
+    for (size_t i = 0; i < s_options.size(); ++i) {
+        auto& option = s_options[i];
+        auto const offset = i * OPTION_SIZE;
+        option.id = reader.read<char>(offset);
+        option.active = reader.read<bool>(offset + sizeof(char));
     }
 
     LOG("opcoes lidas da flash");
 }
 
-void resetar_opcoes() {
-    s_opcoes = OPCOES_DEFAULT;
-    auto writer = mem::FlashWriter(INICIO_FLASH);
-    for (size_t i = 0; i < s_opcoes.size(); ++i) {
-        auto const offset = i * OPCAO_SIZE;
-        writer.write<char>(offset, Opcao::ID_DEFAULT);
+void reset_options() {
+    s_options = OPCOES_DEFAULT;
+    auto writer = mem::FlashWriter(FLASH_ADDRESS_START);
+    for (size_t i = 0; i < s_options.size(); ++i) {
+        auto const offset = i * OPTION_SIZE;
+        writer.write<char>(offset, Option::ID_DEFAULT);
         writer.write<bool>(offset + sizeof(char), false);
     }
 }
 
-Opcao get(Opcoes opcao) {
-    return s_opcoes[size_t(opcao)];
+Option get(Options option) {
+    return s_options[size_t(option)];
 }
 
-ListaOpcoes& opcoes() {
-    return s_opcoes;
+OptionList& opcoes() {
+    return s_options;
 }
 }

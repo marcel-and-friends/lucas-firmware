@@ -11,28 +11,28 @@ char const* ff(char const* str, float valor) {
     return fmt(str, buffer);
 }
 
-bool segurando(int pino) {
-    return READ(pino) == false;
+bool is_button_held(int pin) {
+    return READ(pin) == false;
 }
 
 float step_ratio_x() {
-    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_POR_MM_X;
+    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_PER_MM_X;
 }
 
 float step_ratio_y() {
-    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_POR_MM_Y;
+    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
 }
 
-float distancia_primeira_estacao() {
+float first_station_abs_pos() {
     return 80.f / step_ratio_x();
 }
 
-float distancia_entre_estacoes() {
+float distance_between_each_station() {
     return 160.f / step_ratio_x();
 }
 
-void aguardar_por(millis_t tempo, Filtros filtros) {
-    FiltroUpdatesTemporario f{ filtros };
+void wait_for(millis_t tempo, Filters filtros) {
+    TemporaryFilter f{ filtros };
 
     auto const comeco = millis();
     while (millis() - comeco < tempo)

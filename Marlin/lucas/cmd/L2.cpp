@@ -1,22 +1,22 @@
 #include <lucas/cmd/cmd.h>
 #include <src/gcode/parser.h>
-#include <lucas/Bico.h>
-#include <lucas/Fila.h>
-#include <lucas/Estacao.h>
+#include <lucas/Spout.h>
+#include <lucas/RecipeQueue.h>
+#include <lucas/Station.h>
 
 namespace lucas::cmd {
 void L2() {
     if (parser.seenval('D'))
-        Bico::the().despejar_forca_digital(parser.ulongval('T'), parser.ulongval('D'));
+        Spout::the().pour_with_digital_signal(parser.ulongval('T'), parser.ulongval('D'));
     else
-        Bico::the().despejar_volume(parser.ulongval('T'), parser.floatval('G'), Bico::CorrigirFluxo::Sim);
+        Spout::the().pour_with_desired_volume(parser.ulongval('T'), parser.floatval('G'), Spout::CorrectFlow::Yes);
 
-    bool const associado_a_estacao = Fila::the().executando();
-    util::aguardar_enquanto([&] {
-        // receita foi cancelada por meios externos
-        if (associado_a_estacao and not Fila::the().executando())
+    bool const associated_with_station = RecipeQueue::the().executing();
+    util::wait_while([&] {
+        // recipe foi cancelada por meios externos
+        if (associated_with_station and not RecipeQueue::the().executing())
             return false;
-        return Bico::the().ativo();
+        return Spout::the().pouring();
     });
 }
 }

@@ -7,7 +7,7 @@
 namespace lucas {
 void setup();
 
-void nivelar();
+void calibrate();
 
-bool inicializado();
+bool initialized();
 }

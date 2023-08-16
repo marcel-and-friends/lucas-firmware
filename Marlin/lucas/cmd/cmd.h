@@ -6,18 +6,18 @@
 #include <src/gcode/parser.h>
 
 namespace lucas::cmd {
-void executar(char const* gcode);
+void execute(char const* gcode);
 
-inline void executar_cmds(auto... cmds) {
-    (executar(cmds), ...);
+inline void execute_multiple(auto... cmds) {
+    (execute(cmds), ...);
 }
 
-inline void executar_fmt(char const* str, auto... args) {
-    executar(util::fmt(str, args...));
+inline void execute_fmt(char const* str, auto... args) {
+    execute(util::fmt(str, args...));
 }
 
-inline void executar_ff(char const* str, float value) {
-    executar(util::ff(str, value));
+inline void execute_ff(char const* str, float value) {
+    execute(util::ff(str, value));
 }
 
 // L0 -> Espiral

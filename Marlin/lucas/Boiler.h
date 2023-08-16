@@ -8,16 +8,16 @@ public:
         return the;
     }
 
-    void setar_temperatura(float target);
+    void set_target_temperature(float target);
 
-    void aguardar_temperatura(float target);
+    void set_target_temperature_and_wait(float target);
 
     float hysteresis() const { return m_hysteresis; }
     void set_hysteresis(float f) { m_hysteresis = f; }
 
 private:
-    static constexpr auto HYSTERESIS_INICIAL = 1.5f;
-    static constexpr auto HYSTERESIS_FINAL = 0.5f;
+    static constexpr auto INITIAL_HYSTERESIS = 1.5f;
+    static constexpr auto FINAL_HYSTERESIS = 0.5f;
 
     float m_hysteresis;
 };

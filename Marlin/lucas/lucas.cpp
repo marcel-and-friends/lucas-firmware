@@ -1,27 +1,27 @@
 #include "lucas.h"
 #include <lucas/core/core.h>
-#include <lucas/Bico.h>
+#include <lucas/Spout.h>
 #include <lucas/Boiler.h>
-#include <lucas/Fila.h>
+#include <lucas/RecipeQueue.h>
 #include <lucas/serial/serial.h>
 #include <lucas/info/info.h>
 #include <lucas/wifi/wifi.h>
 
 namespace lucas {
-static bool s_inicializado = false;
+static bool s_initialized = false;
 
 void setup() {
-    util::FiltroUpdatesTemporario f{ Filtros::Interacao };
+    util::TemporaryFilter f{ Filters::Interaction };
 
     cfg::setup();
     serial::setup();
     info::setup();
     core::setup();
 
-    s_inicializado = true;
+    s_initialized = true;
 }
 
-bool inicializado() {
-    return s_inicializado;
+bool initialized() {
+    return s_initialized;
 }
 }
