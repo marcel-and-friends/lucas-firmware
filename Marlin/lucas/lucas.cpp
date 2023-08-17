@@ -11,7 +11,7 @@ namespace lucas {
 static bool s_initialized = false;
 
 void setup() {
-    util::TemporaryFilter f{ Filters::Interaction };
+    core::TemporaryFilter f{ Filters::Interaction };
 
     cfg::setup();
     serial::setup();

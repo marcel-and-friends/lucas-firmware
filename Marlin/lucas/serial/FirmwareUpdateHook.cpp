@@ -1,10 +1,10 @@
-#include "UniquePriorityHook.h"
+#include "FirmwareUpdateHook.h"
 #include <lucas/lucas.h>
 
 namespace lucas::serial {
-UniquePriorityHook UniquePriorityHook::s_the;
+FirmwareUpdateHook FirmwareUpdateHook::s_the;
 
-void UniquePriorityHook::receive_char(char c) {
+void FirmwareUpdateHook::receive_char(char c) {
     m_buffer[m_buffer_size++] = c;
     m_bytes_received++;
     if (m_buffer_size == MAX_BUFFER_SIZE or m_bytes_received == m_bytes_to_receive) {

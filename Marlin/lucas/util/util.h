@@ -1,7 +1,7 @@
 #pragma once
 
 #include <lucas/tick.h>
-#include <lucas/util/TemporaryFilter.h>
+#include <lucas/core/TemporaryFilter.h>
 #include <src/MarlinCore.h>
 #include <src/module/planner.h>
 #include <avr/dtostrf.h>
@@ -47,8 +47,7 @@ float distance_between_each_station();
 void wait_for(millis_t tempo, Filters filtros = Filters::None);
 
 inline void wait_while(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
-    TemporaryFilter f{ filtros };
-
+    core::TemporaryFilter f{ filtros };
     while (std::invoke(FWD(callback)))
         idle();
 }

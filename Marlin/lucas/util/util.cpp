@@ -32,8 +32,7 @@ float distance_between_each_station() {
 }
 
 void wait_for(millis_t tempo, Filters filtros) {
-    TemporaryFilter f{ filtros };
-
+    core::TemporaryFilter f{ filtros };
     auto const comeco = millis();
     while (millis() - comeco < tempo)
         idle();

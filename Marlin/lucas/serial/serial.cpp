@@ -3,7 +3,7 @@
 #include <lucas/core/core.h>
 #include <lucas/info/info.h>
 #include <lucas/serial/DelimitedHook.h>
-#include <lucas/serial/UniquePriorityHook.h>
+#include <lucas/serial/FirmwareUpdateHook.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
@@ -20,9 +20,9 @@ void setup() {
 bool hooks() {
     static DelimitedHook* s_active_hook = nullptr;
 
-    if (UniquePriorityHook::the()) {
+    if (FirmwareUpdateHook::the()) {
         while (SERIAL_IMPL.available())
-            UniquePriorityHook::the()->receive_char(SERIAL_IMPL.read());
+            FirmwareUpdateHook::the()->receive_char(SERIAL_IMPL.read());
 
         return true;
     }

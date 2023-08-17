@@ -211,7 +211,7 @@ void Spout::FlowController::fill_digital_signal_table() {
     constexpr auto TIME_TO_ANALISE_POUR = 1000 * 10;
     static_assert(TIME_TO_ANALISE_POUR >= 1000, "tempo de analise deve ser no minimo 1 minuto");
 
-    util::TemporaryFilter f{ Filters::Interaction };
+    core::TemporaryFilter f{ Filters::Interaction };
 
     clean_digital_signal_table(SaveToFlash::No);
 

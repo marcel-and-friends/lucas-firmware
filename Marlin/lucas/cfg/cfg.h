@@ -33,6 +33,8 @@ enum Options {
 
 using OptionList = std::array<Option, size_t(Options::Count)>;
 
+constexpr auto FIRMWARE_VERSION = "1.0.0";
+
 void setup();
 
 void save_options_to_flash();

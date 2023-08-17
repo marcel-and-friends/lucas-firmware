@@ -2,7 +2,9 @@
 #include <lucas/lucas.h>
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
-#include <lucas/serial/UniquePriorityHook.h>
+#include <lucas/serial/FirmwareUpdateHook.h>
+#include <lucas/Station.h>
+#include <lucas/RecipeQueue.h>
 #include <src/sd/cardreader.h>
 #include <src/MarlinCore.h>
 
@@ -16,7 +18,7 @@ void setup() {
 }
 
 void calibrate(float target_temperature) {
-    util::TemporaryFilter f{ Filters::Interaction };
+    core::TemporaryFilter f{ Filters::Interaction };
 
     LOG_IF(LogCalibration, "iniciando rotina de nivelamento");
 
@@ -45,26 +47,34 @@ void request_calibration() {
 
 static bool s_is_updating_firmware = false;
 static size_t s_new_firmware_size = 0;
+static size_t s_total_bytes_written = 0;
+constexpr auto FIRMWARE_FILE_PATH = "/Robin_nano_V3.bin";
 
-static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
-    if (not card.isFileOpen()) {
-        if (not card.isMounted()) {
-            LOG("tentando montar o cartao sd");
-            card.mount();
-        }
-
-        if (card.isMounted()) {
-            card.openFileWrite("/Robin_nano_V3.bin");
-            LOG("arquivo aberto para escrita");
-        }
+static void prepare_sd_card(bool delete_if_file_exists) {
+    if (not card.isMounted()) {
+        LOG("montando o cartao sd");
+        card.mount();
     }
 
-    if (not card.isFileOpen()) {
-        LOG_ERR("o arquivo nao esta aberto");
+    if (card.isFileOpen())
+        card.closefile();
+
+    if (delete_if_file_exists) {
+        if (card.fileExists(FIRMWARE_FILE_PATH))
+            card.removeFile(FIRMWARE_FILE_PATH);
+    }
+
+    card.openFileWrite(FIRMWARE_FILE_PATH);
+    LOG("arquivo aberto para escrita");
+}
+
+static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
+    if (not card.isMounted() or not card.isFileOpen()) {
+        LOG("cartao nao estava pronto para receber o firmware, tentando arrumar");
+        prepare_sd_card(false);
         return;
     }
 
-    static size_t s_total_bytes_written = 0;
     auto const bytes_to_write = static_cast<int16_t>(buffer.size());
     auto bytes_written = card.write(buffer.data(), buffer.size());
     auto attempts = 0;
@@ -80,16 +90,7 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
     LOG("escrito ", bytes_written, " bytes");
 
     if (s_total_bytes_written == s_new_firmware_size) {
-        serial::UniquePriorityHook::unset();
-
-        s_is_updating_firmware = false;
-        s_total_bytes_written = 0;
-        s_new_firmware_size = 0;
-
         card.closefile();
-
-        LOG("firmware atualizado com sucesso - reiniciando");
-
         noInterrupts();
         NVIC_SystemReset();
         while (true) {
@@ -101,7 +102,11 @@ void prepare_for_firmware_update(size_t size) {
     s_new_firmware_size = size;
     s_is_updating_firmware = true;
 
-    serial::UniquePriorityHook::set(&add_buffer_to_new_firmware_file, size);
+    prepare_sd_card(true);
+
+    serial::FirmwareUpdateHook::create(
+        &add_buffer_to_new_firmware_file,
+        s_new_firmware_size);
 
     LOG("novo firmware tera ", s_new_firmware_size, " bytes");
 }

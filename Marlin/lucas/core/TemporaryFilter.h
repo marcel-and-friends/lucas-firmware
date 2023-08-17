@@ -3,7 +3,7 @@
 #include <lucas/Filters.h>
 #include <src/core/serial.h>
 
-namespace lucas::util {
+namespace lucas::core {
 class TemporaryFilter {
 public:
     TemporaryFilter(Filters filtros) {

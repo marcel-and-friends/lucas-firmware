@@ -18,12 +18,6 @@ void setup() {
                 obj["tempAtual"] = thermalManager.degBed();
             });
     }
-    Report::make(
-        "boaNoite",
-        5'000,
-        [](JsonObject obj) {
-            obj["oi"] = "boa noite";
-        });
 }
 
 void tick() {
@@ -50,18 +44,19 @@ void tick() {
 }
 
 enum CommandFromHost {
-    InitializeStations = 0, // initialize estacoes
-    SetBoilerTemperature,   // temperatura target do boiler
-    SetAvailableStations,   // estacoes blockeds
-    CancelRecipe,           // cancelar recipe da station
-    ScheduleRecipe,         // enviar uma recipe para uma station
-    RequestQueueInfo,       // requisicao de informacao de todas as estacoes na fila
-    RequestIsCalibrated,    // requisicao de informacao do nivelamento
-    UpdateFirmware,         // fixar uma recipe especifica em uma station especifica
+    InitializeStations = 0,
+    SetBoilerTemperature,
+    SetAvailableStations,
+    CancelRecipe,
+    ScheduleRecipe,
+    RequestQueueInfo,
+    RequestIsCalibrated,
+    UpdateFirmware,
+    RequestFirmwareVersion,
 
     /* ~comandos de desenvolvimento~ */
-    ScheduleStandardRecipe, // enviar a recipe standard para uma ou mais estacoes
-    SimulateButtonPress,    // simula os efeitos de apertar um button
+    ScheduleStandardRecipe,
+    SimulateButtonPress,
 };
 
 void interpret_json(std::span<char> buffer) {
@@ -161,6 +156,11 @@ void interpret_json(std::span<char> buffer) {
                 break;
             }
             core::prepare_for_firmware_update(v.as<size_t>());
+        } break;
+        case RequestFirmwareVersion: {
+            info::event("versaoFirmware", [](JsonObject o) {
+                o["versao"] = cfg::FIRMWARE_VERSION;
+            });
         } break;
         /* ~comandos de desenvolvimento~ */
         case ScheduleStandardRecipe: {
