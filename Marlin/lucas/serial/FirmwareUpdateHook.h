@@ -16,6 +16,10 @@ public:
         return s_the.m_active ? &s_the : nullptr;
     }
 
+    static bool active() { return s_the.m_active; }
+
+    void think();
+
     void receive_char(char c);
 
 private:

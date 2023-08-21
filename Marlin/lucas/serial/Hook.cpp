@@ -9,18 +9,19 @@ bool Hook::is_valid() const {
 }
 
 void Hook::dispatch() {
-    if (m_callback and m_buffer_size) {
+    ok_to_receive();
+    auto const buffer_size = m_buffer_size;
+    reset();
+    if (m_callback and buffer_size) {
         if (CFG(LogSerial)) {
-            char null_terminated_buffer[m_buffer_size + 1];
-            memcpy(null_terminated_buffer, m_buffer, m_buffer_size);
-            null_terminated_buffer[m_buffer_size] = '\0';
+            char null_terminated_buffer[buffer_size + 1];
+            memcpy(null_terminated_buffer, m_buffer, buffer_size);
+            null_terminated_buffer[buffer_size] = '\0';
             LOG_IF(LogSerial, "!BUFFER!\n", null_terminated_buffer);
             LOG_IF(LogSerial, "!BUFFER!");
         }
-        m_callback({ m_buffer, m_buffer_size });
+        m_callback({ m_buffer, buffer_size });
     }
-    reset();
-    ok_to_receive();
 }
 
 void Hook::reset() {
@@ -44,5 +45,4 @@ void Hook::add_to_buffer(char c) {
         ok_to_receive();
     }
 }
-
 }

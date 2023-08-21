@@ -5,7 +5,7 @@
 namespace lucas::serial {
 void setup();
 
-bool hooks();
+void hooks();
 
-void limpar_serial();
+void clean_serial();
 }

@@ -4,6 +4,8 @@
 #include <lucas/info/info.h>
 #include <lucas/serial/DelimitedHook.h>
 #include <lucas/serial/FirmwareUpdateHook.h>
+#include <src/gcode/gcode.h>
+#include <src/gcode/queue.h>
 #include <src/core/serial.h>
 
 namespace lucas::serial {
@@ -14,58 +16,29 @@ void setup() {
             info::interpret_json(buffer);
         });
 
-    limpar_serial();
+    DelimitedHook::make(
+        '$',
+        [](std::span<char> buffer) {
+            if (buffer.size() == Hook::MAX_BUFFER_SIZE)
+                return;
+
+            // hold my hand and tell me everything will be okay
+            *buffer.end() = '\0';
+            GcodeSuite::process_subcommands_now(buffer.data());
+        });
+
+    clean_serial();
 }
 
-bool hooks() {
-    static DelimitedHook* s_active_hook = nullptr;
-
-    if (FirmwareUpdateHook::the()) {
-        while (SERIAL_IMPL.available())
-            FirmwareUpdateHook::the()->receive_char(SERIAL_IMPL.read());
-
-        return true;
+void hooks() {
+    if (FirmwareUpdateHook::active()) {
+        FirmwareUpdateHook::the()->think();
+    } else {
+        DelimitedHook::think();
     }
-
-    while (SERIAL_IMPL.available()) {
-        auto const peek = SERIAL_IMPL.peek();
-        if (not s_active_hook) {
-            LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
-
-            DelimitedHook::for_each([&](auto& hook) {
-                if (hook.delimiter() == peek) {
-                    SERIAL_IMPL.read();
-
-                    s_active_hook = &hook;
-                    s_active_hook->begin();
-
-                    LOG_IF(LogSerial, "iniciando leitura");
-
-                    return util::Iter::Break;
-                }
-                return util::Iter::Continue;
-            });
-        } else {
-            auto& hook = *s_active_hook;
-            if (hook.delimiter() == peek) {
-                SERIAL_IMPL.read();
-
-                hook.dispatch();
-
-                s_active_hook = nullptr;
-                LOG_IF(LogSerial, "finalizando leitura");
-            } else {
-                hook.add_to_buffer(SERIAL_IMPL.read());
-            }
-        }
-
-        if (not s_active_hook)
-            break;
-    }
-    return s_active_hook;
 }
 
-void limpar_serial() {
+void clean_serial() {
     while (SERIAL_IMPL.available())
         SERIAL_IMPL.read();
 }

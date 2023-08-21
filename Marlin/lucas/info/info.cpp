@@ -77,6 +77,7 @@ void interpret_json(std::span<char> buffer) {
 
         auto const v = obj.value();
         auto const command = CommandFromHost(std::stoi(key.c_str()));
+        LOG_IF(LogInfo, "comando recebido - [", int(command), "]");
         switch (command) {
         case InitializeStations: {
             if (not v.is<size_t>()) {
@@ -179,7 +180,7 @@ void interpret_json(std::span<char> buffer) {
                 break;
             }
 
-            auto apertar_botao = [](size_t index) {
+            auto simulate_button_press = [](size_t index) {
                 auto& station = Station::list().at(index);
                 if (station.status() == Station::Status::Ready) {
                     station.set_status(Station::Status::Free);
@@ -189,10 +190,10 @@ void interpret_json(std::span<char> buffer) {
             };
 
             if (v.is<size_t>()) {
-                apertar_botao(v.as<size_t>());
+                simulate_button_press(v.as<size_t>());
             } else if (v.is<JsonArrayConst>()) {
                 for (auto index : v.as<JsonArrayConst>()) {
-                    apertar_botao(index);
+                    simulate_button_press(index);
                 }
             }
         } break;

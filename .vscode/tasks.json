@@ -42,11 +42,33 @@
 			"problemMatcher": []
 		},
 		{
-			"label": "build + copy",
+			"label": "copy to logger",
+			"type": "shell",
+			"osx": {
+				"command": "cp",
+				"args": [
+					".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
+					"/Users/opalateste/src/build-LucasLogger-Qt_6_4_3_for_macOS-Release/LucasLogger.app/Contents/MacOS"
+				]
+			},
+			"problemMatcher": []
+		},
+		{
+			"label": "build + copy to sd card",
 			"type": "shell",
 			"dependsOn": [
 				"build",
 				"copy to sd card"
+			],
+			"dependsOrder": "sequence",
+			"problemMatcher": []
+		},
+		{
+			"label": "build + copy to logger",
+			"type": "shell",
+			"dependsOn": [
+				"build",
+				"copy to logger"
 			],
 			"dependsOrder": "sequence",
 			"problemMatcher": []

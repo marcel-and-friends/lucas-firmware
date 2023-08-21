@@ -18,8 +18,6 @@ void setup() {
 }
 
 void calibrate(float target_temperature) {
-    core::TemporaryFilter f{ Filters::Interaction };
-
     LOG_IF(LogCalibration, "iniciando rotina de nivelamento");
 
     Spout::the().home();
@@ -45,7 +43,6 @@ void request_calibration() {
     SERIAL_ECHOLN(CALIBRATION_KEYWORD);
 }
 
-static bool s_is_updating_firmware = false;
 static size_t s_new_firmware_size = 0;
 static size_t s_total_bytes_written = 0;
 constexpr auto FIRMWARE_FILE_PATH = "/Robin_nano_V3.bin";
@@ -93,14 +90,12 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
         card.closefile();
         noInterrupts();
         NVIC_SystemReset();
-        while (true) {
-        }
+        __builtin_unreachable();
     }
 }
 
 void prepare_for_firmware_update(size_t size) {
     s_new_firmware_size = size;
-    s_is_updating_firmware = true;
 
     prepare_sd_card(true);
 

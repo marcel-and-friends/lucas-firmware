@@ -31,6 +31,10 @@ float distance_between_each_station() {
     return 160.f / step_ratio_x();
 }
 
+float normalize(float v, float min, float max) {
+    return (v - min) / (max - min);
+}
+
 void wait_for(millis_t tempo, Filters filtros) {
     core::TemporaryFilter f{ filtros };
     auto const comeco = millis();

@@ -18,6 +18,7 @@ enum Options {
     LogCalibration,
     LogStations,
 
+    LogInfo,
     LogSerial,
     LogWifi,
     LogGcode,
@@ -33,7 +34,7 @@ enum Options {
 
 using OptionList = std::array<Option, size_t(Options::Count)>;
 
-constexpr auto FIRMWARE_VERSION = "1.0.0";
+constexpr auto FIRMWARE_VERSION = "0.0.1";
 
 void setup();
 

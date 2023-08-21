@@ -31,7 +31,7 @@ public:
 
     void setup();
 
-    void travel_to_station(Station&, float offset = 0.f) const;
+    void travel_to_station(Station const&, float offset = 0.f) const;
 
     void travel_to_station(size_t, float offset = 0.f) const;
 

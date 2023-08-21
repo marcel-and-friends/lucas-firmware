@@ -7,6 +7,8 @@
 namespace lucas::serial {
 class DelimitedHook : public Hook {
 public:
+    static void think();
+
     static void make(char delimiter, Hook::Callback callback);
 
     static void for_each(util::IterFn<DelimitedHook&> auto&& callback) {
@@ -23,7 +25,7 @@ public:
     void begin() { m_counter = 1; }
 
     // isso aqui poderia ser um std::vector mas nao vale a pena pagar o preço de alocar
-    using List = std::array<DelimitedHook, 1>;
+    using List = std::array<DelimitedHook, 2>;
 
 private:
     char m_delimiter = 0;
