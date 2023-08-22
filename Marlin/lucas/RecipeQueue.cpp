@@ -362,7 +362,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() const {
                     // se é recebido um pedido de recipe enquanto a maquina está no processo de aquecimento
                     // o numero de receitas em execucao aumenta, o bico é desligado e a recipe é executada
                     if (number_of_recipes_executing() != 0) {
-                        Spout::the().stop_pour();
+                        Spout::the().end_pour();
                         return false;
                     }
                     return Spout::the().pouring();

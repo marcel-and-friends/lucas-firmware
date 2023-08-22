@@ -27,7 +27,7 @@ public:
 
     void pour_with_digital_signal(millis_t duration, DigitalSignal digital_signal);
 
-    void stop_pour();
+    void end_pour();
 
     void setup();
 
@@ -72,8 +72,8 @@ public:
         static constexpr auto NUMBER_OF_CELLS = RANGE_FLOW * 10;
         static_assert(FLOW_MAX > FLOW_MIN, "FLOW_MAX deve ser maior que FLOW_MIN");
 
-        using Tabela = std::array<std::array<DigitalSignal, 10>, RANGE_FLOW>;
-        static_assert(sizeof(Tabela) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "tamanho de tabela inesperado");
+        using Table = std::array<std::array<DigitalSignal, 10>, RANGE_FLOW>;
+        static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "tamanho de tabela inesperado");
 
     private:
         FlowController() = default;
@@ -132,7 +132,7 @@ public:
         // 		- a forca digital para o fluxo `10.3` se encontra em `m_digital_signal_table[5][2]`
         // os fluxos encontrados são arrendondados apropriadamente e encaixados na célula mais próxima
         // @ref `decompose_flow` - `valor_na_tabela`
-        Tabela m_digital_signal_table = { {} };
+        Table m_digital_signal_table = { {} };
     };
 
 private:

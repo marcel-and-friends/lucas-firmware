@@ -103,7 +103,7 @@ void L0() {
     }
 
     if (should_pour)
-        Spout::the().stop_pour();
+        Spout::the().end_pour();
 
     Spout::the().finish_movements();
 

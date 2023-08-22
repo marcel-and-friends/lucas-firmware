@@ -8,24 +8,24 @@
 
 namespace lucas {
 enum Pin {
-    AlarmInput = PD11,
-    AlarmOutput = PB2
+    CoelAlarmOutput = PD11,
+    CoelAlarmInput = PB2
 };
 
 static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
-    pinMode(Pin::AlarmOutput, INPUT);
-    s_alarm_triggered = READ(Pin::AlarmOutput);
+    pinMode(Pin::CoelAlarmInput, INPUT);
+    s_alarm_triggered = READ(Pin::CoelAlarmInput);
     attachInterrupt(
-        digitalPinToInterrupt(Pin::AlarmOutput),
+        digitalPinToInterrupt(Pin::CoelAlarmInput),
         +[] {
-            s_alarm_triggered = READ(Pin::AlarmOutput);
+            s_alarm_triggered = READ(Pin::CoelAlarmInput);
         },
         CHANGE);
 
-    pinMode(Pin::AlarmInput, OUTPUT);
-    digitalWrite(Pin::AlarmInput, HIGH);
+    pinMode(Pin::CoelAlarmOutput, OUTPUT);
+    digitalWrite(Pin::CoelAlarmOutput, HIGH);
 
     if (s_alarm_triggered) {
         info::event("infoBoiler", [](JsonObject o) {
@@ -47,17 +47,19 @@ void Boiler::tick() {
         });
 
         auto const old_temperature = thermalManager.degTargetBed();
-        disable_heater();
-        Spout::the().stop_pour();
+        Boiler::the().disable_heater();
+        Spout::the().end_pour();
         RecipeQueue::the().cancel_all_recipes();
 
-        util::idle_while([] { return s_alarm_triggered; }, Filters::All & ~Filters::Spout);
+        // the spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
+        constexpr auto FILTER = Filters::All & ~Filters::Spout;
+        util::idle_while([] { return s_alarm_triggered; }, FILTER);
 
         info::event("infoBoiler", [](JsonObject o) {
             o["alarm"] = false;
         });
 
-        set_target_temperature_and_wait(old_temperature);
+        Boiler::the().set_target_temperature_and_wait(old_temperature);
     }
 }
 

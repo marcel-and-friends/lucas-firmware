@@ -1713,8 +1713,12 @@ void Temperature::manage_heated_bed(const millis_t& ms) {
             // Check if temperature is within the correct band
             if (WITHIN(temp_bed.celsius, BED_MINTEMP, BED_MAXTEMP)) {
         #if ENABLED(BED_LIMIT_SWITCHING)
-                const auto ideal = static_cast<float>(temp_bed.target) - lucas::Boiler::the().hysteresis();
-                temp_bed.soft_pwm_amount = temp_bed.celsius >= ideal ? 0 : MAX_BED_POWER >> 1;
+				if (temp_bed.target) {
+                	const auto ideal = static_cast<float>(temp_bed.target) - lucas::Boiler::the().hysteresis();
+                	temp_bed.soft_pwm_amount = temp_bed.celsius >= ideal ? 0 : MAX_BED_POWER >> 1;
+				} else {
+					temp_bed.soft_pwm_amount = 0;
+				}
         #else // !PIDTEMPBED && !BED_LIMIT_SWITCHING
                 temp_bed.soft_pwm_amount = temp_bed.is_below_target() ? MAX_BED_POWER >> 1 : 0;
         #endif

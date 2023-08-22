@@ -12,16 +12,16 @@
 namespace lucas {
 enum Pin {
     SV = PA5,
-    Enable = PE10,
-    Break = PA6,
-    PulseCounter = PA13
+    EN = PE10,
+    BRK = PA6,
+    FlowSensor = PA13
 };
 
 void Spout::tick() {
     if (m_pouring) {
         m_time_elapsed = millis() - m_tick_pour_began;
         if (m_time_elapsed >= m_pour_duration) {
-            stop_pour();
+            end_pour();
             return;
         }
 
@@ -35,11 +35,11 @@ void Spout::tick() {
             }
         }
     } else {
-        // após stop_pour o motor deixamos o break ativo por um tempinho e depois liberamos
-        constexpr auto TIME_TO_DISABLE_BREAK = 2000; // 2s
+        // após end_pour o motor deixamos o break ativo por um tempinho e depois liberamos
+        constexpr auto TIME_TO_DISABLE_BRK = 2000; // 2s
         if (m_tick_pour_ended) {
-            if (util::elapsed<TIME_TO_DISABLE_BREAK>(m_tick_pour_ended)) {
-                digitalWrite(Pin::Break, HIGH);
+            if (util::elapsed<TIME_TO_DISABLE_BRK>(m_tick_pour_ended)) {
+                digitalWrite(Pin::BRK, HIGH);
                 m_tick_pour_ended = 0;
             }
         }
@@ -72,7 +72,7 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
     LOG_IF(LogPour, "iniciando despejo - [forca = ", m_digital_signal, "]");
 }
 
-void Spout::stop_pour() {
+void Spout::end_pour() {
     send_digital_signal_to_driver(0);
     m_pouring = false;
     m_tick_pour_began = 0;
@@ -80,9 +80,7 @@ void Spout::stop_pour() {
     m_pour_duration = 0;
     m_flow_correction = CorrectFlow::No;
     m_last_flow_correction_tick = 0;
-
     m_pulses_at_end_of_pour = s_pulse_counter;
-
     if (m_total_desired_volume) {
         auto const pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
         auto const poured_volume = pulses * FlowController::ML_PER_PULSE;
@@ -98,15 +96,15 @@ void Spout::setup() {
     analogWriteResolution(12);
 
     pinMode(Pin::SV, OUTPUT);
-    pinMode(Pin::Break, OUTPUT);
-    pinMode(Pin::Enable, OUTPUT);
-    pinMode(Pin::PulseCounter, INPUT);
+    pinMode(Pin::BRK, OUTPUT);
+    pinMode(Pin::EN, OUTPUT);
+    pinMode(Pin::FlowSensor, INPUT);
 
-    digitalWrite(Pin::Enable, LOW);
-    stop_pour();
+    digitalWrite(Pin::EN, LOW);
+    end_pour();
 
     attachInterrupt(
-        digitalPinToInterrupt(Pin::PulseCounter),
+        digitalPinToInterrupt(Pin::FlowSensor),
         +[] {
             ++s_pulse_counter;
         },
@@ -153,11 +151,11 @@ void Spout::finish_movements() const {
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     if (v == FlowController::INVALID_DIGITAL_SIGNAL) {
         LOG_ERR("tentando aplicar forca digital invalido, desligando");
-        stop_pour();
+        end_pour();
         return;
     }
     m_digital_signal = v;
-    digitalWrite(Pin::Break, m_digital_signal > 0 ? HIGH : LOW);
+    digitalWrite(Pin::BRK, m_digital_signal > 0 ? HIGH : LOW);
     analogWrite(Pin::SV, m_digital_signal);
 }
 
@@ -316,7 +314,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         }
     }
 
-    Spout::the().stop_pour();
+    Spout::the().end_pour();
 
     report_progress(1.f);
 

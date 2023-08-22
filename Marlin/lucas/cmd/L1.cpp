@@ -78,7 +78,7 @@ void L1() {
     }
 
     if (should_pour)
-        Spout::the().stop_pour();
+        Spout::the().end_pour();
 
     Spout::the().finish_movements();
 
