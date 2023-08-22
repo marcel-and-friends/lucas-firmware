@@ -21,7 +21,7 @@ void Spout::tick() {
     if (m_pouring) {
         m_time_elapsed = millis() - m_tick_pour_began;
         if (m_time_elapsed >= m_pour_duration) {
-            stop();
+            stop_pour();
             return;
         }
 
@@ -35,10 +35,10 @@ void Spout::tick() {
             }
         }
     } else {
-        // após stop o motor deixamos o break ativo por um tempinho e depois liberamos
+        // após stop_pour o motor deixamos o break ativo por um tempinho e depois liberamos
         constexpr auto TIME_TO_DISABLE_BREAK = 2000; // 2s
         if (m_tick_pour_ended) {
-            if (millis() - m_tick_pour_ended >= TIME_TO_DISABLE_BREAK) {
+            if (util::elapsed<TIME_TO_DISABLE_BREAK>(m_tick_pour_ended)) {
                 digitalWrite(Pin::Break, HIGH);
                 m_tick_pour_ended = 0;
             }
@@ -59,7 +59,7 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume, Co
 
 float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume, CorrectFlow correct) {
     pour_with_desired_volume(duration, desired_volume, correct);
-    util::wait_while([] { return Spout::the().pouring(); }, Filters::Interaction);
+    util::idle_while([] { return Spout::the().pouring(); }, Filters::Interaction);
     return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
 }
 
@@ -72,7 +72,7 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
     LOG_IF(LogPour, "iniciando despejo - [forca = ", m_digital_signal, "]");
 }
 
-void Spout::stop() {
+void Spout::stop_pour() {
     send_digital_signal_to_driver(0);
     m_pouring = false;
     m_tick_pour_began = 0;
@@ -103,7 +103,7 @@ void Spout::setup() {
     pinMode(Pin::PulseCounter, INPUT);
 
     digitalWrite(Pin::Enable, LOW);
-    stop();
+    stop_pour();
 
     attachInterrupt(
         digitalPinToInterrupt(Pin::PulseCounter),
@@ -147,13 +147,13 @@ void Spout::home() const {
 }
 
 void Spout::finish_movements() const {
-    util::wait_while(&Planner::busy, Filters::RecipeQueue);
+    util::idle_while(&Planner::busy, Filters::RecipeQueue);
 }
 
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     if (v == FlowController::INVALID_DIGITAL_SIGNAL) {
         LOG_ERR("tentando aplicar forca digital invalido, desligando");
-        stop();
+        stop_pour();
         return;
     }
     m_digital_signal = v;
@@ -174,7 +174,7 @@ void Spout::fill_hose(float desired_volume) {
     }
 
     LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duration = ", TIME_TO_FILL_HOSE / 1000, "s]");
-    util::wait_for(TIME_TO_FILL_HOSE);
+    util::idle_for(TIME_TO_FILL_HOSE);
 }
 
 void Spout::begin_pour(millis_t duration) {
@@ -228,7 +228,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         LOG_IF(LogCalibration, "aplicando forca = ", digital_signal);
         Spout::the().send_digital_signal_to_driver(digital_signal);
 
-        util::wait_for(TIME_TO_ANALISE_POUR);
+        util::idle_for(TIME_TO_ANALISE_POUR);
 
         auto const pulses = s_pulse_counter - starting_pulses;
         auto const average_flow = (float(pulses) * ML_PER_PULSE) / float(TIME_TO_ANALISE_POUR / 1000);
@@ -316,7 +316,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         }
     }
 
-    Spout::the().stop();
+    Spout::the().stop_pour();
 
     report_progress(1.f);
 

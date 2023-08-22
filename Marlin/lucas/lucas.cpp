@@ -9,8 +9,11 @@
 
 namespace lucas {
 static bool s_initialized = false;
+static bool s_initializing = false;
 
 void setup() {
+    s_initializing = true;
+
     core::TemporaryFilter f{ Filters::Interaction };
 
     cfg::setup();
@@ -23,5 +26,9 @@ void setup() {
 
 bool initialized() {
     return s_initialized;
+}
+
+bool initializing() {
+    return s_initializing;
 }
 }

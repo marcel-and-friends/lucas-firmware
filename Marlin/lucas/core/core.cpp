@@ -4,16 +4,24 @@
 #include <lucas/Boiler.h>
 #include <lucas/serial/FirmwareUpdateHook.h>
 #include <lucas/Station.h>
+#include <lucas/info/info.h>
 #include <lucas/RecipeQueue.h>
 #include <src/sd/cardreader.h>
 #include <src/MarlinCore.h>
+#include <src/module/planner.h>
 
 namespace lucas::core {
+
 constexpr auto CALIBRATION_KEYWORD = "jujuba";
 static bool s_calibrated = false;
 
 void setup() {
+    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y;
+
+    Boiler::the().setup();
     Spout::the().setup();
+
     request_calibration();
 }
 

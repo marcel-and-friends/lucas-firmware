@@ -33,7 +33,7 @@ void L0() {
 
     if (CFG(GigaMode) and duration) {
         L0_LOG("iniciado no modo giga");
-        util::wait_for(duration);
+        util::idle_for(duration);
         L0_LOG("finalizado no modo giga");
         return;
     }
@@ -103,7 +103,7 @@ void L0() {
     }
 
     if (should_pour)
-        Spout::the().stop();
+        Spout::the().stop_pour();
 
     Spout::the().finish_movements();
 

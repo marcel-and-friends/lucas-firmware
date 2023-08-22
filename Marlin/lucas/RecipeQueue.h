@@ -30,11 +30,27 @@ public:
 
     void send_queue_info(JsonArrayConst stations) const;
 
+    void cancel_all_recipes();
+
     bool executing() const { return m_recipe_in_execution != Station::INVALID; }
 
 public:
     void for_each_recipe(util::IterFn<Recipe const&, size_t> auto&& callback, Recipe const* exception = nullptr) const {
-        if (m_queue_size == 0) [[likely]]
+        if (m_queue_size == 0)
+            return;
+
+        for (size_t i = 0; i < m_queue.size(); ++i) {
+            auto& info = m_queue[i];
+            if (not info.active or (exception and exception == &info.recipe))
+                continue;
+
+            if (std::invoke(FWD(callback), info.recipe, i) == util::Iter::Break)
+                return;
+        }
+    };
+
+    void for_each_recipe(util::IterFn<Recipe&, size_t> auto&& callback, Recipe const* exception = nullptr) {
+        if (m_queue_size == 0)
             return;
 
         for (size_t i = 0; i < m_queue.size(); ++i) {
@@ -48,7 +64,7 @@ public:
     };
 
     void for_each_mapped_recipe(util::IterFn<Recipe&> auto&& callback, Recipe const* exception = nullptr) {
-        if (m_queue_size == 0) [[likely]]
+        if (m_queue_size == 0)
             return;
 
         for (auto& info : m_queue) {
@@ -61,7 +77,7 @@ public:
     };
 
     void for_each_mapped_recipe(util::IterFn<Recipe const&> auto&& callback, Recipe const* exception = nullptr) const {
-        if (m_queue_size == 0) [[likely]]
+        if (m_queue_size == 0)
             return;
 
         for (auto& info : m_queue) {
@@ -74,7 +90,7 @@ public:
     };
 
     void for_each_mapped_recipe(util::IterFn<Recipe&, size_t> auto&& callback, Recipe const* exception = nullptr) {
-        if (m_queue_size == 0) [[likely]]
+        if (m_queue_size == 0)
             return;
 
         for (size_t i = 0; i < m_queue.size(); ++i) {
@@ -88,7 +104,7 @@ public:
     };
 
     void for_each_mapped_recipe(util::IterFn<Recipe const&, size_t> auto&& callback, Recipe const* exception = nullptr) const {
-        if (m_queue_size == 0) [[likely]]
+        if (m_queue_size == 0)
             return;
 
         for (size_t i = 0; i < m_queue.size(); ++i) {

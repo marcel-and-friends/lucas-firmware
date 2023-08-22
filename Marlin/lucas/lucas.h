@@ -10,4 +10,6 @@ void setup();
 void calibrate();
 
 bool initialized();
+
+bool initializing();
 }

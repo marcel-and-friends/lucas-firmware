@@ -357,12 +357,12 @@ void RecipeQueue::try_heating_hose_after_inactivity() const {
             Spout::the().travel_to_sewer();
             Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME, Spout::CorrectFlow::Yes);
 
-            util::wait_while(
+            util::idle_while(
                 [this] {
                     // se é recebido um pedido de recipe enquanto a maquina está no processo de aquecimento
                     // o numero de receitas em execucao aumenta, o bico é desligado e a recipe é executada
                     if (number_of_recipes_executing() != 0) {
-                        Spout::the().stop();
+                        Spout::the().stop_pour();
                         return false;
                     }
                     return Spout::the().pouring();
@@ -456,6 +456,13 @@ void RecipeQueue::send_queue_info(JsonArrayConst estacoes) const {
                 }
             }
         });
+}
+
+void RecipeQueue::cancel_all_recipes() {
+    for_each_recipe([this](Recipe& recipe, size_t index) {
+        cancel_station_recipe(index);
+        return util::Iter::Continue;
+    });
 }
 
 void RecipeQueue::add_recipe(size_t index) {

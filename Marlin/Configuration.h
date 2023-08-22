@@ -1324,7 +1324,7 @@
  * E2...]]
  */
 #define DEFAULT_AXIS_STEPS_PER_UNIT \
-    { 44.5, 26.5, 400, 93 }
+    { 22, 12, 400, 93 }
 
 /**
  * Default Max Feed Rate (linear=mm/s, rotational=°/s)

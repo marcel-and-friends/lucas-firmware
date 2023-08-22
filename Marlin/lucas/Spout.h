@@ -27,7 +27,7 @@ public:
 
     void pour_with_digital_signal(millis_t duration, DigitalSignal digital_signal);
 
-    void stop();
+    void stop_pour();
 
     void setup();
 

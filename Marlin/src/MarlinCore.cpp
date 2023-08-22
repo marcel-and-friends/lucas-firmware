@@ -419,9 +419,13 @@ inline void finishSDPrinting() {
 #include <lucas/lucas.h>
 #include <lucas/serial/serial.h>
 inline void manage_inactivity(bool const no_stepper_sleep = false) {
-    if (lucas::initialized())
-        if (not lucas::filtered(lucas::Filters::SerialHooks))
+    if (lucas::initialized()) {
+        if (not lucas::filtered(lucas::Filters::SerialHooks)) {
             lucas::serial::hooks();
+        } else {
+            lucas::serial::clean_serial();
+        }
+    }
 
     const millis_t ms = millis();
 
@@ -938,10 +942,12 @@ void idle(bool no_stepper_sleep /*=false*/) {
     // Update the LVGL interface
     // TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-    if (not lucas::initialized())
-        lucas::setup();
-    else
+    if (not lucas::initialized()) {
+        if (not lucas::initializing())
+            lucas::setup();
+    } else {
         lucas::tick();
+    }
 
 IDLE_DONE:
     TERN_(MARLIN_DEV_MODE, idle_depth--);

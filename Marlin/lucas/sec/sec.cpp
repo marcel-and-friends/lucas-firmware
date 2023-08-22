@@ -11,6 +11,6 @@ void raise(Error error) {
 
     });
 
-    util::wait_until([] { return false; });
+    util::idle_until([] { return false; });
 }
 }

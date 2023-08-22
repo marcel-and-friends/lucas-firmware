@@ -25,7 +25,7 @@ void L1() {
 
     if (CFG(GigaMode) and duration) {
         LOG_IF(LogLn, "iniciando L1 em modo giga");
-        util::wait_for(duration);
+        util::idle_for(duration);
         LOG_IF(LogLn, "L1 finalizado");
         return;
     }
@@ -78,7 +78,7 @@ void L1() {
     }
 
     if (should_pour)
-        Spout::the().stop();
+        Spout::the().stop_pour();
 
     Spout::the().finish_movements();
 

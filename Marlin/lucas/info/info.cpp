@@ -10,14 +10,14 @@
 
 namespace lucas::info {
 void setup() {
-    if (not CFG(GigaMode)) {
-        Report::make(
-            "infoBoiler",
-            5'000,
-            [](JsonObject obj) {
-                obj["tempAtual"] = thermalManager.degBed();
-            });
-    }
+    /* maybe this makes a comeback sometime
+    Report::make(
+        "infoBoiler",
+        5'000,
+        [](JsonObject obj) {
+            obj["tempAtual"] = thermalManager.degBed();
+        });
+    */
 }
 
 void tick() {
@@ -88,13 +88,13 @@ void interpret_json(std::span<char> buffer) {
             Station::initialize(v.as<size_t>());
         } break;
         case SetBoilerTemperature: {
-            if (not v.is<float>()) {
+            if (not v.is<int>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
 
             if (not CFG(GigaMode))
-                core::calibrate(v.as<float>());
+                core::calibrate(v.as<int>());
         } break;
         case SetAvailableStations: {
             if (not v.is<JsonArrayConst>()) {

@@ -35,8 +35,8 @@ char const* ff(char const* str, float valor);
 bool is_button_held(int pin);
 
 constexpr float MS_PER_MM = 12.41f;
-constexpr float DEFAULT_STEPS_PER_MM_X = 44.5f;
-constexpr float DEFAULT_STEPS_PER_MM_Y = 26.5f;
+constexpr float DEFAULT_STEPS_PER_MM_X = 22.f;
+constexpr float DEFAULT_STEPS_PER_MM_Y = 12.f;
 
 float step_ratio_x();
 float step_ratio_y();
@@ -46,16 +46,21 @@ float distance_between_each_station();
 
 float normalize(float v, float min, float max);
 
-void wait_for(millis_t tempo, Filters filtros = Filters::None);
+void idle_for(millis_t tempo, Filters filtros = Filters::None);
 
-inline void wait_while(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
+template<millis_t INTERVAL>
+bool elapsed(millis_t last) {
+    return millis() - last >= INTERVAL;
+}
+
+inline void idle_while(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
     core::TemporaryFilter f{ filtros };
     while (std::invoke(FWD(callback)))
         idle();
 }
 
-inline void wait_until(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
-    wait_while(std::not_fn(FWD(callback)), filtros);
+inline void idle_until(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
+    idle_while(std::not_fn(FWD(callback)), filtros);
 }
 
 #define LOG SERIAL_ECHOLNPGM

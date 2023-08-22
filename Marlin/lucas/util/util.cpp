@@ -35,7 +35,7 @@ float normalize(float v, float min, float max) {
     return (v - min) / (max - min);
 }
 
-void wait_for(millis_t tempo, Filters filtros) {
+void idle_for(millis_t tempo, Filters filtros) {
     core::TemporaryFilter f{ filtros };
     auto const comeco = millis();
     while (millis() - comeco < tempo)

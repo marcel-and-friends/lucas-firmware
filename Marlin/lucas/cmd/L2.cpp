@@ -12,7 +12,7 @@ void L2() {
         Spout::the().pour_with_desired_volume(parser.ulongval('T'), parser.floatval('G'), Spout::CorrectFlow::Yes);
 
     bool const associated_with_station = RecipeQueue::the().executing();
-    util::wait_while([&] {
+    util::idle_while([&] {
         // recipe foi cancelada por meios externos
         if (associated_with_station and not RecipeQueue::the().executing())
             return false;

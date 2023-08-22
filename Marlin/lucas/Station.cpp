@@ -118,7 +118,7 @@ void Station::update_leds() {
         return station.waiting_user_input() and not station.blocked();
     };
 
-    if (millis() - s_last_update_tick >= BLINKING_INTERVAL) {
+    if (util::elapsed<BLINKING_INTERVAL>(s_last_update_tick)) {
         s_last_led_state = not s_last_led_state;
         s_last_update_tick = millis();
         for_each_if(valid, [](Station const& station) {

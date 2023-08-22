@@ -5,6 +5,8 @@
 namespace lucas::core {
 void setup();
 
+void tick();
+
 void calibrate(float target_temperature);
 
 bool calibrated();
