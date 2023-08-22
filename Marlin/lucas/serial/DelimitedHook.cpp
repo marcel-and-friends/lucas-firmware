@@ -7,7 +7,7 @@ DelimitedHook::List DelimitedHook::s_hooks = {};
 void DelimitedHook::think() {
     static DelimitedHook* s_active_hook = nullptr;
     while (SERIAL_IMPL.available()) {
-        auto const peek = SERIAL_IMPL.peek();
+        const auto peek = SERIAL_IMPL.peek();
         if (not s_active_hook) {
             LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
 

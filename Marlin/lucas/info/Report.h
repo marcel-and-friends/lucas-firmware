@@ -10,13 +10,13 @@ struct Report {
     using Callback = void (*)(JsonObject);
     using CallbackCondicao = bool (*)();
 
-    char const* nome = "";
+    const char* nome = "";
     millis_t interval = 0;
     millis_t last_reported_tick = 0;
     Callback callback = nullptr;
     CallbackCondicao condition = nullptr;
 
-    static void make(char const* nome, millis_t interval, Callback, CallbackCondicao condition = nullptr);
+    static void make(const char* nome, millis_t interval, Callback, CallbackCondicao condition = nullptr);
 
     static void for_each(util::IterFn<Report&> auto&& callback) {
         if (not s_num_reports)

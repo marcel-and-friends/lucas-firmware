@@ -10,31 +10,31 @@
 namespace lucas {
 void tick() {
     { // boiler
-        if (not filtered(Filters::Boiler))
+        if (not filtered(TickFilter::Boiler))
             Boiler::the().tick();
     }
 
     { // queue
-        if (not filtered(Filters::RecipeQueue))
+        if (not filtered(TickFilter::RecipeQueue))
             RecipeQueue::the().tick();
 
         RecipeQueue::the().remove_finalized_recipes();
     }
 
     { // stations
-        if (not filtered(Filters::Station))
+        if (not filtered(TickFilter::Station))
             Station::tick();
 
         Station::update_leds();
     }
 
     { // spout
-        if (not filtered(Filters::Spout))
+        if (not filtered(TickFilter::Spout))
             Spout::the().tick();
     }
 
     { // info
-        if (not filtered(Filters::Info))
+        if (not filtered(TickFilter::Info))
             info::tick();
     }
 }

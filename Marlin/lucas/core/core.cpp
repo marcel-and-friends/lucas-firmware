@@ -80,7 +80,7 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
         return;
     }
 
-    auto const bytes_to_write = static_cast<int16_t>(buffer.size());
+    const auto bytes_to_write = static_cast<int16_t>(buffer.size());
     auto bytes_written = card.write(buffer.data(), buffer.size());
     auto attempts = 0;
     while (bytes_written == -1 and attempts++ < 5) {

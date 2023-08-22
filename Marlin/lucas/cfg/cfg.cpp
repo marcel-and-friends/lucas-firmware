@@ -23,7 +23,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = false},
 });
 
-consteval bool doesnt_have_duplicated_ids(OptionList const& opcoes) {
+consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
     for (size_t i = 1; i < opcoes.size(); ++i)
         for (size_t j = 0; j < i; ++j)
             if (opcoes[i].id != Option::ID_DEFAULT and opcoes[j].id != Option::ID_DEFAULT)
@@ -39,15 +39,15 @@ static_assert(doesnt_have_duplicated_ids(DEFAULT_OPTIONS), "opcoes duplicadas ir
 // vai ser propriamente inicializado na 'setup()'
 static OptionList s_options = DEFAULT_OPTIONS;
 
-constexpr auto CFG_FLASH_ADDRESS_START = sizeof(Spout::FlowController::Tabela);
+constexpr auto CFG_FLASH_ADDRESS_START = sizeof(Spout::FlowController::Table);
 constexpr auto OPTION_SIZE = sizeof(char) + sizeof(bool);
 
 static void fetch_options_from_flash();
 
 void setup() {
     auto reader = mem::FlashReader(CFG_FLASH_ADDRESS_START);
-    auto const primeiro_id = reader.read<char>(CFG_FLASH_ADDRESS_START);
-    if (primeiro_id == Option::ID_DEFAULT) {
+    const auto first_saved_id = reader.read<char>(CFG_FLASH_ADDRESS_START);
+    if (first_saved_id != DEFAULT_OPTIONS[0].id) {
         LOG("cfg ainda nao foi salva na flash, usando valores padroes");
         s_options = DEFAULT_OPTIONS;
         save_options_to_flash();
@@ -59,8 +59,8 @@ void setup() {
 void save_options_to_flash() {
     auto writer = mem::FlashWriter(CFG_FLASH_ADDRESS_START);
     for (size_t i = 0; i < s_options.size(); ++i) {
-        auto const& option = s_options[i];
-        auto const offset = i * OPTION_SIZE;
+        const auto& option = s_options[i];
+        const auto offset = i * OPTION_SIZE;
         writer.write<char>(offset, option.id);
         writer.write<bool>(offset + sizeof(char), option.active);
     }
@@ -72,7 +72,7 @@ static void fetch_options_from_flash() {
     auto reader = mem::FlashReader(CFG_FLASH_ADDRESS_START);
     for (size_t i = 0; i < s_options.size(); ++i) {
         auto& option = s_options[i];
-        auto const offset = i * OPTION_SIZE;
+        const auto offset = i * OPTION_SIZE;
         option.id = reader.read<char>(offset);
         option.active = reader.read<bool>(offset + sizeof(char));
     }
@@ -84,7 +84,7 @@ void reset_options() {
     s_options = DEFAULT_OPTIONS;
     auto writer = mem::FlashWriter(CFG_FLASH_ADDRESS_START);
     for (size_t i = 0; i < s_options.size(); ++i) {
-        auto const offset = i * OPTION_SIZE;
+        const auto offset = i * OPTION_SIZE;
         writer.write<char>(offset, Option::ID_DEFAULT);
         writer.write<bool>(offset + sizeof(char), false);
     }

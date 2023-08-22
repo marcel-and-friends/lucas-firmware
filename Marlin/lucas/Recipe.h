@@ -34,7 +34,7 @@ public:
             return starting_tick + duration;
         }
 
-        bool collides_with(Step const& other) const;
+        bool collides_with(const Step& other) const;
     };
 
 public:
@@ -42,9 +42,9 @@ public:
 
     void build_from_json(JsonObjectConst);
 
-    Recipe(Recipe const&) = delete;
+    Recipe(const Recipe&) = delete;
     Recipe(Recipe&&) = delete;
-    Recipe& operator=(Recipe const&) = delete;
+    Recipe& operator=(const Recipe&) = delete;
     Recipe& operator=(Recipe&&) = delete;
 
 public:
@@ -79,7 +79,7 @@ public:
                 return;
     }
 
-    void for_each_remaining_step(util::IterFn<Step const&> auto&& callback) const {
+    void for_each_remaining_step(util::IterFn<const Step&> auto&& callback) const {
         if (m_has_scalding_step and not scalded()) {
             std::invoke(FWD(callback), m_steps.front());
             return;
@@ -90,7 +90,7 @@ public:
                 return;
     }
 
-    void for_each_remaining_step(util::IterFn<Step const&, size_t> auto&& callback) const {
+    void for_each_remaining_step(util::IterFn<const Step&, size_t> auto&& callback) const {
         if (m_has_scalding_step and not scalded()) {
             std::invoke(FWD(callback), m_steps.front());
             return;
@@ -103,7 +103,7 @@ public:
 
 public:
     bool has_scalding_step() const { return m_has_scalding_step; }
-    Step const& scalding_step() const { return m_steps.front(); }
+    const Step& scalding_step() const { return m_steps.front(); }
     Step& scalding_step() { return m_steps.front(); }
 
     millis_t finalization_duration() const { return m_finalization_duration; }
@@ -115,18 +115,18 @@ public:
 
     bool scalded() const { return m_has_scalding_step and m_current_step > 0; }
 
-    Step const& first_attack() const { return m_steps[m_has_scalding_step]; }
+    const Step& first_attack() const { return m_steps[m_has_scalding_step]; }
 
-    Step const& current_step() const { return m_steps[m_current_step]; }
+    const Step& current_step() const { return m_steps[m_current_step]; }
     Step& current_step() { return m_steps[m_current_step]; }
 
     size_t current_step_index() const { return m_current_step; }
 
     bool finished() const { return m_current_step == m_steps_size; }
 
-    Step const& first_step() const { return m_steps.front(); }
+    const Step& first_step() const { return m_steps.front(); }
 
-    Step const& step(size_t index) const { return m_steps[index]; }
+    const Step& step(size_t index) const { return m_steps[index]; }
 
 private:
     void reset();

@@ -20,9 +20,9 @@ void L4() {
             if (not parser.seenval('P'))
                 return;
 
-            auto const pin = parser.value_int();
-            auto const mode = parser.seenval('T') ? parser.value_int() : OUTPUT;
-            auto const value = parser.seenval('V') ? parser.value_long() : -1;
+            const auto pin = parser.value_int();
+            const auto mode = parser.seenval('T') ? parser.value_int() : OUTPUT;
+            const auto value = parser.seenval('V') ? parser.value_long() : -1;
 
             pinMode(pin, mode);
             if (value != -1)
@@ -34,7 +34,7 @@ void L4() {
             if (not parser.seenval('P'))
                 return;
 
-            auto const pin = parser.value_int();
+            const auto pin = parser.value_int();
             LOG("pino #", pin, " valor = ", READ(pin));
         } break;
         }

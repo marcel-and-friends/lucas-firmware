@@ -14,7 +14,7 @@ static bool s_initializing = false;
 void setup() {
     s_initializing = true;
 
-    core::TemporaryFilter f{ Filters::Interaction };
+    core::TemporaryFilter f{ TickFilter::Interaction };
 
     cfg::setup();
     serial::setup();

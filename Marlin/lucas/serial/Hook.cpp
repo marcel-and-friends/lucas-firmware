@@ -10,7 +10,7 @@ bool Hook::is_valid() const {
 
 void Hook::dispatch() {
     ok_to_receive();
-    auto const buffer_size = m_buffer_size;
+    const auto buffer_size = m_buffer_size;
     reset();
     if (m_callback and buffer_size) {
         if (CFG(LogSerial)) {

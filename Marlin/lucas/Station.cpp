@@ -114,14 +114,14 @@ void Station::update_leds() {
     static bool s_last_led_state = true;
     static millis_t s_last_update_tick = 0;
 
-    auto const valid = [](Station const& station) {
+    const auto valid = [](const Station& station) {
         return station.waiting_user_input() and not station.blocked();
     };
 
     if (util::elapsed<BLINKING_INTERVAL>(s_last_update_tick)) {
         s_last_led_state = not s_last_led_state;
         s_last_update_tick = millis();
-        for_each_if(valid, [](Station const& station) {
+        for_each_if(valid, [](const Station& station) {
             // aguardando input do usuário - led piscando
             WRITE(station.led(), s_last_led_state);
             return util::Iter::Continue;

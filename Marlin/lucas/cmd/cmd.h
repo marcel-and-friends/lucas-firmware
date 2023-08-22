@@ -6,17 +6,17 @@
 #include <src/gcode/parser.h>
 
 namespace lucas::cmd {
-void execute(char const* gcode);
+void execute(const char* gcode);
 
 inline void execute_multiple(auto... cmds) {
     (execute(cmds), ...);
 }
 
-inline void execute_fmt(char const* str, auto... args) {
+inline void execute_fmt(const char* str, auto... args) {
     execute(util::fmt(str, args...));
 }
 
-inline void execute_ff(char const* str, float value) {
+inline void execute_ff(const char* str, float value) {
     execute(util::ff(str, value));
 }
 

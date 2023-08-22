@@ -23,7 +23,7 @@ void RecipeQueue::tick() {
 
         auto& recipe = m_queue[m_recipe_in_execution].recipe;
         auto& station = Station::list().at(m_recipe_in_execution);
-        auto const starting_tick = recipe.current_step().starting_tick;
+        const auto starting_tick = recipe.current_step().starting_tick;
         if (starting_tick == millis()) {
             execute_current_step(recipe, station);
         } else if (starting_tick < millis()) {
@@ -84,7 +84,7 @@ void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, size_t index) {
         return;
     }
 
-    auto const status = recipe.has_scalding_step() ? Station::Status::ConfirmingScald : Station::Status::ConfirmingAttacks;
+    const auto status = recipe.has_scalding_step() ? Station::Status::ConfirmingScald : Station::Status::ConfirmingAttacks;
     station.set_status(status, recipe.id());
     add_recipe(index);
     LOG_IF(LogQueue, "recipe agendada, aguardando confirmacao - [station = ", index, "]");
@@ -110,7 +110,7 @@ void RecipeQueue::map_station_recipe(size_t index) {
 
     // por conta do if acima nesse momento a recipe só pode estar em um de dois estados - 'ConfirmingScald' e 'ConfirmingAttacks'
     // os próximo estados após esses são 'Scalding' e 'Attacking', respectivamente
-    auto const next_status = int(station.status()) + 1;
+    const auto next_status = int(station.status()) + 1;
     station.set_status(Station::Status(next_status), recipe.id());
     map_recipe(recipe, station);
 }
@@ -121,7 +121,7 @@ void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras recipe
     // esse processo é feito de forma bruta, homem das cavernas, mas como o número de receitas/passos é pequeno, não chega a ser um problema
     for_each_mapped_recipe(
-        [&](Recipe const& mapped_recipe) {
+        [&](const Recipe& mapped_recipe) {
             mapped_recipe.for_each_remaining_step([&](const Recipe::Step& passo) {
                 // temos que sempre levar a margem de viagem em consideração quando procuramos pelo tick magico
                 for (auto interval_offset = util::TRAVEL_MARGIN; interval_offset <= passo.interval - util::TRAVEL_MARGIN; interval_offset += util::TRAVEL_MARGIN) {
@@ -165,7 +165,7 @@ static bool valid_timer(millis_t timer, millis_t tick = millis()) {
 void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     LOG_IF(LogQueue, "executando passo - [station = ", station.index(), " | passo = ", recipe.current_step_index(), " | tick = ", millis(), "]");
 
-    auto const& current_step = recipe.current_step();
+    const auto& current_step = recipe.current_step();
     const size_t current_step_index = recipe.current_step_index();
     auto dispatch_step_event = [](size_t station, size_t step, millis_t first_step_tick, bool ending) {
         info::event(
@@ -189,7 +189,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
         m_recipe_in_execution = station.index();
 
         {
-            core::TemporaryFilter f{ Filters::RecipeQueue }; // nada de tick()!
+            core::TemporaryFilter f{ TickFilter::RecipeQueue }; // nada de tick()!
             recipe.execute_current_step();
         }
 
@@ -204,9 +204,9 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
         dispatch_step_event(station.index(), current_step_index, recipe.first_attack().starting_tick, true);
     }
 
-    auto const ideal_duration = current_step.duration;
-    auto const actual_duration = millis() - current_step.starting_tick;
-    auto const error = (ideal_duration > actual_duration) ? (ideal_duration - actual_duration) : (actual_duration - ideal_duration);
+    const auto ideal_duration = current_step.duration;
+    const auto actual_duration = millis() - current_step.starting_tick;
+    const auto error = (ideal_duration > actual_duration) ? (ideal_duration - actual_duration) : (actual_duration - ideal_duration);
     LOG_IF(LogQueue, "passo acabou - [duracao = ", actual_duration, "ms | error = ", error, "ms]");
 
     s_tick_beginning_inactivity = millis();
@@ -231,9 +231,9 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
 void RecipeQueue::compensate_for_missed_step(Recipe& recipe, Station& station) {
     Spout::the().travel_to_station(station);
 
-    auto const starting_tick = recipe.current_step().starting_tick;
+    const auto starting_tick = recipe.current_step().starting_tick;
     // esse delta já leva em consideração o tempo de viagem para a estacão em atraso
-    auto const delta = millis() - starting_tick;
+    const auto delta = millis() - starting_tick;
 
     LOG_IF(LogQueue, "perdeu um passo, compensando - [station = ", station.index(), " | starting_tick = ", starting_tick, " | delta =  ", delta, "ms]");
 
@@ -275,9 +275,9 @@ void RecipeQueue::remap_recipes_after_changes_in_queue() {
 
 // esse algoritmo é basicamente um hit-test 2d de cada passo da recipe nova com cada passo das receitas já mapeadas
 // é verificado se qualquer um dos passos da recipe nova colide com qualquer um dos passos de qualquer uma das receitas já mapeada
-bool RecipeQueue::collides_with_other_recipes(Recipe const& new_recipe) const {
+bool RecipeQueue::collides_with_other_recipes(const Recipe& new_recipe) const {
     bool colides = false;
-    new_recipe.for_each_remaining_step([&](Recipe::Step const& new_step) {
+    new_recipe.for_each_remaining_step([&](const Recipe::Step& new_step) {
         for_each_mapped_recipe(
             [&](const Recipe& mapped_recipe) {
                 mapped_recipe.for_each_remaining_step([&](const Recipe::Step& mapped_step) {
@@ -325,7 +325,7 @@ void RecipeQueue::remove_finalized_recipes() {
     if (m_queue_size == 0) [[likely]]
         return;
 
-    for_each_recipe([this](Recipe const& recipe, size_t index) {
+    for_each_recipe([this](const Recipe& recipe, size_t index) {
         auto& station = Station::list().at(index);
         if (station.status() == Station::Status::Finalizing) [[unlikely]] {
             const auto delta = millis() - recipe.start_finalization_duration();
@@ -349,9 +349,9 @@ void RecipeQueue::try_heating_hose_after_inactivity() const {
     constexpr float POUR_VOLUME = 10.f * (POUR_DURATION / 1000); // 10 g/s
 
     if (s_tick_beginning_inactivity and millis() > s_tick_beginning_inactivity) {
-        auto const delta = millis() - s_tick_beginning_inactivity;
+        const auto delta = millis() - s_tick_beginning_inactivity;
         if (delta >= MAX_INACTIVITY_DURATION) {
-            auto const delta_in_minutes = delta / 60000;
+            const auto delta_in_minutes = delta / 60000;
             LOG_IF(LogQueue, "aquecendo mangueira apos ", delta_in_minutes, "min de inatividade");
 
             Spout::the().travel_to_sewer();
@@ -367,7 +367,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() const {
                     }
                     return Spout::the().pouring();
                 },
-                Filters::RecipeQueue);
+                TickFilter::RecipeQueue);
 
             LOG_IF(LogQueue, "aquecimento finalizado");
             s_tick_beginning_inactivity = millis();
@@ -385,7 +385,7 @@ void RecipeQueue::recipe_was_cancelled(size_t index) {
 // consequentemente, não são consideradas como "em execucao" por mais que estejão na fila
 size_t RecipeQueue::number_of_recipes_executing() const {
     size_t num = 0;
-    for_each_mapped_recipe([&num](auto const&) {
+    for_each_mapped_recipe([&num](const auto&) {
         ++num;
         return util::Iter::Continue;
     });

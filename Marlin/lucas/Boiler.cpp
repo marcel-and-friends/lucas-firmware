@@ -46,13 +46,13 @@ void Boiler::tick() {
             o["alarm"] = true;
         });
 
-        auto const old_temperature = thermalManager.degTargetBed();
+        const auto old_temperature = thermalManager.degTargetBed();
         Boiler::the().disable_heater();
         Spout::the().end_pour();
         RecipeQueue::the().cancel_all_recipes();
 
-        // the spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
-        constexpr auto FILTER = Filters::All & ~Filters::Spout;
+        // spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
+        constexpr auto FILTER = TickFilter::All & ~TickFilter::Spout;
         util::idle_while([] { return s_alarm_triggered; }, FILTER);
 
         info::event("infoBoiler", [](JsonObject o) {
@@ -65,27 +65,42 @@ void Boiler::tick() {
 
 void Boiler::set_target_temperature_and_wait(int target) {
     set_target_temperature(target);
-    auto const temp_boiler = thermalManager.degBed();
-    if (temp_boiler >= target)
+    const auto initial_boiler_temp = thermalManager.degBed();
+    if (initial_boiler_temp >= target)
         return;
 
-    util::idle_while([&] {
+    util::idle_until([&] {
         constexpr auto LOG_INTERVAL = 5000;
-        static millis_t s_last_log_tick = 0;
+        static auto s_last_log_tick = 0;
 
-        auto const current_temp = thermalManager.degBed();
+        const auto current_temp = thermalManager.degBed();
         if (util::elapsed<LOG_INTERVAL>(s_last_log_tick)) {
-            auto const progresso = util::normalize(current_temp, temp_boiler, float(target));
-            info::event("infoBoiler", [progresso](JsonObject o) {
-                o["progressoTemp"] = progresso;
+            info::event("infoBoiler", [current_temp](JsonObject o) {
+                o["tempAtual"] = current_temp;
             });
             s_last_log_tick = millis();
         }
-        return std::abs(target - current_temp) >= m_hysteresis;
+
+        const auto in_acceptable_range = std::abs(target - current_temp) >= m_hysteresis;
+        constexpr auto TIME_TO_STABILIZE = 1000;
+        static auto s_tick_temperature_started_to_stabilize = 0;
+        if (s_tick_temperature_started_to_stabilize == 0) {
+            if (in_acceptable_range)
+                s_tick_temperature_started_to_stabilize = millis();
+        } else {
+            if (in_acceptable_range) {
+                if (util::elapsed<TIME_TO_STABILIZE>(s_tick_temperature_started_to_stabilize))
+                    // boiler is in the acceptable hysteresis range for long enough, stop idling
+                    return true;
+            } else {
+                s_tick_temperature_started_to_stabilize = 0;
+            }
+        }
+        return false;
     });
 
-    info::event("infoBoiler", [](JsonObject o) {
-        o["progressoTemp"] = 1.f;
+    info::event("infoBoiler", [target](JsonObject o) {
+        o["tempAtual"] = target;
     });
 
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
@@ -96,7 +111,7 @@ void Boiler::set_target_temperature_and_wait(int target) {
 void Boiler::set_target_temperature(int target) {
     thermalManager.setTargetBed(target);
 
-    auto const delta = std::abs(target - thermalManager.degBed());
+    const auto delta = std::abs(target - thermalManager.degBed());
     m_hysteresis = delta < INITIAL_HYSTERESIS ? FINAL_HYSTERESIS : INITIAL_HYSTERESIS;
 
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", target, " | hysteresis = ", m_hysteresis, "]");

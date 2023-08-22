@@ -12,22 +12,22 @@
 namespace lucas::cmd {
 void L0() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    auto const total_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    const auto total_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
     if (total_diameter == 0.f)
         return;
 
-    auto const radius = total_diameter / 2.f;
-    auto const number_of_circles = parser.intval('N');
+    const auto radius = total_diameter / 2.f;
+    const auto number_of_circles = parser.intval('N');
     if (number_of_circles == 0)
         return;
 
     // cada circulo é composto por 2 arcos
-    auto const number_of_arcs = number_of_circles * 2;
-    auto const offset_per_arc = radius / static_cast<float>(number_of_circles);
-    auto const repetitions = parser.intval('R', 0);
-    auto const series = repetitions + 1;
-    auto const start_on_border = parser.seen_test('B');
-    auto const duration = parser.ulongval('T');
+    const auto number_of_arcs = number_of_circles * 2;
+    const auto offset_per_arc = radius / static_cast<float>(number_of_circles);
+    const auto repetitions = parser.intval('R', 0);
+    const auto series = repetitions + 1;
+    const auto start_on_border = parser.seen_test('B');
+    const auto duration = parser.ulongval('T');
 
     L0_LOG("!opcoes!\ndiametro = ", total_diameter, "\nraio = ", radius, "\nnum_circulos = ", number_of_circles, "\nnum_arcos = ", number_of_arcs, "\noffset_por_arco = ", offset_per_arc, "\nrepeticoes = ", repetitions, "\nseries = ", series, "\ncomecar_na_borda = ", start_on_border, "\nduracao = ", duration);
 
@@ -38,13 +38,13 @@ void L0() {
         return;
     }
 
-    auto const volume_of_water = parser.floatval('G');
-    auto const should_pour = duration and volume_of_water;
+    const auto volume_of_water = parser.floatval('G');
+    const auto should_pour = duration and volume_of_water;
 
-    bool const associated_with_station = RecipeQueue::the().executing();
+    const bool associated_with_station = RecipeQueue::the().executing();
     bool dip = false;
 
-    auto const initial_position = planner.get_axis_positions_mm();
+    const auto initial_position = planner.get_axis_positions_mm();
     auto final_position = initial_position;
     L0_LOG("initial_position.x: ", initial_position.x);
 
@@ -52,9 +52,9 @@ void L0() {
     diameters.reserve(number_of_arcs * series);
 
     for (auto serie = 0; serie < series; serie++) {
-        bool const out_to_in = serie % 2 != start_on_border;
+        const bool out_to_in = serie % 2 != start_on_border;
         for (auto arco = 0; arco < number_of_arcs; arco++) {
-            auto const arc_offset = offset_per_arc * arco;
+            const auto arc_offset = offset_per_arc * arco;
             float arc_diameter = out_to_in ? std::abs(arc_offset - total_diameter) : arc_offset + offset_per_arc;
             if (arco % 2)
                 arc_diameter = -arc_diameter;
@@ -72,10 +72,10 @@ void L0() {
     }
 
     float total_to_move = 0.f;
-    for (auto const diameter : diameters)
+    for (const auto diameter : diameters)
         total_to_move += (2.f * std::numbers::pi_v<float> * std::abs(diameter / 2.f)) / 2.f;
 
-    auto const steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
+    const auto steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
@@ -85,7 +85,7 @@ void L0() {
     if (should_pour)
         Spout::the().pour_with_desired_volume(duration, volume_of_water, Spout::CorrectFlow::Yes);
 
-    for (auto const diameter : diameters) {
+    for (const auto diameter : diameters) {
         char buffer_diameter[16] = {};
         dtostrf(diameter / steps_por_mm_ratio, 0, 2, buffer_diameter);
 

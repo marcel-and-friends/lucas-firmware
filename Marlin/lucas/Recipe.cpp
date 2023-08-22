@@ -43,7 +43,7 @@ JsonObjectConst Recipe::standard() {
 
     static bool once = false;
     if (not once) {
-        auto const err = deserializeJson(doc, json, sizeof(json));
+        const auto err = deserializeJson(doc, json, sizeof(json));
         if (err) {
             LOG_ERR("DESSERIALIZACAO DA RECEITA PADRAO FALHOU - [", err.c_str(), "]");
             kill();
@@ -54,7 +54,7 @@ JsonObjectConst Recipe::standard() {
     return doc.as<JsonObjectConst>();
 }
 
-bool Recipe::Step::collides_with(Step const& other) const {
+bool Recipe::Step::collides_with(const Step& other) const {
     // dois ataques colidem se:
 
     // 1. um comeca dentro do outro
@@ -88,7 +88,7 @@ void Recipe::build_from_json(JsonObjectConst json) {
         auto& scalding_step = m_steps[0];
 
         scalding_step.duration = scalding_obj["duracao"].as<millis_t>();
-        strcpy(scalding_step.gcode, scalding_obj["gcode"].as<char const*>());
+        strcpy(scalding_step.gcode, scalding_obj["gcode"].as<const char*>());
 
         m_has_scalding_step = true;
     }
@@ -100,7 +100,7 @@ void Recipe::build_from_json(JsonObjectConst json) {
 
         attack.duration = attack_obj["duracao"].as<millis_t>();
         attack.interval = attack_obj.containsKey("intervalo") ? attack_obj["intervalo"].as<millis_t>() : 0;
-        strcpy(attack.gcode, attack_obj["gcode"].as<char const*>());
+        strcpy(attack.gcode, attack_obj["gcode"].as<const char*>());
     }
 
     m_steps_size = attacks_obj.size() + m_has_scalding_step;

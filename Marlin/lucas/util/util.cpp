@@ -5,7 +5,7 @@
 
 namespace lucas::util {
 // isso aqui é uma desgraça mas é o que tem pra hoje
-char const* ff(char const* str, float valor) {
+const char* ff(const char* str, float valor) {
     char buffer[16] = {};
     dtostrf(valor, 0, 2, buffer);
     return fmt(str, buffer);
@@ -35,9 +35,9 @@ float normalize(float v, float min, float max) {
     return (v - min) / (max - min);
 }
 
-void idle_for(millis_t tempo, Filters filtros) {
+void idle_for(millis_t tempo, TickFilter filtros) {
     core::TemporaryFilter f{ filtros };
-    auto const comeco = millis();
+    const auto comeco = millis();
     while (millis() - comeco < tempo)
         idle();
 }

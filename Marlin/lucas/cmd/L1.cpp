@@ -10,18 +10,18 @@
 namespace lucas::cmd {
 void L1() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    auto const circle_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    const auto circle_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
     if (circle_diameter == 0.f)
         return;
 
-    auto const circle_radius = circle_diameter / 2.f;
-    auto const number_of_repetitions = parser.intval('N');
+    const auto circle_radius = circle_diameter / 2.f;
+    const auto number_of_repetitions = parser.intval('N');
     if (number_of_repetitions == 0)
         return;
 
     // cada circulo é composto por 2 arcos
-    auto const number_of_arcs = number_of_repetitions * 2;
-    auto const duration = parser.ulongval('T');
+    const auto number_of_arcs = number_of_repetitions * 2;
+    const auto duration = parser.ulongval('T');
 
     if (CFG(GigaMode) and duration) {
         LOG_IF(LogLn, "iniciando L1 em modo giga");
@@ -30,19 +30,19 @@ void L1() {
         return;
     }
 
-    auto const volume_of_water = parser.floatval('G');
-    auto const should_pour = duration and volume_of_water;
-    bool const associated_with_station = RecipeQueue::the().executing();
+    const auto volume_of_water = parser.floatval('G');
+    const auto should_pour = duration and volume_of_water;
+    const bool associated_with_station = RecipeQueue::the().executing();
     bool dip = false;
 
-    auto const initial_position = planner.get_axis_positions_mm();
+    const auto initial_position = planner.get_axis_positions_mm();
     auto final_position = initial_position;
 
     execute_ff("G0 F10000 X%s", -circle_radius);
     Spout::the().finish_movements();
 
-    float const total_to_move = (2.f * std::numbers::pi_v<float> * circle_radius) * number_of_repetitions;
-    float const steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
+    const float total_to_move = (2.f * std::numbers::pi_v<float> * circle_radius) * number_of_repetitions;
+    const float steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
@@ -91,7 +91,7 @@ void L1() {
     if (dip)
         return;
 
-    auto const offset = initial_position.x - final_position.x;
+    const auto offset = initial_position.x - final_position.x;
     execute_ff("G0 F10000 X%s", offset);
     Spout::the().finish_movements();
 

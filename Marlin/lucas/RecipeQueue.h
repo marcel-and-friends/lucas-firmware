@@ -35,7 +35,7 @@ public:
     bool executing() const { return m_recipe_in_execution != Station::INVALID; }
 
 public:
-    void for_each_recipe(util::IterFn<Recipe const&, size_t> auto&& callback, Recipe const* exception = nullptr) const {
+    void for_each_recipe(util::IterFn<const Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
@@ -49,7 +49,7 @@ public:
         }
     };
 
-    void for_each_recipe(util::IterFn<Recipe&, size_t> auto&& callback, Recipe const* exception = nullptr) {
+    void for_each_recipe(util::IterFn<Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) {
         if (m_queue_size == 0)
             return;
 
@@ -63,7 +63,7 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<Recipe&> auto&& callback, Recipe const* exception = nullptr) {
+    void for_each_mapped_recipe(util::IterFn<Recipe&> auto&& callback, const Recipe* exception = nullptr) {
         if (m_queue_size == 0)
             return;
 
@@ -76,7 +76,7 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<Recipe const&> auto&& callback, Recipe const* exception = nullptr) const {
+    void for_each_mapped_recipe(util::IterFn<const Recipe&> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
@@ -89,7 +89,7 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<Recipe&, size_t> auto&& callback, Recipe const* exception = nullptr) {
+    void for_each_mapped_recipe(util::IterFn<Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) {
         if (m_queue_size == 0)
             return;
 
@@ -103,7 +103,7 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<Recipe const&, size_t> auto&& callback, Recipe const* exception = nullptr) const {
+    void for_each_mapped_recipe(util::IterFn<const Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
@@ -126,7 +126,7 @@ private:
 
     void remap_recipes_after_changes_in_queue();
 
-    bool collides_with_other_recipes(Recipe const&) const;
+    bool collides_with_other_recipes(const Recipe&) const;
 
     void add_recipe(size_t);
 

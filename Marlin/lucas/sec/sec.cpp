@@ -5,7 +5,7 @@
 
 namespace lucas::sec {
 void raise(Error error) {
-    core::TemporaryFilter f{ Filters::All };
+    core::TemporaryFilter f{ TickFilter::All };
 
     info::event("erro", [](JsonObject o) {
 

@@ -24,13 +24,13 @@ concept IterFn = Fn<FN, Iter, Args...>;
 
 #define FWD(x) std::forward<decltype(x)>(x)
 
-inline char const* fmt(char const* fmt, auto... args) {
+inline const char* fmt(const char* fmt, auto... args) {
     static char buffer[256] = {};
     sprintf(buffer, fmt, args...);
     return buffer;
 }
 
-char const* ff(char const* str, float valor);
+const char* ff(const char* str, float valor);
 
 bool is_button_held(int pin);
 
@@ -46,20 +46,20 @@ float distance_between_each_station();
 
 float normalize(float v, float min, float max);
 
-void idle_for(millis_t tempo, Filters filtros = Filters::None);
+void idle_for(millis_t tempo, TickFilter filtros = TickFilter::None);
 
 template<millis_t INTERVAL>
 bool elapsed(millis_t last) {
     return millis() - last >= INTERVAL;
 }
 
-inline void idle_while(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
+inline void idle_while(Fn<bool> auto&& callback, TickFilter filtros = TickFilter::None) {
     core::TemporaryFilter f{ filtros };
     while (std::invoke(FWD(callback)))
         idle();
 }
 
-inline void idle_until(Fn<bool> auto&& callback, Filters filtros = Filters::None) {
+inline void idle_until(Fn<bool> auto&& callback, TickFilter filtros = TickFilter::None) {
     idle_while(std::not_fn(FWD(callback)), filtros);
 }
 

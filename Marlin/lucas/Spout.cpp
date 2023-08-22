@@ -27,9 +27,9 @@ void Spout::tick() {
 
         constexpr auto FLOW_CORRECTION_INTERVAL = 1000;
         if (m_time_elapsed - m_last_flow_correction_tick >= FLOW_CORRECTION_INTERVAL) {
-            auto const poured_so_far = (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+            const auto poured_so_far = (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
             if (m_total_desired_volume and m_flow_correction == CorrectFlow::Yes) {
-                auto const ideal_flow = (m_total_desired_volume - poured_so_far) / ((m_pour_duration - m_time_elapsed) / 1000);
+                const auto ideal_flow = (m_total_desired_volume - poured_so_far) / ((m_pour_duration - m_time_elapsed) / 1000);
                 send_digital_signal_to_driver(FlowController::the().best_digital_signal_for_flow(ideal_flow));
                 m_last_flow_correction_tick = m_time_elapsed;
             }
@@ -59,7 +59,7 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume, Co
 
 float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume, CorrectFlow correct) {
     pour_with_desired_volume(duration, desired_volume, correct);
-    util::idle_while([] { return Spout::the().pouring(); }, Filters::Interaction);
+    util::idle_while([] { return Spout::the().pouring(); }, TickFilter::Interaction);
     return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
 }
 
@@ -82,8 +82,8 @@ void Spout::end_pour() {
     m_last_flow_correction_tick = 0;
     m_pulses_at_end_of_pour = s_pulse_counter;
     if (m_total_desired_volume) {
-        auto const pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
-        auto const poured_volume = pulses * FlowController::ML_PER_PULSE;
+        const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
+        const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
         // TODO: security check
         LOG_IF(LogPour, "finalizando despejo - [delta = ", m_time_elapsed, "ms | volume = ", poured_volume, " | pulses = ", pulses, "]");
         m_total_desired_volume = 0.f;
@@ -111,15 +111,15 @@ void Spout::setup() {
         RISING);
 }
 
-void Spout::travel_to_station(Station const& station, float offset) const {
+void Spout::travel_to_station(const Station& station, float offset) const {
     travel_to_station(station.index(), offset);
 }
 
 void Spout::travel_to_station(size_t index, float offset) const {
     LOG_IF(LogTravel, "viajando - [station = ", index, " | offset = ", offset, "]");
 
-    auto const beginning = millis();
-    auto const gcode = util::ff("G0 F50000 Y60 X%s", Station::absolute_position(index) + offset);
+    const auto beginning = millis();
+    const auto gcode = util::ff("G0 F50000 Y60 X%s", Station::absolute_position(index) + offset);
     cmd::execute_multiple("G90",
                           gcode,
                           "G91");
@@ -131,7 +131,7 @@ void Spout::travel_to_station(size_t index, float offset) const {
 void Spout::travel_to_sewer() const {
     LOG_IF(LogTravel, "viajando para o esgoto");
 
-    auto const beginning = millis();
+    const auto beginning = millis();
     cmd::execute_multiple("G90",
                           "G0 F5000 Y60 X5",
                           "G91");
@@ -145,7 +145,7 @@ void Spout::home() const {
 }
 
 void Spout::finish_movements() const {
-    util::idle_while(&Planner::busy, Filters::RecipeQueue);
+    util::idle_while(&Planner::busy, TickFilter::RecipeQueue);
 }
 
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
@@ -193,7 +193,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 
     clean_digital_signal_table(SaveToFlash::No);
 
-    auto const beginning = millis();
+    const auto beginning = millis();
 
     // prepara o bico na posição correta e preenche a mangueira com água quente, para evitarmos resultados erroneos
     Spout::the().fill_hose();
@@ -210,7 +210,7 @@ void Spout::FlowController::fill_digital_signal_table() {
     bool last_greater_minimum = false;
 
     // accepts normalized values between 0.f and 1.f
-    auto const report_progress = [](float progress) {
+    const auto report_progress = [](float progress) {
         info::event("infoNivelamento", [progress](JsonObject o) {
             o["progresso"] = progress;
         });
@@ -221,21 +221,21 @@ void Spout::FlowController::fill_digital_signal_table() {
         if (digital_signal >= 4095)
             break;
 
-        auto const starting_pulses = s_pulse_counter;
+        const auto starting_pulses = s_pulse_counter;
 
         LOG_IF(LogCalibration, "aplicando forca = ", digital_signal);
         Spout::the().send_digital_signal_to_driver(digital_signal);
 
         util::idle_for(TIME_TO_ANALISE_POUR);
 
-        auto const pulses = s_pulse_counter - starting_pulses;
-        auto const average_flow = (float(pulses) * ML_PER_PULSE) / float(TIME_TO_ANALISE_POUR / 1000);
+        const auto pulses = s_pulse_counter - starting_pulses;
+        const auto average_flow = (float(pulses) * ML_PER_PULSE) / float(TIME_TO_ANALISE_POUR / 1000);
 
         LOG_IF(LogCalibration, "flow estabilizou - [pulses = ", pulses, " | average_flow = ", average_flow, "]");
 
         { // primeiro precisamos obter o flow minimo
             if (not obtained_minimum_flow) {
-                auto const delta = average_flow - float(FLOW_MIN);
+                const auto delta = average_flow - float(FLOW_MIN);
                 // valores entre FLOW_MIN - 0.1 e FLOW_MIN + 0.1 são aceitados
                 // caso contrario, aumentamos ou diminuimos o forca digital ate chegarmos no flow minimo
                 if (delta > -0.1f and delta < 0.1f) {
@@ -249,7 +249,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 
                     report_progress(0.f);
                 } else {
-                    bool const greater_min = average_flow > float(FLOW_MIN);
+                    const bool greater_min = average_flow > float(FLOW_MIN);
                     if (greater_min != last_greater_minimum) {
                         if (digital_signal_mod < 0)
                             digital_signal_mod = std::min(digital_signal_mod / 2, -1);
@@ -285,7 +285,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 
         { // precisamos garantir que o flow não deu um pulo muito grande entre esse e o último despejo, para termos uma quantidade maior de valores salvos na tabela
             if (last_pour_average_flow) {
-                auto const delta = average_flow - last_pour_average_flow;
+                const auto delta = average_flow - last_pour_average_flow;
                 // o pulo foi muito grande, corta a modificacao no meio e reduz o forca digital
                 if (delta > MAX_DELTA_BETWEEN_POURS) {
                     digital_signal_mod = std::max(digital_signal_mod / 2, 1);
@@ -298,8 +298,8 @@ void Spout::FlowController::fill_digital_signal_table() {
 
         { // salvamos a forca digital, aplicamos a modificação e prosseguimos com o proximo despejo
             last_pour_average_flow = average_flow;
-            auto const [rounded_volume, decimal] = decompose_flow(average_flow);
-            auto const flow = float(rounded_volume) + (decimal / 10.f);
+            const auto [rounded_volume, decimal] = decompose_flow(average_flow);
+            const auto flow = float(rounded_volume) + (decimal / 10.f);
             report_progress(util::normalize(flow, FLOW_MIN, FLOW_MAX));
 
             auto& cell = m_digital_signal_table[rounded_volume - FLOW_MIN][decimal];
@@ -332,7 +332,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 void Spout::FlowController::try_fetching_digital_signal_table_from_flash() {
     auto reader = mem::FlashReader<DigitalSignal>(0);
     // o flow minimo (m_digital_signal_table[0][0]) é o único valor obrigatoriamente salvo durante o preenchimento
-    auto const possible_stored_first_cell = reader.read(0);
+    const auto possible_stored_first_cell = reader.read(0);
     if (possible_stored_first_cell == 0 or
         possible_stored_first_cell >= INVALID_DIGITAL_SIGNAL)
         // nao temos um valor salvo
@@ -343,16 +343,16 @@ void Spout::FlowController::try_fetching_digital_signal_table_from_flash() {
 }
 
 Spout::DigitalSignal Spout::FlowController::best_digital_signal_for_flow(float flow) const {
-    auto const [rounded_flow, decimal] = decompose_flow(flow);
-    auto const flow_index = rounded_flow - FLOW_MIN;
+    const auto [rounded_flow, decimal] = decompose_flow(flow);
+    const auto flow_index = rounded_flow - FLOW_MIN;
     auto& cells = m_digital_signal_table[flow_index];
     if (cells[decimal] != INVALID_DIGITAL_SIGNAL)
         // ótimo, já temos um valor salvo para esse flow
         return cells[decimal];
 
     // caso contrário, interpolamos entre os dois mais próximos
-    auto const [flow_below, digital_signal_below] = first_flow_info_below_flow(flow_index, decimal);
-    auto const [flow_above, digital_signal_above] = first_flow_info_above_flow(flow_index, decimal);
+    const auto [flow_below, digital_signal_below] = first_flow_info_below_flow(flow_index, decimal);
+    const auto [flow_above, digital_signal_above] = first_flow_info_above_flow(flow_index, decimal);
 
     if (digital_signal_below == INVALID_DIGITAL_SIGNAL) {
         return digital_signal_above;
@@ -360,8 +360,8 @@ Spout::DigitalSignal Spout::FlowController::best_digital_signal_for_flow(float f
         return digital_signal_below;
     }
 
-    auto const normalized = util::normalize(flow, flow_below, flow_above);
-    auto const interpolated = std::lerp(float(digital_signal_below), float(digital_signal_above), normalized);
+    const auto normalized = util::normalize(flow, flow_below, flow_above);
+    const auto interpolated = std::lerp(float(digital_signal_below), float(digital_signal_above), normalized);
     return DigitalSignal(std::round(interpolated));
 }
 
@@ -376,7 +376,7 @@ void Spout::FlowController::clean_digital_signal_table(SaveToFlash salvar) {
 
 void Spout::FlowController::save_digital_signal_table_to_flash() {
     auto writer = mem::FlashWriter<DigitalSignal>(0);
-    auto const cells = reinterpret_cast<DigitalSignal*>(&m_digital_signal_table);
+    const auto cells = reinterpret_cast<DigitalSignal*>(&m_digital_signal_table);
     for (size_t i = 0; i < NUMBER_OF_CELLS; ++i)
         writer.write(i, cells[i]);
 }
@@ -393,7 +393,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flo
         auto& cells = m_digital_signal_table[flow_index];
         for (; decimal >= 0; --decimal) {
             if (cells[decimal] != INVALID_DIGITAL_SIGNAL) {
-                auto const flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;
+                const auto flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;
                 return { flow, cells[decimal] };
             }
         }
@@ -407,7 +407,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flo
         auto& cells = m_digital_signal_table[flow_index];
         for (; decimal < 10; ++decimal) {
             if (cells[decimal] != INVALID_DIGITAL_SIGNAL) {
-                auto const flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;
+                const auto flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;
                 return { flow, cells[decimal] };
             }
         }
@@ -417,8 +417,8 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flo
 }
 
 Spout::FlowController::DecomposedFlow Spout::FlowController::decompose_flow(float flow) const {
-    auto const rounded = std::round(flow * 10.f) / 10.f;
-    auto const clamped_flow = std::clamp(rounded, float(FLOW_MIN), float(FLOW_MAX) - 0.1f);
+    const auto rounded = std::round(flow * 10.f) / 10.f;
+    const auto clamped_flow = std::clamp(rounded, float(FLOW_MIN), float(FLOW_MAX) - 0.1f);
     return { int(clamped_flow), int(clamped_flow * 10) % 10 };
 }
 }

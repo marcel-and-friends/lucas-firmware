@@ -58,9 +58,9 @@ public:
 
     static size_t number_of_stations() { return s_list_size; }
 
-    Station(Station const&) = delete;
+    Station(const Station&) = delete;
     Station(Station&&) = delete;
-    Station& operator=(Station const&) = delete;
+    Station& operator=(const Station&) = delete;
     Station& operator=(Station&&) = delete;
 
 public:

@@ -61,22 +61,22 @@ enum CommandFromHost {
 
 void interpret_json(std::span<char> buffer) {
     JsonDocument doc;
-    auto const err = deserializeJson(doc, buffer.data(), buffer.size());
+    const auto err = deserializeJson(doc, buffer.data(), buffer.size());
     if (err) {
         LOG_ERR("desserializacao json falhou - [", err.c_str(), "]");
         return;
     }
 
-    auto const root = doc.as<JsonObjectConst>();
-    for (auto const obj : root) {
-        auto const key = obj.key();
+    const auto root = doc.as<JsonObjectConst>();
+    for (const auto obj : root) {
+        const auto key = obj.key();
         if (key.size() == 0) {
             LOG_ERR("chave invalida");
             continue;
         }
 
-        auto const v = obj.value();
-        auto const command = CommandFromHost(std::stoi(key.c_str()));
+        const auto v = obj.value();
+        const auto command = CommandFromHost(std::stoi(key.c_str()));
         LOG_IF(LogInfo, "comando recebido - [", int(command), "]");
         switch (command) {
         case InitializeStations: {
@@ -203,7 +203,7 @@ void interpret_json(std::span<char> buffer) {
     }
 }
 
-void print_json(JsonDocument const& doc) {
+void print_json(const JsonDocument& doc) {
     SERIAL_CHAR('#');
     serializeJson(doc, SERIAL_IMPL);
     SERIAL_ECHOLNPGM("#");
