@@ -1,11 +1,9 @@
-#include <lucas/Station.h>
+#include <lucas/cmd/cmd.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
-#include <lucas/cmd/cmd.h>
 #include <src/module/planner.h>
-#include <numbers>
 
 namespace lucas::cmd {
 void L1() {

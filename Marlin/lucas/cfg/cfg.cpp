@@ -10,7 +10,6 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [LogQueue] = { .id = 'F', .active = true },
     [LogCalibration] = { .id = 'N', .active = true },
     [LogStations] = { .id = 'E', .active = true },
-    [LogInfo] = { .id = 'I', .active = true },
 
     [LogSerial] = { .id = 'S', .active = false},
     [LogWifi] = { .id = 'W', .active = false},
@@ -20,7 +19,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [GigaMode] = { .id = 'M', .active = false},
 
     [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
-    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = false},
+    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = true },
 });
 
 consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
@@ -37,7 +36,7 @@ static_assert(DEFAULT_OPTIONS.size() == Options::Count, "tamanho errado irmao");
 static_assert(doesnt_have_duplicated_ids(DEFAULT_OPTIONS), "opcoes duplicadas irmao");
 
 // vai ser propriamente inicializado na 'setup()'
-static OptionList s_options = DEFAULT_OPTIONS;
+static OptionList s_options = {};
 
 constexpr auto CFG_FLASH_ADDRESS_START = sizeof(Spout::FlowController::Table);
 constexpr auto OPTION_SIZE = sizeof(char) + sizeof(bool);
@@ -46,9 +45,9 @@ static void fetch_options_from_flash();
 
 void setup() {
     auto reader = mem::FlashReader(CFG_FLASH_ADDRESS_START);
-    const auto first_saved_id = reader.read<char>(CFG_FLASH_ADDRESS_START);
+    const auto first_saved_id = reader.read<char>(0);
     if (first_saved_id != DEFAULT_OPTIONS[0].id) {
-        LOG("cfg ainda nao foi salva na flash, usando valores padroes");
+        LOG("cfg salva nao e valida, usando valores padroes");
         s_options = DEFAULT_OPTIONS;
         save_options_to_flash();
     } else {

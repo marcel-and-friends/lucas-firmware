@@ -6,7 +6,7 @@
 
 namespace lucas::cmd {
 void L3() {
-    constexpr auto max = static_cast<long>(Station::MAXIMUM_STATIONS);
+    constexpr auto max = static_cast<long>(Station::MAXIMUM_NUMBER_OF_STATIONS);
     auto num = parser.longval('N');
     if (num == -1)
         Spout::the().travel_to_sewer();

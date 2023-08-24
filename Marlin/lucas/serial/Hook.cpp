@@ -14,14 +14,18 @@ void Hook::dispatch() {
     reset();
     if (m_callback and buffer_size) {
         if (CFG(LogSerial)) {
-            char null_terminated_buffer[buffer_size + 1];
-            memcpy(null_terminated_buffer, m_buffer, buffer_size);
-            null_terminated_buffer[buffer_size] = '\0';
-            LOG_IF(LogSerial, "!BUFFER!\n", null_terminated_buffer);
-            LOG_IF(LogSerial, "!BUFFER!");
+            if (buffer_size == MAX_BUFFER_SIZE) {
+                char null_terminated_buffer[MAX_BUFFER_SIZE + 1];
+                memcpy(null_terminated_buffer, m_buffer, MAX_BUFFER_SIZE);
+                null_terminated_buffer[MAX_BUFFER_SIZE] = '\0';
+                LOG_IF(LogSerial, "", null_terminated_buffer);
+            } else {
+                m_buffer[buffer_size] = '\0';
+                LOG_IF(LogSerial, "", m_buffer);
+            }
         }
-        m_callback({ m_buffer, buffer_size });
     }
+    m_callback({ m_buffer, buffer_size });
 }
 
 void Hook::reset() {

@@ -17,7 +17,7 @@ public:
         m_array[m_size++] = value;
     }
 
-    bool is_empty() const { return m_size > 0; }
+    bool is_empty() const { return m_size == 0; }
 
     decltype(auto) begin() { return m_array.begin(); }
     decltype(auto) begin() const { return m_array.begin(); }

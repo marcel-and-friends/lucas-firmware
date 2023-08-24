@@ -1,9 +1,7 @@
 #pragma once
 
 #include <lucas/lucas.h>
-#include <string_view>
-#include <src/gcode/gcode.h>
-#include <src/gcode/parser.h>
+#include <span>
 
 namespace lucas::cmd {
 void execute(const char* gcode);
@@ -19,6 +17,8 @@ inline void execute_fmt(const char* str, auto... args) {
 inline void execute_ff(const char* str, float value) {
     execute(util::ff(str, value));
 }
+
+void interpret_gcode_from_host(std::span<char> buffer);
 
 // L0 -> Espiral
 // D - Diâmetro máximo do circulo gerado
@@ -41,4 +41,5 @@ void L2();
 /* ~comandos de desenvolvimento~ */
 void L3();
 void L4();
+void L5();
 }

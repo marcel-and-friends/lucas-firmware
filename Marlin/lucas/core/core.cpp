@@ -2,13 +2,12 @@
 #include <lucas/lucas.h>
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
-#include <lucas/serial/FirmwareUpdateHook.h>
 #include <lucas/Station.h>
-#include <lucas/info/info.h>
 #include <lucas/RecipeQueue.h>
-#include <src/sd/cardreader.h>
-#include <src/MarlinCore.h>
+#include <lucas/info/info.h>
+#include <lucas/serial/FirmwareUpdateHook.h>
 #include <src/module/planner.h>
+#include <src/sd/cardreader.h>
 
 namespace lucas::core {
 
@@ -21,6 +20,7 @@ void setup() {
 
     Boiler::the().setup();
     Spout::the().setup();
+    Spout::the().home();
 
     request_calibration();
 }
@@ -48,7 +48,9 @@ bool calibrated() {
 }
 
 void request_calibration() {
-    SERIAL_ECHOLN(CALIBRATION_KEYWORD);
+    info::send(info::Event::Calibration, [](JsonObject o) {
+        o["needsCalibration"] = not s_calibrated;
+    });
 }
 
 static size_t s_new_firmware_size = 0;
@@ -92,12 +94,15 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
         return;
 
     s_total_bytes_written += bytes_written;
-    LOG("escrito ", bytes_written, " bytes");
+    info::send(info::Event::Firmware, [](JsonObject o) {
+        o["updateProgress"] = util::normalize(s_total_bytes_written, 0, s_new_firmware_size);
+    });
 
     if (s_total_bytes_written == s_new_firmware_size) {
+        SERIAL_IMPL.flush();
         card.closefile();
         noInterrupts();
-        NVIC_SystemReset();
+        hal.reboot();
         __builtin_unreachable();
     }
 }
@@ -106,11 +111,11 @@ void prepare_for_firmware_update(size_t size) {
     s_new_firmware_size = size;
 
     prepare_sd_card(true);
-
     serial::FirmwareUpdateHook::create(
         &add_buffer_to_new_firmware_file,
         s_new_firmware_size);
 
+    cfg::opcoes()[cfg::Options::LogSerial].active = false;
     LOG("novo firmware tera ", s_new_firmware_size, " bytes");
 }
 }

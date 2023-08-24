@@ -43,23 +43,42 @@ void tick() {
         print_json(doc);
 }
 
-enum CommandFromHost {
-    InitializeStations = 0,
+// https://www.notion.so/Comandos-enviados-do-app-para-a-m-quina-683dd32fcf93481bbe72d6ca276e7bfb?pvs=4
+enum class Command {
+    InvalidCommand = 0,
+
+    RequestInfoCalibration,
+    InitializeStations,
     SetBoilerTemperature,
-    SetAvailableStations,
-    CancelRecipe,
     ScheduleRecipe,
-    RequestQueueInfo,
-    RequestIsCalibrated,
-    UpdateFirmware,
-    RequestFirmwareVersion,
+    CancelRecipe,
+    RequestInfoAllStations,
+    FirmwareUpdate,
+    RequestInfoFirmware,
 
     /* ~comandos de desenvolvimento~ */
-    ScheduleStandardRecipe,
-    SimulateButtonPress,
+    DevScheduleStandardRecipe,
+    DevSimulateButtonPress,
 };
 
-void interpret_json(std::span<char> buffer) {
+static Command command_from_string(std::string_view cmd) {
+    static std::unordered_map<std::string_view, Command> map = {
+        {"reqInfoCalibration",         Command::RequestInfoCalibration   },
+        { "cmdInitializeStations",     Command::InitializeStations       },
+        { "cmdSetBoilerTemperature",   Command::SetBoilerTemperature     },
+        { "cmdScheduleRecipe",         Command::ScheduleRecipe           },
+        { "cmdCancelRecipe",           Command::CancelRecipe             },
+        { "reqInfoAllStations",        Command::RequestInfoAllStations   },
+        { "cmdFirmwareUpdate",         Command::FirmwareUpdate           },
+        { "reqInfoFirmware",           Command::RequestInfoFirmware      },
+        { "devScheduleStandardRecipe", Command::DevScheduleStandardRecipe},
+        { "devSimulateButtonPress",    Command::DevSimulateButtonPress   }
+    };
+    auto it = map.find(cmd);
+    return it == map.end() ? Command::InvalidCommand : it->second;
+}
+
+void interpret_command_from_host(std::span<char> buffer) {
     JsonDocument doc;
     const auto err = deserializeJson(doc, buffer.data(), buffer.size());
     if (err) {
@@ -69,25 +88,34 @@ void interpret_json(std::span<char> buffer) {
 
     const auto root = doc.as<JsonObjectConst>();
     for (const auto obj : root) {
-        const auto key = obj.key();
-        if (key.size() == 0) {
+        if (obj.key().isNull() or obj.key().size() == 0) {
             LOG_ERR("chave invalida");
             continue;
         }
-
         const auto v = obj.value();
-        const auto command = CommandFromHost(std::stoi(key.c_str()));
-        LOG_IF(LogInfo, "comando recebido - [", int(command), "]");
+        const auto command = command_from_string(obj.key().c_str());
         switch (command) {
-        case InitializeStations: {
-            if (not v.is<size_t>()) {
-                LOG_ERR("valor json invalido para numero de estacoes");
+        case Command::InvalidCommand: {
+            LOG_ERR("comando invalido");
+        } break;
+        case Command::RequestInfoCalibration: {
+            if (not core::calibrated())
+                core::request_calibration();
+        } break;
+        case Command::InitializeStations: {
+            if (not v.is<JsonArrayConst>()) {
+                LOG_ERR("valor json invalido para inicializar estacoes");
                 break;
             }
 
-            Station::initialize(v.as<size_t>());
+            auto array = v.as<JsonArrayConst>();
+            Station::initialize(array.size());
+            Station::for_each([&array](Station& station, size_t i) {
+                station.set_blocked(not array[i].as<bool>());
+                return util::Iter::Continue;
+            });
         } break;
-        case SetBoilerTemperature: {
+        case Command::SetBoilerTemperature: {
             if (not v.is<int>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
@@ -96,33 +124,24 @@ void interpret_json(std::span<char> buffer) {
             if (not CFG(GigaMode))
                 core::calibrate(v.as<int>());
         } break;
-        case SetAvailableStations: {
-            if (not v.is<JsonArrayConst>()) {
-                LOG_ERR("valor json invalido para bloqueamento de bocas");
+        case Command::ScheduleRecipe: {
+            if (not v.is<JsonObjectConst>()) {
+                LOG_ERR("valor json invalido para envio de uma receita");
                 break;
             }
 
-            auto array = v.as<JsonArrayConst>();
-            if (array.isNull() or array.size() != Station::number_of_stations()) {
-                LOG_ERR("array de estacoes blockeds invalido");
-                break;
-            }
-
-            Station::for_each([&array](Station& station, size_t i) {
-                station.set_blocked(not array[i].as<bool>());
-                return util::Iter::Continue;
-            });
+            RecipeQueue::the().schedule_recipe(v.as<JsonObjectConst>());
         } break;
-        case CancelRecipe: {
+        case Command::CancelRecipe: {
             if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
-                LOG_ERR("valor json invalido para cancelamento de recipe");
+                LOG_ERR("valor json invalido para cancelamento de receita");
                 break;
             }
 
             if (v.is<size_t>()) {
                 auto index = v.as<size_t>();
                 if (index >= Station::number_of_stations()) {
-                    LOG_ERR("index para cancelamento de recipe invalido");
+                    LOG_ERR("index para cancelamento de receita invalido");
                     break;
                 }
                 RecipeQueue::the().cancel_station_recipe(index);
@@ -132,41 +151,34 @@ void interpret_json(std::span<char> buffer) {
                 }
             }
         } break;
-        case ScheduleRecipe: {
-            if (not v.is<JsonObjectConst>()) {
-                LOG_ERR("valor json invalido para envio de uma recipe");
-                break;
-            }
-
-            RecipeQueue::the().schedule_recipe(v.as<JsonObjectConst>());
-        } break;
-        case RequestQueueInfo: {
+        case Command::RequestInfoAllStations: {
             if (not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para requisicao de informacoes");
                 break;
             }
-            RecipeQueue::the().send_queue_info(v.as<JsonArrayConst>());
+            const auto stations = v.as<JsonArrayConst>();
+            if (stations.size() > Station::number_of_stations()) {
+                LOG_ERR("lista de requisicao muito grande - [size = ", stations.size(), " - max = ", Station::number_of_stations(), "]");
+                return;
+            }
+            RecipeQueue::the().send_queue_info(stations);
         } break;
-        case RequestIsCalibrated: {
-            if (not core::calibrated())
-                core::request_calibration();
-        } break;
-        case UpdateFirmware: {
+        case Command::FirmwareUpdate: {
             if (not v.is<size_t>()) {
                 LOG_ERR("valor json invalido para tamanho do firmware novo");
                 break;
             }
             core::prepare_for_firmware_update(v.as<size_t>());
         } break;
-        case RequestFirmwareVersion: {
-            info::event("versaoFirmware", [](JsonObject o) {
-                o["versao"] = cfg::FIRMWARE_VERSION;
+        case Command::RequestInfoFirmware: {
+            info::send(info::Event::Firmware, [](JsonObject o) {
+                o["version"] = cfg::FIRMWARE_VERSION;
             });
         } break;
         /* ~comandos de desenvolvimento~ */
-        case ScheduleStandardRecipe: {
+        case Command::DevScheduleStandardRecipe: {
             if (not v.is<size_t>()) {
-                LOG_ERR("valor json invalido para envio da recipe standard");
+                LOG_ERR("valor json invalido para envio da receita standard");
                 break;
             }
 
@@ -174,7 +186,7 @@ void interpret_json(std::span<char> buffer) {
                 RecipeQueue::the().schedule_recipe(Recipe::standard());
 
         } break;
-        case SimulateButtonPress: {
+        case Command::DevSimulateButtonPress: {
             if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para apertar button");
                 break;
@@ -197,8 +209,6 @@ void interpret_json(std::span<char> buffer) {
                 }
             }
         } break;
-        default:
-            LOG_ERR("opcao invalida - [", int(command), "]");
         }
     }
 }

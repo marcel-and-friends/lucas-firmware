@@ -18,7 +18,6 @@ enum Options {
     LogCalibration,
     LogStations,
 
-    LogInfo,
     LogSerial,
     LogWifi,
     LogGcode,

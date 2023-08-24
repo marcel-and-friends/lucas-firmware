@@ -12,15 +12,12 @@ static bool s_initialized = false;
 static bool s_initializing = false;
 
 void setup() {
-    s_initializing = true;
-
     core::TemporaryFilter f{ TickFilter::Interaction };
-
+    s_initializing = true;
     cfg::setup();
     serial::setup();
     info::setup();
     core::setup();
-
     s_initialized = true;
 }
 

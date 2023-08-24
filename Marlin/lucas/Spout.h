@@ -64,19 +64,21 @@ public:
 
         void try_fetching_digital_signal_table_from_flash();
 
-        DigitalSignal best_digital_signal_for_flow(float flow) const;
+        DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
         static constexpr auto FLOW_MIN = 5;
         static constexpr auto FLOW_MAX = 15;
-        static constexpr auto RANGE_FLOW = FLOW_MAX - FLOW_MIN;
-        static constexpr auto NUMBER_OF_CELLS = RANGE_FLOW * 10;
+        static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
+        static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;
         static_assert(FLOW_MAX > FLOW_MIN, "FLOW_MAX deve ser maior que FLOW_MIN");
 
-        using Table = std::array<std::array<DigitalSignal, 10>, RANGE_FLOW>;
-        static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "tamanho de tabela inesperado");
+        using Table = std::array<std::array<DigitalSignal, 10>, FLOW_RANGE>;
+        static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "unexpected table size");
 
     private:
-        FlowController() = default;
+        FlowController() {
+            clean_digital_signal_table(SaveToFlash::No);
+        }
 
         void save_digital_signal_table_to_flash();
         void fetch_digital_signal_table_from_flash();
@@ -96,29 +98,11 @@ public:
 
         DecomposedFlow decompose_flow(float flow) const;
 
-        size_t number_of_ocuppied_cells() const {
-            size_t num = 0;
-            for_each_occupied_cell([&num](auto) { ++num; return util::Iter::Continue; });
-            return num;
-        }
-
-        void for_each_occupied_cell(util::IterFn<DigitalSignal> auto&& callback) const {
-            for (size_t i = 0; i < m_digital_signal_table.size(); ++i) {
-                auto& linha = m_digital_signal_table[i];
-                for (size_t j = 0; j < linha.size(); ++j) {
-                    auto digital_signal = linha[j];
-                    if (digital_signal != INVALID_DIGITAL_SIGNAL)
-                        if (std::invoke(FWD(callback), digital_signal) == util::Iter::Break)
-                            return;
-                }
-            }
-        }
-
         void for_each_occupied_cell(util::IterFn<DigitalSignal, size_t, size_t> auto&& callback) const {
             for (size_t i = 0; i < m_digital_signal_table.size(); ++i) {
-                auto& linha = m_digital_signal_table[i];
-                for (size_t j = 0; j < linha.size(); ++j) {
-                    auto digital_signal = linha[j];
+                auto& cells = m_digital_signal_table[i];
+                for (size_t j = 0; j < cells.size(); ++j) {
+                    auto digital_signal = cells[j];
                     if (digital_signal != INVALID_DIGITAL_SIGNAL)
                         if (std::invoke(FWD(callback), digital_signal, i, j) == util::Iter::Break)
                             return;
@@ -126,13 +110,13 @@ public:
             }
         }
 
-        // essa tabela é como uma matriz de todos os valores digitais que produzem os fluxos disponiveis entre FLOW_MIN e FLOW_MAX, com 1 digito de precisão
-        // por exemplo, assumindo que FLOW_MIN == 5:
-        // 		- a forca digital para o fluxo `5.5` se encontra em `m_digital_signal_table[0][4]`
-        // 		- a forca digital para o fluxo `10.3` se encontra em `m_digital_signal_table[5][2]`
-        // os fluxos encontrados são arrendondados apropriadamente e encaixados na célula mais próxima
-        // @ref `decompose_flow` - `valor_na_tabela`
-        Table m_digital_signal_table = { {} };
+        // this table is like a map-like matrix of the digital values that produce a specific flow between FLOW_MIN and FLOW_MAX, with 1 digit of precision
+        // the values are accessed using 'whole number - FLOW_MIN' as the index to the first array and the decimal as the index to the second
+        // @ref decompose_flow
+        // for example, assuming FLOW_MIN == 5:
+        // 		- the cell for the flow '5.5 g/s' is located at 'table[0][5]'
+        // 		- the cell for the flow '10.3 g/s' is located at 'table[5][3]'
+        Table m_digital_signal_table;
     };
 
 private:
@@ -152,7 +136,7 @@ private:
 
     CorrectFlow m_flow_correction = CorrectFlow::No;
 
-    millis_t m_last_flow_correction_tick = 0;
+    millis_t m_time_of_last_correction = 0;
 
     millis_t m_time_elapsed = 0;
 

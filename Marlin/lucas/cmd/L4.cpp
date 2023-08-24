@@ -3,6 +3,8 @@
 #include <lucas/Spout.h>
 #include <lucas/Recipe.h>
 #include <lucas/cfg/cfg.h>
+#include <lucas/sec/sec.h>
+#include <src/gcode/parser.h>
 
 namespace lucas::cmd {
 void L4() {
@@ -17,6 +19,21 @@ void L4() {
             LOG("opcoes foram resetadas e salvas na flash");
         } break;
         case 2: {
+            if (not parser.seenval('R'))
+                return;
+
+            const auto reason_number = parser.value_int();
+            if (reason_number < 0 or reason_number >= size_t(sec::Reason::Count)) {
+                LOG_ERR("reason invalida - max = ", size_t(sec::Reason::Count));
+                return;
+            }
+
+            const auto reason = sec::Reason(reason_number);
+            sec::toggle_reason_validity(reason);
+
+            LOG("razao #", reason_number, " foi ", sec::is_reason_valid(reason) ? "ativada" : "desativada");
+        } break;
+        case 3: {
             if (not parser.seenval('P'))
                 return;
 
@@ -30,7 +47,7 @@ void L4() {
 
             LOG("aplicando modificacoes - [pino = ", pin, " | modo = ", mode, " | valor = ", value, "]");
         } break;
-        case 3: {
+        case 4: {
             if (not parser.seenval('P'))
                 return;
 

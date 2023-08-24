@@ -124,6 +124,8 @@ public:
 
     bool finished() const { return m_current_step == m_steps_size; }
 
+    bool has_executed_first_attack() const { return m_current_step > m_has_scalding_step; }
+
     const Step& first_step() const { return m_steps.front(); }
 
     const Step& step(size_t index) const { return m_steps[index]; }

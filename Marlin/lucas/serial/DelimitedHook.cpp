@@ -9,32 +9,25 @@ void DelimitedHook::think() {
     while (SERIAL_IMPL.available()) {
         const auto peek = SERIAL_IMPL.peek();
         if (not s_active_hook) {
-            LOG_IF(LogSerial, "procurando hook - peek = ", AS_CHAR(peek));
-
             DelimitedHook::for_each([&](auto& hook) {
                 if (hook.delimiter() == peek) {
                     SERIAL_IMPL.read();
-
+                    hook.begin();
                     s_active_hook = &hook;
-                    s_active_hook->begin();
-
-                    LOG_IF(LogSerial, "iniciando leitura");
-
+                    LOG_IF(LogSerial, "hook ativado - [delimitador = '", AS_CHAR(hook.delimiter()), "']");
                     return util::Iter::Break;
                 }
                 return util::Iter::Continue;
             });
         } else {
-            auto& hook = *s_active_hook;
-            if (hook.delimiter() == peek) {
+            auto hook = s_active_hook;
+            if (hook->delimiter() == peek) {
+                LOG_IF(LogSerial, "hook finalizado - [size = ", hook->buffer_size(), "]");
                 SERIAL_IMPL.read();
-
                 s_active_hook = nullptr;
-                hook.dispatch();
-
-                LOG_IF(LogSerial, "finalizando leitura");
+                hook->dispatch();
             } else {
-                hook.add_to_buffer(SERIAL_IMPL.read());
+                hook->add_to_buffer(SERIAL_IMPL.read());
             }
         }
 

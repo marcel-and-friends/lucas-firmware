@@ -10,13 +10,13 @@ namespace lucas {
 Station::List Station::s_list = {};
 
 void Station::initialize(size_t num) {
-    if (num > MAXIMUM_STATIONS) {
-        LOG_ERR("numero de estacoes invalido - [max = ", MAXIMUM_STATIONS, "]");
+    if (num > MAXIMUM_NUMBER_OF_STATIONS) {
+        LOG_ERR("numero de estacoes invalido - [max = ", MAXIMUM_NUMBER_OF_STATIONS, "]");
         return;
     }
 
     if (s_list_size != 0) {
-        LOG_IF(LogStations, "estacoes ja foram inicializadas");
+        LOG_ERR("estacoes ja foram inicializadas");
         return;
     }
 
@@ -25,7 +25,7 @@ void Station::initialize(size_t num) {
         int led_pin;
     };
 
-    constexpr std::array<InfoStation, Station::MAXIMUM_STATIONS> infos = {
+    constexpr std::array<InfoStation, Station::MAXIMUM_NUMBER_OF_STATIONS> infos = {
         InfoStation{.button_pin = PC8,  .led_pin = PE13},
         InfoStation{ .button_pin = PC4, .led_pin = PD13},
         InfoStation{ .button_pin = PC4, .led_pin = PD13},
@@ -167,7 +167,7 @@ void Station::set_blocked(bool b) {
     m_blocked = b;
     if (m_blocked)
         WRITE(m_led_pin, LOW);
-    LOG_IF(LogStations, "station foi ", m_blocked ? "" : "des", "blocked", " - [index = ", index(), "]");
+    LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
 }
 
 void Station::set_status(Status status, std::optional<uint32_t> receita_id) {
@@ -176,13 +176,13 @@ void Station::set_status(Status status, std::optional<uint32_t> receita_id) {
 
     m_status = status;
 
-    info::event(
-        "novoStatus",
+    info::send(
+        info::Event::Station,
         [this, &receita_id](JsonObject o) {
-            o["estacao"] = index();
-            o["status"] = int(m_status);
+            o["station"] = index();
+            o["newStatus"] = int(m_status);
             if (receita_id)
-                o["receitaId"] = *receita_id;
+                o["recipeId"] = *receita_id;
         });
 
     switch (m_status) {

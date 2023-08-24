@@ -1,11 +1,9 @@
-#include <lucas/Station.h>
+#include <lucas/cmd/cmd.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
-#include <lucas/cmd/cmd.h>
 #include <src/module/planner.h>
-#include <numbers>
 
 #define L0_LOG(...) LOG_IF(LogLn, "", "L0: ", __VA_ARGS__);
 
@@ -73,7 +71,7 @@ void L0() {
 
     float total_to_move = 0.f;
     for (const auto diameter : diameters)
-        total_to_move += (2.f * std::numbers::pi_v<float> * std::abs(diameter / 2.f)) / 2.f;
+        total_to_move += (2.f * PI * std::abs(diameter / 2.f)) / 2.f;
 
     const auto steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
 
@@ -96,7 +94,7 @@ void L0() {
 
         final_position.x += diameter;
         if (associated_with_station and not RecipeQueue::the().executing()) {
-            L0_LOG("recipe foi cancelada, abortando");
+            L0_LOG("receita foi cancelada, abortando");
             dip = true;
             break;
         }

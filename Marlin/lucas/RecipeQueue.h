@@ -34,12 +34,14 @@ public:
 
     bool executing() const { return m_recipe_in_execution != Station::INVALID; }
 
+    bool is_empty() const { return m_queue_size == 0; }
+
 public:
     void for_each_recipe(util::IterFn<const Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < m_queue.size(); ++i) {
+        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
@@ -53,7 +55,7 @@ public:
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < m_queue.size(); ++i) {
+        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
@@ -93,7 +95,7 @@ public:
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < m_queue.size(); ++i) {
+        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
@@ -107,7 +109,7 @@ public:
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < m_queue.size(); ++i) {
+        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
@@ -146,7 +148,7 @@ private:
 
     // o mapeamento de index -> recipe é o mesmo de index -> estação
     // ou seja, a recipe na posição 0 da fila pertence à estação 0
-    std::array<RecipeInfo, Station::MAXIMUM_STATIONS> m_queue = {};
+    std::array<RecipeInfo, Station::MAXIMUM_NUMBER_OF_STATIONS> m_queue = {};
     size_t m_queue_size = 0;
 };
 }

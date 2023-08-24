@@ -16,7 +16,7 @@ void RecipeQueue::tick() {
 
     if (m_recipe_in_execution != Station::INVALID) {
         if (not m_queue[m_recipe_in_execution].active) {
-            LOG_ERR("station executando nao possui recipe na fila - [station = ", m_recipe_in_execution, "]");
+            LOG_ERR("estacao executando nao possui receita na fila - [estacao = ", m_recipe_in_execution, "]");
             m_recipe_in_execution = Station::INVALID;
             return;
         }
@@ -39,7 +39,7 @@ void RecipeQueue::tick() {
             } else if (starting_tick - millis() <= util::TRAVEL_MARGIN) {
                 // o passo está chegando...
                 m_recipe_in_execution = index;
-                LOG_IF(LogQueue, "passo esta prestes a comecar - [station = ", index, "]");
+                LOG_IF(LogQueue, "passo esta prestes a comecar - [estacao = ", index, "]");
                 Spout::the().travel_to_station(index);
                 return util::Iter::Break;
             }
@@ -50,9 +50,9 @@ void RecipeQueue::tick() {
 
 void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
     if (not recipe_json.containsKey("id") or
-        not recipe_json.containsKey("tempoFinalizacao") or
-        not recipe_json.containsKey("ataques")) {
-        LOG_ERR("json da recipe nao possui todos os campos obrigatorios");
+        not recipe_json.containsKey("finalizationTime") or
+        not recipe_json.containsKey("attacks")) {
+        LOG_ERR("json da receita nao possui todos os campos obrigatorios");
         return;
     }
 
@@ -69,42 +69,42 @@ void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
         }
     }
 
-    LOG_ERR("nao foi possivel encontrar uma station disponivel");
+    LOG_ERR("nao foi possivel encontrar uma estacao disponivel");
 }
 
 void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, size_t index) {
     auto& station = Station::list().at(index);
     if (m_queue[index].active) {
-        LOG_ERR("station ja possui uma recipe na fila - [station = ", index, "]");
+        LOG_ERR("estacao ja possui uma receita na fila - [estacao = ", index, "]");
         return;
     }
 
     if (station.status() != Station::Status::Free or station.blocked()) {
-        LOG_ERR("tentando agendar recipe para uma station invalida [station = ", index, "]");
+        LOG_ERR("tentando agendar receita para uma station invalida [estacao = ", index, "]");
         return;
     }
 
     const auto status = recipe.has_scalding_step() ? Station::Status::ConfirmingScald : Station::Status::ConfirmingAttacks;
     station.set_status(status, recipe.id());
     add_recipe(index);
-    LOG_IF(LogQueue, "recipe agendada, aguardando confirmacao - [station = ", index, "]");
+    LOG_IF(LogQueue, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
 }
 
 void RecipeQueue::map_station_recipe(size_t index) {
     auto& station = Station::list().at(index);
     if (not m_queue[index].active) {
-        LOG_ERR("station nao possui recipe na fila - [station = ", index, "]");
+        LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
         return;
     }
 
     if (not station.waiting_user_confirmation() or station.blocked()) {
-        LOG_ERR("tentando mapear recipe de uma station invalida [station = ", index, "]");
+        LOG_ERR("tentando mapear receita de uma station invalida [estacao = ", index, "]");
         return;
     }
 
     auto& recipe = m_queue[index].recipe;
     if (recipe.remaining_steps_are_mapped()) {
-        LOG_ERR("recipe ja esta mapeada - [station = ", index, "]");
+        LOG_ERR("receita ja esta mapeada - [estacao = ", index, "]");
         return;
     }
 
@@ -116,7 +116,7 @@ void RecipeQueue::map_station_recipe(size_t index) {
 }
 
 void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
-    util::StaticVector<millis_t, Station::MAXIMUM_STATIONS> candidates = {};
+    util::StaticVector<millis_t, Station::MAXIMUM_NUMBER_OF_STATIONS> candidates = {};
 
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras recipe
     // esse processo é feito de forma bruta, homem das cavernas, mas como o número de receitas/passos é pequeno, não chega a ser um problema
@@ -155,31 +155,31 @@ void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
         m_recipe_in_execution = station.index();
         recipe.map_remaining_steps(first_step_tick);
     }
-    LOG_IF(LogQueue, "recipe mapeada - [station = ", station.index(), " | candidates = ", candidates.size(), " | tick_inicial = ", first_step_tick, "]");
+    LOG_IF(LogQueue, "receita mapeada - [estacao = ", station.index(), " | candidatos = ", candidates.size(), " | tick inicial = ", first_step_tick, "]");
 }
 
-static bool valid_timer(millis_t timer, millis_t tick = millis()) {
+// this mostly serves to avoid unsigned intenger underflow
+// integener arithmetic is tricky!
+static bool tick_has_happened(millis_t timer, millis_t tick = millis()) {
     return timer and tick >= timer;
 };
 
 void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
-    LOG_IF(LogQueue, "executando passo - [station = ", station.index(), " | passo = ", recipe.current_step_index(), " | tick = ", millis(), "]");
+    LOG_IF(LogQueue, "executando passo - [estacao = ", station.index(), " | passo = ", recipe.current_step_index(), " | tick = ", millis(), "]");
 
     const auto& current_step = recipe.current_step();
     const size_t current_step_index = recipe.current_step_index();
-    auto dispatch_step_event = [](size_t station, size_t step, millis_t first_step_tick, bool ending) {
-        info::event(
-            "eventoPasso",
+    auto dispatch_step_event = [](size_t station, size_t step, millis_t first_attack_tick, bool ending) {
+        info::send(
+            info::Event::Recipe,
             [&](JsonObject o) {
-                o["estacao"] = station;
-                o["passo"] = step;
+                o["station"] = station;
+                o["step"] = step;
+                o["done"] = ending;
 
                 const auto tick = millis();
-                if (valid_timer(first_step_tick, tick))
-                    o["tempoTotalAtaques"] = tick - first_step_tick;
-
-                if (ending)
-                    o["fim"] = true;
+                if (tick_has_happened(first_attack_tick, tick))
+                    o["timeElapsedAttacks"] = tick - first_attack_tick;
             });
     };
 
@@ -207,7 +207,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     const auto ideal_duration = current_step.duration;
     const auto actual_duration = millis() - current_step.starting_tick;
     const auto error = (ideal_duration > actual_duration) ? (ideal_duration - actual_duration) : (actual_duration - ideal_duration);
-    LOG_IF(LogQueue, "passo acabou - [duracao = ", actual_duration, "ms | error = ", error, "ms]");
+    LOG_IF(LogQueue, "passo acabou - [duracao = ", actual_duration, "ms | erro = ", error, "ms]");
 
     s_tick_beginning_inactivity = millis();
 
@@ -221,7 +221,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
             station.set_status(Station::Status::Ready, recipe.id());
             remove_recipe(station.index());
         }
-        LOG_IF(LogQueue, "recipe acabou, finalizando - [station = ", station.index(), "]");
+        LOG_IF(LogQueue, "receita acabou, finalizando - [estacao = ", station.index(), "]");
     }
 }
 
@@ -235,7 +235,7 @@ void RecipeQueue::compensate_for_missed_step(Recipe& recipe, Station& station) {
     // esse delta já leva em consideração o tempo de viagem para a estacão em atraso
     const auto delta = millis() - starting_tick;
 
-    LOG_IF(LogQueue, "perdeu um passo, compensando - [station = ", station.index(), " | starting_tick = ", starting_tick, " | delta =  ", delta, "ms]");
+    LOG_IF(LogQueue, "perdeu um passo, compensando - [estacao = ", station.index(), " | starting_tick = ", starting_tick, " | delta =  ", delta, "ms]");
 
     recipe.map_remaining_steps(millis());
     execute_current_step(recipe, station);
@@ -254,7 +254,7 @@ void RecipeQueue::compensate_for_missed_step(Recipe& recipe, Station& station) {
 // ao ocorrer uma mudança na fila (ex: cancelar uma recipe)
 // as receitas que ainda não começaram são trazidas para frente, para evitar grandes períodos onde a máquina não faz nada
 void RecipeQueue::remap_recipes_after_changes_in_queue() {
-    util::StaticVector<size_t, Station::MAXIMUM_STATIONS> recipes_to_remap = {};
+    util::StaticVector<size_t, Station::MAXIMUM_NUMBER_OF_STATIONS> recipes_to_remap = {};
 
     for_each_mapped_recipe([&](Recipe& recipe, size_t index) {
         const size_t min_step = recipe.has_scalding_step() and recipe.scalded();
@@ -300,7 +300,7 @@ bool RecipeQueue::collides_with_other_recipes(const Recipe& new_recipe) const {
 
 void RecipeQueue::cancel_station_recipe(size_t index) {
     if (not m_queue[index].active) {
-        LOG_ERR("tentando cancelar recipe de station que nao esta na fila - [station = ", index, "]");
+        LOG_ERR("tentando cancelar receita de station que nao esta na fila - [estacao = ", index, "]");
         return;
     }
 
@@ -309,7 +309,7 @@ void RecipeQueue::cancel_station_recipe(size_t index) {
 
     if (index == m_recipe_in_execution) {
         auto& recipe = m_queue[m_recipe_in_execution].recipe;
-        if (not valid_timer(recipe.current_step().starting_tick)) {
+        if (not tick_has_happened(recipe.current_step().starting_tick)) {
             // o passo ainda não foi iniciado, ou seja, não estamos dentro da 'RecipeQueue::execute_current_step'
             recipe_was_cancelled(index);
         } else {
@@ -330,7 +330,7 @@ void RecipeQueue::remove_finalized_recipes() {
         if (station.status() == Station::Status::Finalizing) [[unlikely]] {
             const auto delta = millis() - recipe.start_finalization_duration();
             if (delta >= recipe.finalization_duration()) {
-                LOG_IF(LogQueue, "tempo de finalizacao acabou - [station = ", index, " | delta = ", delta, "ms]");
+                LOG_IF(LogQueue, "tempo de finalizacao acabou - [estacao = ", index, " | delta = ", delta, "ms]");
                 station.set_status(Station::Status::Ready, recipe.id());
                 remove_recipe(index);
             }
@@ -376,7 +376,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() const {
 }
 
 void RecipeQueue::recipe_was_cancelled(size_t index) {
-    LOG_IF(LogQueue, "recipe cancelada - [station = ", index, "]");
+    LOG_IF(LogQueue, "receita cancelada - [estacao = ", index, "]");
     remap_recipes_after_changes_in_queue();
 }
 
@@ -392,67 +392,66 @@ size_t RecipeQueue::number_of_recipes_executing() const {
     return num;
 }
 
-void RecipeQueue::send_queue_info(JsonArrayConst estacoes) const {
-    info::event(
-        "infoEstacoes",
+void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
+    info::send(
+        info::Event::AllStations,
         [&](JsonObject o) {
             if (m_recipe_in_execution != Station::INVALID)
-                o["estacaoAtiva"] = m_recipe_in_execution;
+                o["activeStation"] = m_recipe_in_execution;
 
-            auto arr = o.createNestedArray("info");
-            for (size_t i = 0; i < estacoes.size(); ++i) {
-                const auto index = estacoes[i].as<size_t>();
+            auto arr = o.createNestedArray("stations");
+            for (const auto json_variant : stations) {
+                const auto index = json_variant.as<size_t>();
+                if (index >= Station::number_of_stations()) {
+                    LOG_ERR("index invalido para requisicao - [index = ", index, "]");
+                    continue;
+                }
                 const auto& station = Station::list().at(index);
                 if (station.blocked())
                     continue;
 
+                const auto& recipe = m_queue[index].recipe;
+                const auto tick = millis();
                 auto obj = arr.createNestedObject();
-                obj["estacao"] = station.index();
+                obj["index"] = station.index();
                 obj["status"] = int(station.status());
 
                 // os campos seguintes só aparecem para receitas em execução
                 if (not m_queue[index].active)
                     continue;
 
-                const auto tick = millis();
-                const auto& recipe = m_queue[index].recipe;
-                {
-                    auto recipe_obj = obj.createNestedObject("infoReceita");
-                    recipe_obj["receitaId"] = recipe.id();
+                obj["recipeId"] = recipe.id();
 
-                    const auto& first_step = recipe.first_step();
-                    if (valid_timer(first_step.starting_tick, tick))
-                        recipe_obj["tempoTotalReceita"] = tick - recipe.first_step().starting_tick;
+                const auto& first_step = recipe.first_step();
+                if (tick_has_happened(first_step.starting_tick, tick))
+                    obj["timeElapsedTotal"] = tick - recipe.first_step().starting_tick;
 
-                    const auto& first_attack = recipe.first_attack();
-                    if (valid_timer(first_attack.starting_tick, tick))
-                        recipe_obj["tempoTotalAtaques"] = tick - first_attack.starting_tick;
+                const auto& first_attack = recipe.first_attack();
+                if (tick_has_happened(first_attack.starting_tick, tick))
+                    obj["timeElapsedAttacks"] = tick - first_attack.starting_tick;
 
-                    if (station.status() == Station::Status::Finalizing)
-                        if (valid_timer(recipe.start_finalization_duration(), tick))
-                            recipe_obj["progressoFinalizacao"] = tick - recipe.start_finalization_duration();
-                }
-                {
-                    auto step_obj = obj.createNestedObject("infoPasso");
-                    if (not recipe.current_step().starting_tick)
+                if (station.status() == Station::Status::Finalizing)
+                    if (tick_has_happened(recipe.start_finalization_duration(), tick))
+                        obj["timeElapsedFinalization"] = tick - recipe.start_finalization_duration();
+
+                if (not station.is_executing_or_in_queue())
+                    continue;
+
+                // se o passo ainda não comecou porém está mapeado ele pode estar ou no intervalo do ataque passado ou na fila para começar...
+                if (tick < recipe.current_step().starting_tick) {
+                    // ...sem um passo passo anterior não tem um intervalo - só pode estar na fila
+                    // nesse caso nada é enviado para o app
+                    if (not recipe.has_executed_first_attack())
                         continue;
 
-                    // se o passo ainda não comecou porém está mapeado ele pode estar ou no intervalo do ataque passado ou na fila para começar...
-                    if (tick < recipe.current_step().starting_tick) {
-                        // ...se é o escaldo ou o primeiro ataque não existe um "passo anterior", ou seja, não tem um intervalo - só pode estar na fila
-                        // nesse caso nada é enviado para o app
-                        if (recipe.current_step_index() <= size_t(recipe.has_scalding_step()))
-                            continue;
-
-                        // ...caso contrario, do segundo ataque pra frente, estamos no intervalo do passo anterior
-                        const auto last_step_index = recipe.current_step_index() - 1;
-                        const auto& last_step = recipe.step(last_step_index);
-                        step_obj["index"] = last_step_index;
-                        step_obj["progressoIntervalo"] = tick - last_step.ending_tick();
-                    } else {
-                        step_obj["index"] = recipe.current_step_index();
-                        step_obj["progressoPasso"] = tick - recipe.current_step().starting_tick;
-                    }
+                    // ...caso contrario, do segundo ataque pra frente, estamos no intervalo do passo anterior
+                    const auto last_step_index = recipe.current_step_index() - 1;
+                    const auto& last_step = recipe.step(last_step_index);
+                    obj["step"] = last_step_index;
+                    obj["timeElapsedInterval"] = tick - last_step.ending_tick();
+                } else {
+                    obj["step"] = recipe.current_step_index();
+                    obj["timeElapsedStep"] = tick - recipe.current_step().starting_tick;
                 }
             }
         });
@@ -467,7 +466,7 @@ void RecipeQueue::cancel_all_recipes() {
 
 void RecipeQueue::add_recipe(size_t index) {
     if (m_queue_size == m_queue.size()) {
-        LOG_ERR("tentando adicionar recipe com a fila cheia - [station = ", index, "]");
+        LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
         return;
     }
 
@@ -477,7 +476,7 @@ void RecipeQueue::add_recipe(size_t index) {
 
 void RecipeQueue::remove_recipe(size_t index) {
     if (m_queue_size == 0) {
-        LOG_ERR("tentando remover recipe com a fila vazia - [station = ", index, "]");
+        LOG_ERR("tentando remover receita com a fila vazia - [estacao = ", index, "]");
         return;
     }
 

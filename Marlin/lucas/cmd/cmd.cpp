@@ -4,6 +4,7 @@
 #include <src/gcode/queue.h>
 #include <src/gcode/gcode.h>
 #include <lucas/Station.h>
+#include <lucas/serial/Hook.h>
 
 namespace lucas::cmd {
 void execute(const char* gcode) {
@@ -11,12 +12,26 @@ void execute(const char* gcode) {
     parser.parse(const_cast<char*>(gcode));
     GcodeSuite::process_parsed_command(true);
 }
+
+void interpret_gcode_from_host(std::span<char> buffer) {
+    GcodeSuite::process_subcommands_now(buffer.data());
+}
 }
 
 /* alguns comandos uteis
-#{"0":5,"1":93,"2":[true,true,true,true,true]}#
-#{"7":1,"8":0}#
-#{"3":0}#
-#{"7":5,"8":[0,1,2,3,4]}#
-#{"0":5,"1":20}#
+~ init ~
+#{"cmdInitializeStations":[true, true, true]}#
+#{"cmdSetBoilerTemperature":93}#
+#{"cmdInitializeStations":[true, true, true],"cmdSetBoilerTemperature":93}#
+
+~ recipes ~
+#{"devScheduleStandardRecipe":1}#
+#{"devSimulateButtonPress":0}#
+#{"devScheduleStandardRecipe":1,"devSimulateButtonPress":0}#
+#{"devScheduleStandardRecipe":3,"devSimulateButtonPress":[0,1,2]}#
+#{"cmdCancelRecipe":0}#
+#{"cmdCancelRecipe":[0,1,2]}#
+
+~ rest ~
+#{"reqInfoAllStations":[0,1,2]}#
 */

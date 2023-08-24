@@ -425,6 +425,8 @@ inline void manage_inactivity(const bool no_stepper_sleep = false) {
         } else {
             lucas::serial::clean_serial();
         }
+    } else {
+        lucas::serial::clean_serial();
     }
 
     const millis_t ms = millis();

@@ -25,21 +25,47 @@ void Spout::tick() {
             return;
         }
 
+        if (m_total_desired_volume == 0.f or m_flow_correction == CorrectFlow::No)
+            return;
+
         constexpr auto FLOW_CORRECTION_INTERVAL = 1000;
-        if (m_time_elapsed - m_last_flow_correction_tick >= FLOW_CORRECTION_INTERVAL) {
-            const auto poured_so_far = (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
-            if (m_total_desired_volume and m_flow_correction == CorrectFlow::Yes) {
-                const auto ideal_flow = (m_total_desired_volume - poured_so_far) / ((m_pour_duration - m_time_elapsed) / 1000);
-                send_digital_signal_to_driver(FlowController::the().best_digital_signal_for_flow(ideal_flow));
-                m_last_flow_correction_tick = m_time_elapsed;
-            }
+        // not time to correct yet
+        if (m_time_elapsed - m_time_of_last_correction < FLOW_CORRECTION_INTERVAL)
+            return;
+
+        const auto poured_so_far = (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+        // reached the goal too son
+        if (poured_so_far >= m_total_desired_volume) {
+            end_pour();
+            return;
         }
+
+        // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
+        // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
+        if (m_time_of_last_correction >= FLOW_CORRECTION_INTERVAL) {
+            // no water? bad motor? bad sensor? bad pump? who knows!
+            if (poured_so_far == 0.f)
+                sec::raise_error(sec::Reason::PourVolumeMismatch, sec::NO_RETURN);
+
+            const auto ideal_flow = m_total_desired_volume / (m_pour_duration / 1000.f);
+            const auto expected_volume = (m_time_elapsed / 1000.f) * ideal_flow;
+            const auto ratio = poured_so_far / expected_volume;
+            // 50% is a pretty generous margin, could try to go lower
+            constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
+            if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
+                sec::raise_error(sec::Reason::PourVolumeMismatch, sec::NO_RETURN);
+        }
+
+        // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
+        const auto ideal_flow = (m_total_desired_volume - poured_so_far) / ((m_pour_duration - m_time_elapsed) / 1000.f);
+        send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
+        m_time_of_last_correction = m_time_elapsed;
     } else {
-        // após end_pour o motor deixamos o break ativo por um tempinho e depois liberamos
-        constexpr auto TIME_TO_DISABLE_BRK = 2000; // 2s
+        // BRK is realeased after a little bit to not stress the motor too hard
+        constexpr auto TIME_TO_DISABLE_BRK = 2000;
         if (m_tick_pour_ended) {
             if (util::elapsed<TIME_TO_DISABLE_BRK>(m_tick_pour_ended)) {
-                digitalWrite(Pin::BRK, HIGH);
+                digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
                 m_tick_pour_ended = 0;
             }
         }
@@ -51,15 +77,15 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume, Co
         return;
 
     begin_pour(duration);
-    send_digital_signal_to_driver(FlowController::the().best_digital_signal_for_flow(desired_volume / (duration / 1000)));
+    send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(desired_volume / (duration / 1000)));
     m_total_desired_volume = desired_volume;
     m_flow_correction = correct;
-    LOG_IF(LogPour, "iniciando despejo - [volume desejado = ", desired_volume, " | forca = ", m_digital_signal, "]");
+    LOG_IF(LogPour, "iniciando despejo - [volume desejado = ", desired_volume, " | sinal = ", m_digital_signal, "]");
 }
 
 float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume, CorrectFlow correct) {
     pour_with_desired_volume(duration, desired_volume, correct);
-    util::idle_while([] { return Spout::the().pouring(); }, TickFilter::Interaction);
+    util::idle_while([] { return Spout::the().pouring(); });
     return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
 }
 
@@ -69,7 +95,7 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
 
     begin_pour(duration);
     send_digital_signal_to_driver(digital_signal);
-    LOG_IF(LogPour, "iniciando despejo - [forca = ", m_digital_signal, "]");
+    LOG_IF(LogPour, "iniciando despejo - [sinal = ", m_digital_signal, "]");
 }
 
 void Spout::end_pour() {
@@ -79,36 +105,40 @@ void Spout::end_pour() {
     m_tick_pour_ended = millis();
     m_pour_duration = 0;
     m_flow_correction = CorrectFlow::No;
-    m_last_flow_correction_tick = 0;
+    m_time_of_last_correction = 0;
     m_pulses_at_end_of_pour = s_pulse_counter;
-    if (m_total_desired_volume) {
-        const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
-        const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
-        // TODO: security check
-        LOG_IF(LogPour, "finalizando despejo - [delta = ", m_time_elapsed, "ms | volume = ", poured_volume, " | pulses = ", pulses, "]");
-        m_total_desired_volume = 0.f;
-        m_time_elapsed = 0;
-    }
+
+    const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
+    const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
+    LOG_IF(LogPour, "finalizando despejo - [delta = ", m_time_elapsed, "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
+    m_total_desired_volume = 0.f;
+    m_time_elapsed = 0;
 }
 
 void Spout::setup() {
-    // nossos pinos DAC tem resolução de 12 bits
-    analogWriteResolution(12);
+    { // driver setup
+        // 12 bit DAC pins!
+        analogWriteResolution(12);
 
-    pinMode(Pin::SV, OUTPUT);
-    pinMode(Pin::BRK, OUTPUT);
-    pinMode(Pin::EN, OUTPUT);
-    pinMode(Pin::FlowSensor, INPUT);
+        pinMode(Pin::SV, OUTPUT);
+        pinMode(Pin::BRK, OUTPUT);
+        pinMode(Pin::EN, OUTPUT);
+        // enable is permanently on,  the driver is controlled using only SV and BRK
+        digitalWrite(Pin::EN, LOW);
 
-    digitalWrite(Pin::EN, LOW);
-    end_pour();
+        // let's make sure we turn everything off at startup :)
+        end_pour();
+    }
 
-    attachInterrupt(
-        digitalPinToInterrupt(Pin::FlowSensor),
-        +[] {
-            ++s_pulse_counter;
-        },
-        RISING);
+    { // flow sensor setup
+        pinMode(Pin::FlowSensor, INPUT);
+        attachInterrupt(
+            digitalPinToInterrupt(Pin::FlowSensor),
+            +[] {
+                ++s_pulse_counter;
+            },
+            RISING);
+    }
 }
 
 void Spout::travel_to_station(const Station& station, float offset) const {
@@ -116,7 +146,7 @@ void Spout::travel_to_station(const Station& station, float offset) const {
 }
 
 void Spout::travel_to_station(size_t index, float offset) const {
-    LOG_IF(LogTravel, "viajando - [station = ", index, " | offset = ", offset, "]");
+    LOG_IF(LogTravel, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     const auto beginning = millis();
     const auto gcode = util::ff("G0 F50000 Y60 X%s", Station::absolute_position(index) + offset);
@@ -125,7 +155,7 @@ void Spout::travel_to_station(size_t index, float offset) const {
                           "G91");
     finish_movements();
 
-    LOG_IF(LogTravel, "viagem completa - [duration = ", millis() - beginning, "ms]");
+    LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
 }
 
 void Spout::travel_to_sewer() const {
@@ -137,7 +167,7 @@ void Spout::travel_to_sewer() const {
                           "G91");
     finish_movements();
 
-    LOG_IF(LogTravel, "viagem completa - [duration = ", millis() - beginning, "ms]");
+    LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
 }
 
 void Spout::home() const {
@@ -150,7 +180,7 @@ void Spout::finish_movements() const {
 
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     if (v == FlowController::INVALID_DIGITAL_SIGNAL) {
-        LOG_ERR("tentando aplicar forca digital invalido, desligando");
+        LOG_ERR("sinal digital invalido, finalizando imediatamente");
         end_pour();
         return;
     }
@@ -160,8 +190,8 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
 }
 
 void Spout::fill_hose(float desired_volume) {
-    constexpr auto FALLBACK_SIGNAL = 1400;
-    constexpr auto TIME_TO_FILL_HOSE = 1000 * 20; // 20 seg
+    constexpr auto FALLBACK_SIGNAL = 1400;        // radomly picked this
+    constexpr auto TIME_TO_FILL_HOSE = 1000 * 20; // 20 sec
 
     Spout::the().travel_to_sewer();
 
@@ -171,7 +201,7 @@ void Spout::fill_hose(float desired_volume) {
         pour_with_digital_signal(TIME_TO_FILL_HOSE, FALLBACK_SIGNAL);
     }
 
-    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duration = ", TIME_TO_FILL_HOSE / 1000, "s]");
+    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", TIME_TO_FILL_HOSE / 1000, "s]");
     util::idle_for(TIME_TO_FILL_HOSE);
 }
 
@@ -189,104 +219,116 @@ void Spout::FlowController::fill_digital_signal_table() {
     constexpr auto MAX_DELTA_BETWEEN_POURS = 1.f;
 
     constexpr auto TIME_TO_ANALISE_POUR = 1000 * 10;
-    static_assert(TIME_TO_ANALISE_POUR >= 1000, "tempo de analise deve ser no minimo 1 minuto");
+    static_assert(TIME_TO_ANALISE_POUR >= 1000, "analysis time must be at least one minute");
 
     clean_digital_signal_table(SaveToFlash::No);
 
     const auto beginning = millis();
-
-    // prepara o bico na posição correta e preenche a mangueira com água quente, para evitarmos resultados erroneos
+    // place the spout on the sink and fill the hose so we avoid silly errors
     Spout::the().fill_hose();
 
-    // valor enviado para o driver do motor
+    // the signal sent to the driver on every iteration
     int digital_signal = INITIAL_DIGITAL_SIGNAL;
-    // modificacao aplicada nesse valor em cada iteração do nivelamento
+    // the amount by which that signal gets modified at the end of the current iteration
+    // can be negative
     int digital_signal_mod = INITIAL_DIGITAL_SIGNAL_MOD;
-    // o flow medio do ultimo despejo, usado para calcularmos o delta entre despejos e modificarmos o forca digital apropriadamente
-    float last_pour_average_flow = 0.f;
-    // flag para sabermos se ja temos o valor minimo e podemos prosseguir com o restante do nivelamento
+    // the average flow of the last valid iteration
+    float last_iteration_average_flow = 0.f;
+
     bool obtained_minimum_flow = false;
-    // flag que diz se o ultimo despejo em busca do flow minimo foi maior ou menor que o flow minimo
-    bool last_greater_minimum = false;
+    bool was_greater_than_minimum_last_iteration = false;
+
+    size_t number_of_occupied_cells = 0;
 
     // accepts normalized values between 0.f and 1.f
     const auto report_progress = [](float progress) {
-        info::event("infoNivelamento", [progress](JsonObject o) {
-            o["progresso"] = progress;
+        info::send(info::Event::Calibration, [progress](JsonObject o) {
+            o["progress"] = progress;
         });
     };
 
     while (true) {
-        // chegamos no limite, não podemos mais aumentar a força
+        // let's not fly too close to the sun
         if (digital_signal >= 4095)
             break;
 
         const auto starting_pulses = s_pulse_counter;
 
-        LOG_IF(LogCalibration, "aplicando forca = ", digital_signal);
+        LOG_IF(LogCalibration, "aplicando sinal = ", digital_signal);
         Spout::the().send_digital_signal_to_driver(digital_signal);
 
         util::idle_for(TIME_TO_ANALISE_POUR);
 
         const auto pulses = s_pulse_counter - starting_pulses;
-        const auto average_flow = (float(pulses) * ML_PER_PULSE) / float(TIME_TO_ANALISE_POUR / 1000);
+        const auto average_flow = (pulses * ML_PER_PULSE) / (TIME_TO_ANALISE_POUR / 1000.f);
 
-        LOG_IF(LogCalibration, "flow estabilizou - [pulses = ", pulses, " | average_flow = ", average_flow, "]");
+        LOG_IF(LogCalibration, "flow estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
 
-        { // primeiro precisamos obter o flow minimo
+        { // 1. obtain the minimum flow
             if (not obtained_minimum_flow) {
-                const auto delta = average_flow - float(FLOW_MIN);
-                // valores entre FLOW_MIN - 0.1 e FLOW_MIN + 0.1 são aceitados
-                // caso contrario, aumentamos ou diminuimos o forca digital ate chegarmos no flow minimo
-                if (delta > -0.1f and delta < 0.1f) {
+                const auto delta = average_flow - FLOW_MIN;
+                // a .1 gram delta is accepeted
+                if (std::abs(average_flow - FLOW_MIN) <= 0.1) {
                     obtained_minimum_flow = true;
                     m_digital_signal_table[0][0] = digital_signal;
 
-                    LOG_IF(LogCalibration, "flow minimo obtido - [digital_signal = ", digital_signal, "]");
+                    LOG_IF(LogCalibration, "flow minimo obtido - [sinal = ", digital_signal, "]");
 
                     digital_signal_mod = DIGITAL_SIGNAL_MOD_AFTER_OBTAINING_MIN_FLOW;
                     digital_signal += digital_signal_mod;
 
+                    // now the iterative calibration process has properly startd
                     report_progress(0.f);
-                } else {
-                    const bool greater_min = average_flow > float(FLOW_MIN);
-                    if (greater_min != last_greater_minimum) {
-                        if (digital_signal_mod < 0)
+                }
+                // otherwise modify the digital signal appropriately
+                else {
+                    const bool greater_than_minimum = average_flow > float(FLOW_MIN);
+                    // this little algorithm makes us gravitates towards a specific value
+                    // making it guaranteed that, even if it takes a little bit, we achieve
+                    // at the correct digital signal
+                    if (greater_than_minimum != was_greater_than_minimum_last_iteration) {
+                        if (digital_signal_mod < 0) {
                             digital_signal_mod = std::min(digital_signal_mod / 2, -1);
-                        else
+                        } else {
                             digital_signal_mod = std::max(digital_signal_mod / 2, 1);
+                        }
                         digital_signal_mod *= -1;
                     }
 
                     digital_signal += digital_signal_mod;
 
-                    LOG_IF(LogCalibration, "flow minimo nao obtido - ", greater_min ? "diminuindo" : "aumentando", " o forca digital para ", digital_signal, " - [modificacao = ", digital_signal_mod, "]");
+                    LOG_IF(LogCalibration, "flow minimo nao obtido - ", greater_than_minimum ? "diminuindo" : "aumentando", " o sinal digital para ", digital_signal, " - [modificacao = ", digital_signal_mod, "]");
 
-                    last_greater_minimum = greater_min;
+                    was_greater_than_minimum_last_iteration = greater_than_minimum;
 
-                    info::event("preNivelamento", [](JsonObject o) {});
+                    // before the minimum flow has been found we cannot achieve a value representing "progress"
+                    // so we tell the host something else instead
+                    info::send(info::Event::Calibration, [](JsonObject o) {
+                        o["preparing"] = true;
+                    });
                 }
                 continue;
             }
         }
 
-        // se o flow diminui entre um despejo e outro o resultado é ignorado
-        if (last_pour_average_flow and average_flow < last_pour_average_flow) {
+        // if the flow decreases between iterations, the result is ignored
+        if (last_iteration_average_flow and average_flow < last_iteration_average_flow) {
             digital_signal += digital_signal_mod;
-            LOG_IF(LogCalibration, "flow diminuiu?! aumentando forca digital - [last_pour_average_flow = ", last_pour_average_flow, "]");
+            LOG_IF(LogCalibration, "flow diminuiu?! aumentando sinal digital - [last_iteration_average_flow = ", last_iteration_average_flow, "]");
             continue;
         }
 
-        // se o flow ultrapassa o limite máximo, finalizamos o nivelamento
+        // too close to the sun!
         if (average_flow >= FLOW_MAX) {
             LOG_IF(LogCalibration, "chegamos no flow maximo, finalizando nivelamento");
             break;
         }
 
-        { // precisamos garantir que o flow não deu um pulo muito grande entre esse e o último despejo, para termos uma quantidade maior de valores salvos na tabela
-            if (last_pour_average_flow) {
-                const auto delta = average_flow - last_pour_average_flow;
-                // o pulo foi muito grande, corta a modificacao no meio e reduz o forca digital
+        { // let's make sure the jump from one iteartion to the other respects the maximum delta
+            if (last_iteration_average_flow) {
+                // no need to 'abs' this since we chcked that 'last_iteration_average_flow' is smaller
+                const auto delta = average_flow - last_iteration_average_flow;
+                // big jump! cut the modification and subtract it from the signal
                 if (delta > MAX_DELTA_BETWEEN_POURS) {
                     digital_signal_mod = std::max(digital_signal_mod / 2, 1);
                     digital_signal -= digital_signal_mod;
@@ -296,32 +338,27 @@ void Spout::FlowController::fill_digital_signal_table() {
             }
         }
 
-        { // salvamos a forca digital, aplicamos a modificação e prosseguimos com o proximo despejo
-            last_pour_average_flow = average_flow;
+        { // it all went well in wonderland, let's report our progress and save the current signal
             const auto [rounded_volume, decimal] = decompose_flow(average_flow);
             const auto flow = float(rounded_volume) + (decimal / 10.f);
             report_progress(util::normalize(flow, FLOW_MIN, FLOW_MAX));
 
-            auto& cell = m_digital_signal_table[rounded_volume - FLOW_MIN][decimal];
-            if (cell == INVALID_DIGITAL_SIGNAL) {
-                cell = digital_signal;
-                LOG_IF(LogCalibration, "forca digital salvo - [valor = ", digital_signal, "]");
-            }
+            m_digital_signal_table[rounded_volume - FLOW_MIN][decimal] = digital_signal;
+            LOG_IF(LogCalibration, "sinal digital salvo - [valor = ", digital_signal, "]");
 
+            // apply the modification, save the current flow and move on to the next iteration
             digital_signal += digital_signal_mod;
-
-            LOG_IF(LogCalibration, "analise completa");
+            last_iteration_average_flow = average_flow;
+            number_of_occupied_cells++;
         }
     }
 
+    // we're done!
     Spout::the().end_pour();
-
     report_progress(1.f);
-
     save_digital_signal_table_to_flash();
 
-    LOG_IF(LogCalibration, "tabela preenchida - [duration = ", (millis() - beginning) / 60000.f, "min | numero de celulas = ", number_of_ocuppied_cells(), "]");
-
+    LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | numero de celulas = ", number_of_occupied_cells, "]");
     LOG_IF(LogCalibration, "resultado da tabela: ");
     for_each_occupied_cell([](DigitalSignal digital_signal, size_t i, size_t j) {
         LOG_IF(LogCalibration, "m_digital_signal_table[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
@@ -342,18 +379,22 @@ void Spout::FlowController::try_fetching_digital_signal_table_from_flash() {
     fetch_digital_signal_table_from_flash();
 }
 
-Spout::DigitalSignal Spout::FlowController::best_digital_signal_for_flow(float flow) const {
+// this takes a desired flow and tries to guess the best digital signal to achieve that
+Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flow) const {
     const auto [rounded_flow, decimal] = decompose_flow(flow);
     const auto flow_index = rounded_flow - FLOW_MIN;
-    auto& cells = m_digital_signal_table[flow_index];
-    if (cells[decimal] != INVALID_DIGITAL_SIGNAL)
-        // ótimo, já temos um valor salvo para esse flow
-        return cells[decimal];
+    auto& stored_value = m_digital_signal_table[flow_index][decimal];
+    // if we already have the right value on the table just return that, no need to get fancy
+    if (stored_value != INVALID_DIGITAL_SIGNAL)
+        return stored_value;
 
-    // caso contrário, interpolamos entre os dois mais próximos
+    // otherwise we get the two closest values above and below the desired flow
+    // then interpolate between them
+    // it works surprisignly well!
     const auto [flow_below, digital_signal_below] = first_flow_info_below_flow(flow_index, decimal);
     const auto [flow_above, digital_signal_above] = first_flow_info_above_flow(flow_index, decimal);
 
+    // if one, or both, are invalid then we can't interpolate
     if (digital_signal_below == INVALID_DIGITAL_SIGNAL) {
         return digital_signal_above;
     } else if (digital_signal_above == INVALID_DIGITAL_SIGNAL) {
@@ -403,7 +444,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flo
 }
 
 Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flow(int flow_index, int decimal) const {
-    for (; flow_index < RANGE_FLOW; ++flow_index, decimal = 0) {
+    for (; flow_index < FLOW_RANGE; ++flow_index, decimal = 0) {
         auto& cells = m_digital_signal_table[flow_index];
         for (; decimal < 10; ++decimal) {
             if (cells[decimal] != INVALID_DIGITAL_SIGNAL) {
@@ -418,7 +459,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flo
 
 Spout::FlowController::DecomposedFlow Spout::FlowController::decompose_flow(float flow) const {
     const auto rounded = std::round(flow * 10.f) / 10.f;
-    const auto clamped_flow = std::clamp(rounded, float(FLOW_MIN), float(FLOW_MAX) - 0.1f);
-    return { int(clamped_flow), int(clamped_flow * 10) % 10 };
+    const auto clamped = std::clamp(rounded, float(FLOW_MIN), float(FLOW_MAX) - 0.1f);
+    return { int(clamped), int(clamped * 10) % 10 };
 }
 }

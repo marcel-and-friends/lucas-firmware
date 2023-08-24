@@ -13,8 +13,8 @@ class Station {
 public:
     static constexpr size_t INVALID = static_cast<size_t>(-1);
 
-    static constexpr size_t MAXIMUM_STATIONS = 5;
-    using List = std::array<Station, MAXIMUM_STATIONS>;
+    static constexpr size_t MAXIMUM_NUMBER_OF_STATIONS = 5;
+    using List = std::array<Station, MAXIMUM_NUMBER_OF_STATIONS>;
 
     static void initialize(size_t num);
 
@@ -88,6 +88,7 @@ public:
 
     bool waiting_user_confirmation() const { return m_status == Status::ConfirmingScald or m_status == Status::ConfirmingAttacks; }
     bool waiting_user_input() const { return waiting_user_confirmation() or m_status == Status::Ready; }
+    bool is_executing_or_in_queue() const { return m_status == Status::Scalding or m_status == Status::Attacking; }
 
 public:
     pin_t button() const { return m_button_pin; }

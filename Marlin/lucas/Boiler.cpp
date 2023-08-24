@@ -2,8 +2,7 @@
 
 #include <lucas/lucas.h>
 #include <lucas/info/info.h>
-#include <lucas/Spout.h>
-#include <lucas/RecipeQueue.h>
+#include <lucas/sec/sec.h>
 #include <src/module/temperature.h>
 
 namespace lucas {
@@ -16,51 +15,34 @@ static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
     pinMode(Pin::CoelAlarmInput, INPUT);
-    s_alarm_triggered = READ(Pin::CoelAlarmInput);
     attachInterrupt(
         digitalPinToInterrupt(Pin::CoelAlarmInput),
         +[] {
-            s_alarm_triggered = READ(Pin::CoelAlarmInput);
+            s_alarm_triggered = not s_alarm_triggered;
         },
-        CHANGE);
+        FALLING);
 
     pinMode(Pin::CoelAlarmOutput, OUTPUT);
     digitalWrite(Pin::CoelAlarmOutput, HIGH);
 
     if (s_alarm_triggered) {
-        info::event("infoBoiler", [](JsonObject o) {
-            o["enchendo"] = true;
+        info::send(info::Event::Boiler, [](JsonObject o) {
+            o["filling"] = true;
         });
-
         util::idle_while([] { return s_alarm_triggered; });
-
-        info::event("infoBoiler", [](JsonObject o) {
-            o["enchendo"] = false;
+        info::send(info::Event::Boiler, [](JsonObject o) {
+            o["filling"] = false;
         });
     }
 }
 
 void Boiler::tick() {
-    if (s_alarm_triggered) {
-        info::event("infoBoiler", [](JsonObject o) {
-            o["alarm"] = true;
-        });
+    if (s_alarm_triggered)
+        sec::raise_error(sec::Reason::BoilerAlarm, [] { return s_alarm_triggered; });
+}
 
-        const auto old_temperature = thermalManager.degTargetBed();
-        Boiler::the().disable_heater();
-        Spout::the().end_pour();
-        RecipeQueue::the().cancel_all_recipes();
-
-        // spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
-        constexpr auto FILTER = TickFilter::All & ~TickFilter::Spout;
-        util::idle_while([] { return s_alarm_triggered; }, FILTER);
-
-        info::event("infoBoiler", [](JsonObject o) {
-            o["alarm"] = false;
-        });
-
-        Boiler::the().set_target_temperature_and_wait(old_temperature);
-    }
+int Boiler::target_temperature() const {
+    return thermalManager.degTargetBed();
 }
 
 void Boiler::set_target_temperature_and_wait(int target) {
@@ -75,23 +57,25 @@ void Boiler::set_target_temperature_and_wait(int target) {
 
         const auto current_temp = thermalManager.degBed();
         if (util::elapsed<LOG_INTERVAL>(s_last_log_tick)) {
-            info::event("infoBoiler", [current_temp](JsonObject o) {
-                o["tempAtual"] = current_temp;
+            info::send(info::Event::Boiler, [current_temp](JsonObject o) {
+                o["currentTemp"] = current_temp;
             });
             s_last_log_tick = millis();
         }
 
-        const auto in_acceptable_range = std::abs(target - current_temp) >= m_hysteresis;
-        constexpr auto TIME_TO_STABILIZE = 1000;
+        const auto in_acceptable_range = std::abs(target - current_temp) <= m_hysteresis;
+        constexpr auto TIME_TO_STABILIZE = 5000;
         static auto s_tick_temperature_started_to_stabilize = 0;
         if (s_tick_temperature_started_to_stabilize == 0) {
-            if (in_acceptable_range)
+            if (in_acceptable_range) {
                 s_tick_temperature_started_to_stabilize = millis();
+            }
         } else {
             if (in_acceptable_range) {
-                if (util::elapsed<TIME_TO_STABILIZE>(s_tick_temperature_started_to_stabilize))
+                if (util::elapsed<TIME_TO_STABILIZE>(s_tick_temperature_started_to_stabilize)) {
                     // boiler is in the acceptable hysteresis range for long enough, stop idling
                     return true;
+                }
             } else {
                 s_tick_temperature_started_to_stabilize = 0;
             }
@@ -99,8 +83,8 @@ void Boiler::set_target_temperature_and_wait(int target) {
         return false;
     });
 
-    info::event("infoBoiler", [target](JsonObject o) {
-        o["tempAtual"] = target;
+    info::send(info::Event::Boiler, [target](JsonObject o) {
+        o["currentTemp"] = target;
     });
 
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
@@ -119,6 +103,5 @@ void Boiler::set_target_temperature(int target) {
 
 void Boiler::disable_heater() {
     thermalManager.setTargetBed(0);
-    LOG("resistencia foi desligada");
 }
 }

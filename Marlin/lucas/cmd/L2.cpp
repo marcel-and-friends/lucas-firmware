@@ -1,8 +1,7 @@
 #include <lucas/cmd/cmd.h>
-#include <src/gcode/parser.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
-#include <lucas/Station.h>
+#include <src/gcode/parser.h>
 
 namespace lucas::cmd {
 void L2() {
