@@ -1,6 +1,7 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
+#include <lucas/MotionController.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
 #include <src/module/planner.h>
@@ -23,7 +24,7 @@ void L1() {
 
     if (CFG(GigaMode) and duration) {
         LOG_IF(LogLn, "iniciando L1 em modo giga");
-        util::idle_for(duration);
+        util::idle_for(chrono::milliseconds{ duration });
         LOG_IF(LogLn, "L1 finalizado");
         return;
     }
@@ -37,7 +38,7 @@ void L1() {
     auto final_position = initial_position;
 
     execute_ff("G0 F10000 X%s", -circle_radius);
-    Spout::the().finish_movements();
+    MotionController::the().finish_movements();
 
     const float total_to_move = (2.f * std::numbers::pi_v<float> * circle_radius) * number_of_repetitions;
     const float steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
@@ -48,7 +49,7 @@ void L1() {
     planner.refresh_positioning();
 
     if (should_pour)
-        Spout::the().pour_with_desired_volume(duration, volume_of_water, Spout::CorrectFlow::Yes);
+        Spout::the().pour_with_desired_volume(duration, volume_of_water);
 
     for (int i = 0; i < number_of_arcs; i++) {
         float diameter = circle_diameter;
@@ -78,7 +79,7 @@ void L1() {
     if (should_pour)
         Spout::the().end_pour();
 
-    Spout::the().finish_movements();
+    MotionController::the().finish_movements();
 
     current_position = final_position;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
@@ -91,7 +92,7 @@ void L1() {
 
     const auto offset = initial_position.x - final_position.x;
     execute_ff("G0 F10000 X%s", offset);
-    Spout::the().finish_movements();
+    MotionController::the().finish_movements();
 
     current_position = initial_position;
     sync_plan_position();

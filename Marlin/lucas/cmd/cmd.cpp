@@ -20,18 +20,18 @@ void interpret_gcode_from_host(std::span<char> buffer) {
 
 /* alguns comandos uteis
 ~ init ~
-#{"cmdInitializeStations":[true, true, true]}#
+#{"cmdInitializeStations":[true, true, true, true, true]}#
 #{"cmdSetBoilerTemperature":93}#
-#{"cmdInitializeStations":[true, true, true],"cmdSetBoilerTemperature":93}#
+#{"cmdInitializeStations":[true, true, true, true, true],"cmdSetBoilerTemperature":93}#
 
 ~ recipes ~
 #{"devScheduleStandardRecipe":1}#
 #{"devSimulateButtonPress":0}#
 #{"devScheduleStandardRecipe":1,"devSimulateButtonPress":0}#
-#{"devScheduleStandardRecipe":3,"devSimulateButtonPress":[0,1,2]}#
+#{"devScheduleStandardRecipe":5,"devSimulateButtonPress":[0,1,2,3,4]}#
 #{"cmdCancelRecipe":0}#
-#{"cmdCancelRecipe":[0,1,2]}#
+#{"cmdCancelRecipe":[0,1,2,3,4]}#
 
 ~ rest ~
-#{"reqInfoAllStations":[0,1,2]}#
+#{"reqInfoAllStations":[0,1,2,3,4]}#
 */

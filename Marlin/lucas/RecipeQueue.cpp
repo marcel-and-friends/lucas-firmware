@@ -1,16 +1,15 @@
 #include "RecipeQueue.h"
 #include <lucas/Spout.h>
 #include <lucas/info/info.h>
-#include <src/module/motion.h>
-#include <src/module/planner.h>
+#include <lucas/MotionController.h>
 #include <lucas/util/ScopedGuard.h>
 #include <lucas/util/StaticVector.h>
+#include <src/module/motion.h>
+#include <src/module/planner.h>
 #include <numeric>
 #include <ranges>
 
 namespace lucas {
-static millis_t s_tick_beginning_inactivity = 0;
-
 void RecipeQueue::tick() {
     try_heating_hose_after_inactivity();
 
@@ -40,7 +39,7 @@ void RecipeQueue::tick() {
                 // o passo está chegando...
                 m_recipe_in_execution = index;
                 LOG_IF(LogQueue, "passo esta prestes a comecar - [estacao = ", index, "]");
-                Spout::the().travel_to_station(index);
+                MotionController::the().travel_to_station(index);
                 return util::Iter::Break;
             }
             return util::Iter::Continue;
@@ -150,7 +149,7 @@ void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
     } else {
         // se não foi achado nenhum candidato a fila está vazia
         // então a recipe é executada imediatamente
-        Spout::the().travel_to_station(station);
+        MotionController::the().travel_to_station(station);
         first_step_tick = millis();
         m_recipe_in_execution = station.index();
         recipe.map_remaining_steps(first_step_tick);
@@ -209,14 +208,14 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     const auto error = (ideal_duration > actual_duration) ? (ideal_duration - actual_duration) : (actual_duration - ideal_duration);
     LOG_IF(LogQueue, "passo acabou - [duracao = ", actual_duration, "ms | erro = ", error, "ms]");
 
-    s_tick_beginning_inactivity = millis();
+    m_inactivity_timer.restart();
 
     if (station.status() == Station::Status::Scalding) {
         station.set_status(Station::Status::ConfirmingAttacks, recipe.id());
     } else if (recipe.finished()) {
-        if (recipe.finalization_duration()) {
+        if (recipe.finalization_duration() != 0ms) {
             station.set_status(Station::Status::Finalizing, recipe.id());
-            recipe.set_start_finalization_duration(millis());
+            recipe.finalization_timer().start();
         } else {
             station.set_status(Station::Status::Ready, recipe.id());
             remove_recipe(station.index());
@@ -229,7 +228,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
 // nao é necessariamente executada a 1mhz, quando isso acontecer o passo atrasado é executado imediatamente
 // e todos os outros sao compensados pelo tempo de atraso
 void RecipeQueue::compensate_for_missed_step(Recipe& recipe, Station& station) {
-    Spout::the().travel_to_station(station);
+    MotionController::the().travel_to_station(station);
 
     const auto starting_tick = recipe.current_step().starting_tick;
     // esse delta já leva em consideração o tempo de viagem para a estacão em atraso
@@ -300,7 +299,7 @@ bool RecipeQueue::collides_with_other_recipes(const Recipe& new_recipe) const {
 
 void RecipeQueue::cancel_station_recipe(size_t index) {
     if (not m_queue[index].active) {
-        LOG_ERR("tentando cancelar receita de station que nao esta na fila - [estacao = ", index, "]");
+        LOG_ERR("tentando cancelar receita de estacao que nao esta na fila - [estacao = ", index, "]");
         return;
     }
 
@@ -328,9 +327,9 @@ void RecipeQueue::remove_finalized_recipes() {
     for_each_recipe([this](const Recipe& recipe, size_t index) {
         auto& station = Station::list().at(index);
         if (station.status() == Station::Status::Finalizing) [[unlikely]] {
-            const auto delta = millis() - recipe.start_finalization_duration();
-            if (delta >= recipe.finalization_duration()) {
-                LOG_IF(LogQueue, "tempo de finalizacao acabou - [estacao = ", index, " | delta = ", delta, "ms]");
+            // FIXME: use a timer for this
+            if (recipe.finalization_timer().has_elapsed(recipe.finalization_duration())) {
+                LOG_IF(LogQueue, "tempo de finalizacao acabou - [estacao = ", index, "]");
                 station.set_status(Station::Status::Ready, recipe.id());
                 remove_recipe(index);
             }
@@ -341,37 +340,29 @@ void RecipeQueue::remove_finalized_recipes() {
 
 // se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
-void RecipeQueue::try_heating_hose_after_inactivity() const {
-    constexpr millis_t MAX_INACTIVITY_DURATION = 60000 * 10; // 10min
-    static_assert(MAX_INACTIVITY_DURATION >= 60000, "minimo de 1 minuto");
+void RecipeQueue::try_heating_hose_after_inactivity() {
+    if (m_inactivity_timer.has_elapsed(1min)) {
+        LOG_IF(LogQueue, "aquecendo mangueira apos inatividade");
 
-    constexpr millis_t POUR_DURATION = 1000 * 20;                // 20s
-    constexpr float POUR_VOLUME = 10.f * (POUR_DURATION / 1000); // 10 g/s
+        constexpr auto POUR_DURATION = 20s;
+        constexpr float POUR_VOLUME = 10.f * POUR_DURATION.count();
+        MotionController::the().travel_to_sewer();
+        Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME);
 
-    if (s_tick_beginning_inactivity and millis() > s_tick_beginning_inactivity) {
-        const auto delta = millis() - s_tick_beginning_inactivity;
-        if (delta >= MAX_INACTIVITY_DURATION) {
-            const auto delta_in_minutes = delta / 60000;
-            LOG_IF(LogQueue, "aquecendo mangueira apos ", delta_in_minutes, "min de inatividade");
+        util::idle_while(
+            [this] {
+                // se é recebido um pedido de recipe enquanto a maquina está no processo de aquecimento
+                // o numero de receitas em execucao aumenta, o bico é desligado e a recipe é executada
+                if (number_of_recipes_executing() != 0) {
+                    Spout::the().end_pour();
+                    return false;
+                }
+                return Spout::the().pouring();
+            },
+            TickFilter::RecipeQueue);
 
-            Spout::the().travel_to_sewer();
-            Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME, Spout::CorrectFlow::Yes);
-
-            util::idle_while(
-                [this] {
-                    // se é recebido um pedido de recipe enquanto a maquina está no processo de aquecimento
-                    // o numero de receitas em execucao aumenta, o bico é desligado e a recipe é executada
-                    if (number_of_recipes_executing() != 0) {
-                        Spout::the().end_pour();
-                        return false;
-                    }
-                    return Spout::the().pouring();
-                },
-                TickFilter::RecipeQueue);
-
-            LOG_IF(LogQueue, "aquecimento finalizado");
-            s_tick_beginning_inactivity = millis();
-        }
+        m_inactivity_timer.restart();
+        LOG_IF(LogQueue, "aquecimento finalizado");
     }
 }
 
@@ -431,8 +422,8 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
                     obj["timeElapsedAttacks"] = tick - first_attack.starting_tick;
 
                 if (station.status() == Station::Status::Finalizing)
-                    if (tick_has_happened(recipe.start_finalization_duration(), tick))
-                        obj["timeElapsedFinalization"] = tick - recipe.start_finalization_duration();
+                    if (recipe.finalization_timer().is_active())
+                        obj["timeElapsedFinalization"] = recipe.finalization_timer().elapsed().count();
 
                 if (not station.is_executing_or_in_queue())
                     continue;

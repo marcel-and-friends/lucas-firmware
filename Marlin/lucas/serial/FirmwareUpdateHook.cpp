@@ -2,11 +2,9 @@
 #include <lucas/lucas.h>
 
 namespace lucas::serial {
-FirmwareUpdateHook FirmwareUpdateHook::s_the;
-
 void FirmwareUpdateHook::think() {
     while (SERIAL_IMPL.available())
-        FirmwareUpdateHook::the()->receive_char(SERIAL_IMPL.read());
+        receive_char(SERIAL_IMPL.read());
 }
 
 void FirmwareUpdateHook::receive_char(char c) {

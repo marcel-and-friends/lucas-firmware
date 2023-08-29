@@ -1,5 +1,4 @@
-#include <lucas/util/util.h>
-#include <src/MarlinCore.h>
+#include "util.h"
 #include <src/module/planner.h>
 #include <avr/dtostrf.h>
 
@@ -33,12 +32,5 @@ float distance_between_each_station() {
 
 float normalize(float v, float min, float max) {
     return (v - min) / (max - min);
-}
-
-void idle_for(millis_t tempo, TickFilter filtros) {
-    core::TemporaryFilter f{ filtros };
-    const auto comeco = millis();
-    while (millis() - comeco < tempo)
-        idle();
 }
 }

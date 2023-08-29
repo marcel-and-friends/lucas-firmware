@@ -11,7 +11,7 @@ void calibrate(float target_temperature);
 
 bool calibrated();
 
-void request_calibration();
+void inform_calibration_status();
 
 void prepare_for_firmware_update(size_t size);
 }

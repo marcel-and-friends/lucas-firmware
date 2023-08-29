@@ -2,18 +2,15 @@
 
 #include <lucas/Station.h>
 #include <lucas/Recipe.h>
+#include <lucas/util/Timer.h>
+#include <lucas/util/Singleton.h>
 #include <ArduinoJson.h>
 #include <unordered_map>
 #include <vector>
 
 namespace lucas {
-class RecipeQueue {
+class RecipeQueue : public util::Singleton<RecipeQueue> {
 public:
-    static RecipeQueue& the() {
-        static RecipeQueue instance;
-        return instance;
-    }
-
     void tick();
 
     void schedule_recipe(JsonObjectConst recipe_json);
@@ -25,8 +22,6 @@ public:
     void cancel_station_recipe(size_t);
 
     void remove_finalized_recipes();
-
-    void try_heating_hose_after_inactivity() const;
 
     void send_queue_info(JsonArrayConst stations) const;
 
@@ -128,6 +123,8 @@ private:
 
     void remap_recipes_after_changes_in_queue();
 
+    void try_heating_hose_after_inactivity();
+
     bool collides_with_other_recipes(const Recipe&) const;
 
     void add_recipe(size_t);
@@ -139,6 +136,7 @@ private:
     size_t number_of_recipes_executing() const;
 
 private:
+    util::Timer m_inactivity_timer;
     size_t m_recipe_in_execution = Station::INVALID;
 
     struct RecipeInfo {

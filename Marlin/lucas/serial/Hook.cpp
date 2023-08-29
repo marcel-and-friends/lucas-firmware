@@ -2,6 +2,7 @@
 #include <src/core/serial.h>
 #include <src/MarlinCore.h>
 #include <lucas/lucas.h>
+#include <lucas/info/info.h>
 
 namespace lucas::serial {
 bool Hook::is_valid() const {
@@ -24,8 +25,8 @@ void Hook::dispatch() {
                 LOG_IF(LogSerial, "", m_buffer);
             }
         }
+        m_callback({ m_buffer, buffer_size });
     }
-    m_callback({ m_buffer, buffer_size });
 }
 
 void Hook::reset() {
@@ -34,7 +35,11 @@ void Hook::reset() {
 }
 
 void Hook::ok_to_receive() {
-    SERIAL_ECHOLN(OK_CODE);
+    info::send(
+        info::Event::Other,
+        [](JsonObject o) {
+            o["okToReceive"] = true;
+        });
 }
 
 void Hook::add_to_buffer(char c) {

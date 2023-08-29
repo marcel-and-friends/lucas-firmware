@@ -1,68 +1,57 @@
 #pragma once
 
 #include <src/MarlinCore.h>
-#include <lucas/util/util.h>
+#include <lucas/lucas.h>
+#include <lucas/util/Timer.h>
+#include <lucas/util/Singleton.h>
 
 namespace lucas {
 class Station;
-class Spout {
+class Spout : public util::Singleton<Spout> {
 public:
-    static Spout& the() {
-        static Spout instance;
-        return instance;
-    }
-
     void tick();
-
-    enum class CorrectFlow {
-        Yes,
-        No
-    };
 
     using DigitalSignal = uint32_t;
 
-    void pour_with_desired_volume(millis_t duration, float volume_desejado, CorrectFlow corrigir);
+    void pour_with_desired_volume(millis_t duration, float desired_volume);
+    void pour_with_desired_volume(const auto duration, float desired_volume) {
+        const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
+        pour_with_desired_volume(ms, desired_volume);
+    }
 
-    float pour_with_desired_volume_and_wait(millis_t duration, float volume_desejado, CorrectFlow corrigir);
+    float pour_with_desired_volume_and_wait(millis_t duration, float desired_volume);
+    void pour_with_desired_volume_and_wait(const auto duration, float desired_volume) {
+        const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
+        pour_with_desired_volume_and_wait(ms, desired_volume);
+    }
 
     void pour_with_digital_signal(millis_t duration, DigitalSignal digital_signal);
+    void pour_with_digital_signal(const auto duration, DigitalSignal digital_signal) {
+        const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
+        pour_with_digital_signal(ms, digital_signal);
+    }
 
     void end_pour();
 
     void setup();
 
-    void travel_to_station(const Station&, float offset = 0.f) const;
-
-    void travel_to_station(size_t, float offset = 0.f) const;
-
-    void finish_movements() const;
-
-    void travel_to_sewer() const;
-
-    void home() const;
-
     bool pouring() const { return m_pouring; }
 
-    class FlowController {
+    class FlowController : public util::Singleton<FlowController> {
     public:
         static constexpr auto INVALID_DIGITAL_SIGNAL = 0xF0F0; // UwU
         static inline auto ML_PER_PULSE = 0.5375f;
 
-        static FlowController& the() {
-            static FlowController instance;
-            return instance;
-        }
-
         void fill_digital_signal_table();
 
-        enum class SaveToFlash {
+        enum class RemoveFile {
             Yes,
             No
         };
 
-        void clean_digital_signal_table(SaveToFlash salvar);
-
-        void try_fetching_digital_signal_table_from_flash();
+        void clean_digital_signal_table(RemoveFile salvar);
+        void save_digital_signal_table_to_file();
+        void fetch_digital_signal_table_from_file();
 
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
@@ -74,19 +63,53 @@ public:
 
         using Table = std::array<std::array<DigitalSignal, 10>, FLOW_RANGE>;
         static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "unexpected table size");
+        static constexpr auto TABLE_FILE_PATH = "/table.txt";
 
     private:
-        FlowController() {
-            clean_digital_signal_table(SaveToFlash::No);
-        }
+        friend class util::Singleton<FlowController>;
 
-        void save_digital_signal_table_to_flash();
-        void fetch_digital_signal_table_from_flash();
+        FlowController() {
+            clean_digital_signal_table(RemoveFile::No);
+        }
 
         struct FlowInfo {
             float flow;
             DigitalSignal digital_signal;
         };
+
+        void begin_iterative_pour(util::IterFn<FlowInfo, int&> auto&& callback, DigitalSignal starting_signal, int starting_mod) {
+            constexpr auto TIME_TO_ANALISE_POUR = 10s;
+
+            // the signal sent to the driver on every iteration
+            DigitalSignal digital_signal = starting_signal;
+            // the amount by which that signal gets modified at the end of the current iteration
+            // can be negative
+            int digital_signal_mod = starting_mod;
+            while (true) {
+                // let's not fly too close to the sun
+                if (digital_signal >= 4095)
+                    break;
+
+                const auto starting_pulses = s_pulse_counter;
+
+                LOG_IF(LogCalibration, "comecando nova iteracao - [sinal = ", digital_signal, "]");
+                Spout::the().send_digital_signal_to_driver(digital_signal);
+
+                util::idle_for(TIME_TO_ANALISE_POUR);
+
+                const auto pulses = s_pulse_counter - starting_pulses;
+                const auto average_flow = (pulses * ML_PER_PULSE) / TIME_TO_ANALISE_POUR.count();
+
+                LOG_IF(LogCalibration, "fluxo estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
+
+                if (std::invoke(callback, FlowInfo{ average_flow, digital_signal }, digital_signal_mod) == util::Iter::Break)
+                    return;
+
+                digital_signal += digital_signal_mod;
+            }
+        }
+
+        FlowInfo obtain_specific_flow(float flow, FlowInfo starting_flow_info, int starting_mod);
 
         FlowInfo first_flow_info_below_flow(int flow_index, int decimal) const;
         FlowInfo first_flow_info_above_flow(int flow_index, int decimal) const;
@@ -97,6 +120,12 @@ public:
         };
 
         DecomposedFlow decompose_flow(float flow) const;
+
+        void save_flow_info_to_table(float flow, DigitalSignal signal) {
+            auto [rounded_flow, decimal] = decompose_flow(flow);
+            m_digital_signal_table[rounded_flow - FLOW_MIN][decimal] = signal;
+            LOG_IF(LogCalibration, "fluxo info salva - [sinal = ", signal, "]");
+        }
 
         void for_each_occupied_cell(util::IterFn<DigitalSignal, size_t, size_t> auto&& callback) const {
             for (size_t i = 0; i < m_digital_signal_table.size(); ++i) {
@@ -130,18 +159,13 @@ private:
     uint32_t m_pulses_at_start_of_pour = 0;
     uint32_t m_pulses_at_end_of_pour = 0;
 
-    millis_t m_pour_duration = 0;
+    chrono::milliseconds m_pour_duration;
 
     float m_total_desired_volume = 0.f;
 
-    CorrectFlow m_flow_correction = CorrectFlow::No;
-
-    millis_t m_time_of_last_correction = 0;
-
-    millis_t m_time_elapsed = 0;
-
-    millis_t m_tick_pour_began = 0;
-    millis_t m_tick_pour_ended = 0;
+    util::Timer m_begin_pour_timer;
+    util::Timer m_end_pour_timer;
+    util::Timer m_correction_timer;
 
     DigitalSignal m_digital_signal = 0;
 

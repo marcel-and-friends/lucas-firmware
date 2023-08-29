@@ -22,18 +22,26 @@ public:
         if (s_list_size == 0)
             return;
 
-        for (size_t i = 0; i < s_list_size; ++i)
-            if (std::invoke(FWD(callback), s_list[i]) == util::Iter::Break)
+        for (size_t i = 0; i < s_list_size; ++i) {
+            auto& station = s_list[i];
+            if (station.m_blocked)
+                continue;
+            if (std::invoke(FWD(callback), station) == util::Iter::Break)
                 break;
+        }
     }
 
     static void for_each(util::IterFn<Station&, size_t> auto&& callback) {
         if (s_list_size == 0)
             return;
 
-        for (size_t i = 0; i < s_list_size; ++i)
-            if (std::invoke(FWD(callback), s_list[i], i) == util::Iter::Break)
+        for (size_t i = 0; i < s_list_size; ++i) {
+            auto& station = s_list[i];
+            if (station.m_blocked)
+                continue;
+            if (std::invoke(FWD(callback), station, i) == util::Iter::Break)
                 break;
+        }
     }
 
     static void for_each_if(util::Fn<bool, Station&> auto&& condition, util::IterFn<Station&> auto&& callback) {
@@ -41,8 +49,11 @@ public:
             return;
 
         for (size_t i = 0; i < s_list_size; ++i) {
-            if (std::invoke(FWD(condition), s_list[i])) {
-                if (std::invoke(FWD(callback), s_list[i]) == util::Iter::Break)
+            auto& station = s_list[i];
+            if (station.m_blocked)
+                continue;
+            if (std::invoke(FWD(condition), station)) {
+                if (std::invoke(FWD(callback), station) == util::Iter::Break)
                     break;
             }
         }

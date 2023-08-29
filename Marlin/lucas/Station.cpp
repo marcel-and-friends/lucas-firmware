@@ -48,7 +48,7 @@ void Station::initialize(size_t num) {
 
 void Station::tick() {
 #if 0 // VOLTAR QUANDO TIVER FIACAO
-	for_each_if(std::not_fn(&Station::blocked), [](Station& station) {
+	for_each([](Station& station) {
 		const auto tick = millis();
 
 		// atualizacao simples do estado do button
@@ -107,22 +107,13 @@ void Station::tick() {
 }
 
 void Station::update_leds() {
-    constexpr auto BLINKING_INTERVAL = 500;
     // é necessario manter um estado geral para que as leds pisquem juntas.
     // poderiamos simplificar essa funcao substituindo o 'WRITE(station.led(), ultimo_estado)' por 'TOGGLE(station.led())'
     // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
-    static bool s_last_led_state = true;
-    static millis_t s_last_update_tick = 0;
-
-    const auto valid = [](const Station& station) {
-        return station.waiting_user_input() and not station.blocked();
-    };
-
-    if (util::elapsed<BLINKING_INTERVAL>(s_last_update_tick)) {
+    every(500ms) {
+        static bool s_last_led_state = true;
         s_last_led_state = not s_last_led_state;
-        s_last_update_tick = millis();
-        for_each_if(valid, [](const Station& station) {
-            // aguardando input do usuário - led piscando
+        for_each_if(&Station::waiting_user_input, [](const Station& station) {
             WRITE(station.led(), s_last_led_state);
             return util::Iter::Continue;
         });
@@ -180,7 +171,7 @@ void Station::set_status(Status status, std::optional<uint32_t> receita_id) {
         info::Event::Station,
         [this, &receita_id](JsonObject o) {
             o["station"] = index();
-            o["newStatus"] = int(m_status);
+            o["status"] = int(m_status);
             if (receita_id)
                 o["recipeId"] = *receita_id;
         });

@@ -37,7 +37,7 @@ constexpr auto FIRMWARE_VERSION = "0.0.1";
 
 void setup();
 
-void save_options_to_flash();
+void save_options();
 
 void reset_options();
 

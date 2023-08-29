@@ -1,13 +1,7 @@
 #pragma once
 
-#include <cstddef>
-#include <concepts>
-#include <cstdint>
-#include <string_view>
-#include <array>
-#include <memory>
-#include <span>
 #include <src/MarlinCore.h>
+#include <lucas/util/Timer.h>
 #include <lucas/util/util.h>
 #include <ArduinoJson.h>
 
@@ -106,10 +100,10 @@ public:
     const Step& scalding_step() const { return m_steps.front(); }
     Step& scalding_step() { return m_steps.front(); }
 
-    millis_t finalization_duration() const { return m_finalization_duration; }
+    chrono::milliseconds finalization_duration() const { return m_finalization_duration; }
 
-    millis_t start_finalization_duration() const { return m_start_finalization_duration; }
-    void set_start_finalization_duration(millis_t tick) { m_start_finalization_duration = tick; }
+    const util::Timer& finalization_timer() const { return m_finalization_timer; }
+    util::Timer& finalization_timer() { return m_finalization_timer; }
 
     uint32_t id() const { return m_id; }
 
@@ -140,8 +134,8 @@ private:
 
     uint32_t m_id = 0;
 
-    millis_t m_finalization_duration = 0;
-    millis_t m_start_finalization_duration = 0;
+    chrono::milliseconds m_finalization_duration = {};
+    util::Timer m_finalization_timer;
 
     bool m_has_scalding_step = false;
 

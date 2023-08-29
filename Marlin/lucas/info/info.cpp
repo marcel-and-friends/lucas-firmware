@@ -10,14 +10,12 @@
 
 namespace lucas::info {
 void setup() {
-    /* maybe this makes a comeback sometime
     Report::make(
-        "infoBoiler",
+        "oi",
         5'000,
         [](JsonObject obj) {
-            obj["tempAtual"] = thermalManager.degBed();
+            obj["temp"] = thermalManager.degBed();
         });
-    */
 }
 
 void tick() {
@@ -99,8 +97,7 @@ void interpret_command_from_host(std::span<char> buffer) {
             LOG_ERR("comando invalido");
         } break;
         case Command::RequestInfoCalibration: {
-            if (not core::calibrated())
-                core::request_calibration();
+            core::inform_calibration_status();
         } break;
         case Command::InitializeStations: {
             if (not v.is<JsonArrayConst>()) {
@@ -171,9 +168,11 @@ void interpret_command_from_host(std::span<char> buffer) {
             core::prepare_for_firmware_update(v.as<size_t>());
         } break;
         case Command::RequestInfoFirmware: {
-            info::send(info::Event::Firmware, [](JsonObject o) {
-                o["version"] = cfg::FIRMWARE_VERSION;
-            });
+            info::send(
+                info::Event::Firmware,
+                [](JsonObject o) {
+                    o["version"] = cfg::FIRMWARE_VERSION;
+                });
         } break;
         /* ~comandos de desenvolvimento~ */
         case Command::DevScheduleStandardRecipe: {

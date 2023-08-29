@@ -1,6 +1,7 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
+#include <lucas/MotionController.h>
 #include <src/gcode/gcode.h>
 #include <src/gcode/parser.h>
 #include <src/module/planner.h>
@@ -31,7 +32,7 @@ void L0() {
 
     if (CFG(GigaMode) and duration) {
         L0_LOG("iniciado no modo giga");
-        util::idle_for(duration);
+        util::idle_for(chrono::milliseconds{ duration });
         L0_LOG("finalizado no modo giga");
         return;
     }
@@ -66,7 +67,7 @@ void L0() {
 
     if (start_on_border) {
         execute_fmt("G0 F50000 X-%s", buffer_radius);
-        Spout::the().finish_movements();
+        MotionController::the().finish_movements();
     }
 
     float total_to_move = 0.f;
@@ -81,7 +82,7 @@ void L0() {
     planner.refresh_positioning();
 
     if (should_pour)
-        Spout::the().pour_with_desired_volume(duration, volume_of_water, Spout::CorrectFlow::Yes);
+        Spout::the().pour_with_desired_volume(duration, volume_of_water);
 
     for (const auto diameter : diameters) {
         char buffer_diameter[16] = {};
@@ -103,7 +104,7 @@ void L0() {
     if (should_pour)
         Spout::the().end_pour();
 
-    Spout::the().finish_movements();
+    MotionController::the().finish_movements();
 
     current_position = final_position;
     L0_LOG("posicao x para o marlin: ", current_position.x);
@@ -118,7 +119,7 @@ void L0() {
 
     if (series % 2 != start_on_border) {
         execute_fmt("G0 F50000 X%s", buffer_radius);
-        Spout::the().finish_movements();
+        MotionController::the().finish_movements();
     }
 
     current_position = initial_position;

@@ -3,15 +3,14 @@
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
 #include <lucas/Station.h>
+#include <lucas/MotionController.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/info/info.h>
+#include <lucas/util/SD.h>
 #include <lucas/serial/FirmwareUpdateHook.h>
 #include <src/module/planner.h>
-#include <src/sd/cardreader.h>
 
 namespace lucas::core {
-
-constexpr auto CALIBRATION_KEYWORD = "jujuba";
 static bool s_calibrated = false;
 
 void setup() {
@@ -20,102 +19,79 @@ void setup() {
 
     Boiler::the().setup();
     Spout::the().setup();
-    Spout::the().home();
+    MotionController::the().home();
 
-    request_calibration();
+    inform_calibration_status();
 }
 
 void calibrate(float target_temperature) {
-    LOG_IF(LogCalibration, "iniciando rotina de nivelamento");
+    core::TemporaryFilter f{ TickFilter::RecipeQueue & TickFilter::Station };
+    LOG_IF(LogCalibration, "iniciando nivelamento");
+    s_calibrated = true;
 
-    Spout::the().home();
+    MotionController::the().home();
 
     if (CFG(SetTargetTemperatureOnCalibration))
         Boiler::the().set_target_temperature_and_wait(target_temperature);
 
-    if (CFG(FillDigitalSignalTableOnCalibration))
+    if (CFG(FillDigitalSignalTableOnCalibration)) {
         Spout::FlowController::the().fill_digital_signal_table();
-    else
-        Spout::FlowController::the().try_fetching_digital_signal_table_from_flash();
+    } else {
+        if (util::SD::make().file_exists(Spout::FlowController::TABLE_FILE_PATH))
+            Spout::FlowController::the().fetch_digital_signal_table_from_file();
+    }
 
     LOG_IF(LogCalibration, "nivelamento finalizado");
-
-    s_calibrated = true;
 }
 
 bool calibrated() {
     return s_calibrated;
 }
 
-void request_calibration() {
-    info::send(info::Event::Calibration, [](JsonObject o) {
-        o["needsCalibration"] = not s_calibrated;
-    });
+void inform_calibration_status() {
+    info::send(
+        info::Event::Calibration,
+        [](JsonObject o) {
+            o["needsCalibration"] = not s_calibrated;
+        });
 }
 
 static size_t s_new_firmware_size = 0;
 static size_t s_total_bytes_written = 0;
+static util::SD s_sd;
 constexpr auto FIRMWARE_FILE_PATH = "/Robin_nano_V3.bin";
 
-static void prepare_sd_card(bool delete_if_file_exists) {
-    if (not card.isMounted()) {
-        LOG("montando o cartao sd");
-        card.mount();
-    }
-
-    if (card.isFileOpen())
-        card.closefile();
-
-    if (delete_if_file_exists) {
-        if (card.fileExists(FIRMWARE_FILE_PATH))
-            card.removeFile(FIRMWARE_FILE_PATH);
-    }
-
-    card.openFileWrite(FIRMWARE_FILE_PATH);
-    LOG("arquivo aberto para escrita");
-}
-
 static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
-    if (not card.isMounted() or not card.isFileOpen()) {
-        LOG("cartao nao estava pronto para receber o firmware, tentando arrumar");
-        prepare_sd_card(false);
+    if (not s_sd.write_from(buffer)) {
+        LOG_ERR("falha ao escrever parte do firmware");
         return;
     }
 
-    const auto bytes_to_write = static_cast<int16_t>(buffer.size());
-    auto bytes_written = card.write(buffer.data(), buffer.size());
-    auto attempts = 0;
-    while (bytes_written == -1 and attempts++ < 5) {
-        LOG_ERR("erro ao escrever parte do firmware no cartao sd, tentando novamente");
-        bytes_written = card.write(buffer.data(), buffer.size());
-    }
-
-    if (bytes_written == -1)
-        return;
-
-    s_total_bytes_written += bytes_written;
-    info::send(info::Event::Firmware, [](JsonObject o) {
-        o["updateProgress"] = util::normalize(s_total_bytes_written, 0, s_new_firmware_size);
-    });
+    s_total_bytes_written += buffer.size();
+    info::send(
+        info::Event::Firmware,
+        [](JsonObject o) {
+            o["updateProgress"] = util::normalize(s_total_bytes_written, 0, s_new_firmware_size);
+        });
 
     if (s_total_bytes_written == s_new_firmware_size) {
         SERIAL_IMPL.flush();
-        card.closefile();
+        s_sd.close();
         noInterrupts();
-        hal.reboot();
-        __builtin_unreachable();
+        NVIC_SystemReset();
     }
 }
 
 void prepare_for_firmware_update(size_t size) {
     s_new_firmware_size = size;
 
-    prepare_sd_card(true);
-    serial::FirmwareUpdateHook::create(
-        &add_buffer_to_new_firmware_file,
-        s_new_firmware_size);
+    // cfg::reset_options();
+    // Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::RemoveFile::Yes);
+    serial::FirmwareUpdateHook::the().activate(&add_buffer_to_new_firmware_file, s_new_firmware_size);
 
-    cfg::opcoes()[cfg::Options::LogSerial].active = false;
-    LOG("novo firmware tera ", s_new_firmware_size, " bytes");
+    if (not s_sd.open(FIRMWARE_FILE_PATH, util::SD::OpenMode::Write)) {
+        LOG_ERR("falha ao abrir novo arquivo do firmware");
+        return;
+    }
 }
 }

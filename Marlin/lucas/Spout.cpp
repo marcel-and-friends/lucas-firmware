@@ -1,10 +1,9 @@
 #include "Spout.h"
-#include <lucas/Station.h>
 #include <lucas/lucas.h>
-#include <lucas/cmd/cmd.h>
+#include <lucas/Station.h>
+#include <lucas/MotionController.h>
 #include <lucas/info/info.h>
-#include <lucas/mem/FlashReader.h>
-#include <lucas/mem/FlashWriter.h>
+#include <lucas/util/SD.h>
 #include <lucas/sec/sec.h>
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
@@ -19,72 +18,75 @@ enum Pin {
 
 void Spout::tick() {
     if (m_pouring) {
-        m_time_elapsed = millis() - m_tick_pour_began;
-        if (m_time_elapsed >= m_pour_duration) {
+        const auto time_elapsed = [this] {
+            return m_begin_pour_timer.elapsed();
+        };
+        if (time_elapsed() >= m_pour_duration) {
             end_pour();
             return;
         }
 
-        if (m_total_desired_volume == 0.f or m_flow_correction == CorrectFlow::No)
+        // without a desired volume we can't correct the flow
+        if (not m_total_desired_volume or time_elapsed() <= 1s)
             return;
 
-        constexpr auto FLOW_CORRECTION_INTERVAL = 1000;
-        // not time to correct yet
-        if (m_time_elapsed - m_time_of_last_correction < FLOW_CORRECTION_INTERVAL)
-            return;
-
-        const auto poured_so_far = (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
-        // reached the goal too son
-        if (poured_so_far >= m_total_desired_volume) {
-            end_pour();
-            return;
-        }
-
-        // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
-        // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
-        if (m_time_of_last_correction >= FLOW_CORRECTION_INTERVAL) {
-            // no water? bad motor? bad sensor? bad pump? who knows!
-            if (poured_so_far == 0.f)
-                sec::raise_error(sec::Reason::PourVolumeMismatch, sec::NO_RETURN);
-
-            const auto ideal_flow = m_total_desired_volume / (m_pour_duration / 1000.f);
-            const auto expected_volume = (m_time_elapsed / 1000.f) * ideal_flow;
-            const auto ratio = poured_so_far / expected_volume;
-            // 50% is a pretty generous margin, could try to go lower
-            constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
-            if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
-                sec::raise_error(sec::Reason::PourVolumeMismatch, sec::NO_RETURN);
-        }
-
-        // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
-        const auto ideal_flow = (m_total_desired_volume - poured_so_far) / ((m_pour_duration - m_time_elapsed) / 1000.f);
-        send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
-        m_time_of_last_correction = m_time_elapsed;
-    } else {
-        // BRK is realeased after a little bit to not stress the motor too hard
-        constexpr auto TIME_TO_DISABLE_BRK = 2000;
-        if (m_tick_pour_ended) {
-            if (util::elapsed<TIME_TO_DISABLE_BRK>(m_tick_pour_ended)) {
-                digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
-                m_tick_pour_ended = 0;
+        if (m_correction_timer >= 500ms) {
+            const auto poured_so_far = [this] {
+                return (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+            };
+            // reached the goal too son
+            if (poured_so_far() >= m_total_desired_volume) {
+                end_pour();
+                return;
+            } else if (poured_so_far() == 0.f) {
+                // no water? bad motor? bad sensor? bad pump? who knows!
+                sec::raise_error(sec::Reason::PourVolumeMismatch);
             }
+
+            const auto elapsed_seconds = time_elapsed().count() / 1000.f;
+            const auto duration_seconds = chrono::duration_cast<chrono::seconds>(m_pour_duration);
+            // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
+            // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
+            if (time_elapsed() >= 2s) {
+                const auto ideal_flow = m_total_desired_volume / duration_seconds.count();
+                const auto expected_volume = ideal_flow * elapsed_seconds;
+                const auto ratio = poured_so_far() / expected_volume;
+                // 50% is a pretty generous margin, could try to go lower
+                constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
+                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR) {
+                    LOG_ERR("ratio = ", ratio, " | volume = ", poured_so_far(), " | esperado = ", expected_volume, " | ideal = ", ideal_flow);
+                    sec::raise_error(sec::Reason::PourVolumeMismatch);
+                }
+            }
+
+            // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
+            const auto ideal_flow = (m_total_desired_volume - poured_so_far()) / (duration_seconds.count() - elapsed_seconds);
+            send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
+
+            m_correction_timer.restart();
+        } else {
+            // BRK is realeased after a little bit to not stress the motor too hard
+            if (m_end_pour_timer >= 2s and READ(Pin::BRK) == LOW)
+                WRITE(Pin::BRK, HIGH); // fly high 🕊️
         }
     }
 }
 
-void Spout::pour_with_desired_volume(millis_t duration, float desired_volume, CorrectFlow correct) {
+void Spout::pour_with_desired_volume(millis_t duration, float desired_volume) {
     if (duration == 0 or desired_volume == 0)
         return;
 
     begin_pour(duration);
-    send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(desired_volume / (duration / 1000)));
+    auto digital_signal = FlowController::the().hit_me_with_your_best_shot(desired_volume / (duration / 1000));
+    send_digital_signal_to_driver(digital_signal);
     m_total_desired_volume = desired_volume;
-    m_flow_correction = correct;
-    LOG_IF(LogPour, "iniciando despejo - [volume desejado = ", desired_volume, " | sinal = ", m_digital_signal, "]");
+    m_correction_timer.start();
+    if (digital_signal != FlowController::INVALID_DIGITAL_SIGNAL)
+        LOG_IF(LogPour, "despejo iniciado - [volume = ", desired_volume, " | sinal = ", m_digital_signal, "]");
 }
 
-float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume, CorrectFlow correct) {
-    pour_with_desired_volume(duration, desired_volume, correct);
+float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume) {
+    pour_with_desired_volume(duration, desired_volume);
     util::idle_while([] { return Spout::the().pouring(); });
     return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
 }
@@ -95,24 +97,8 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
 
     begin_pour(duration);
     send_digital_signal_to_driver(digital_signal);
-    LOG_IF(LogPour, "iniciando despejo - [sinal = ", m_digital_signal, "]");
-}
-
-void Spout::end_pour() {
-    send_digital_signal_to_driver(0);
-    m_pouring = false;
-    m_tick_pour_began = 0;
-    m_tick_pour_ended = millis();
-    m_pour_duration = 0;
-    m_flow_correction = CorrectFlow::No;
-    m_time_of_last_correction = 0;
-    m_pulses_at_end_of_pour = s_pulse_counter;
-
-    const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
-    const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
-    LOG_IF(LogPour, "finalizando despejo - [delta = ", m_time_elapsed, "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
-    m_total_desired_volume = 0.f;
-    m_time_elapsed = 0;
+    if (digital_signal != FlowController::INVALID_DIGITAL_SIGNAL)
+        LOG_IF(LogPour, "despejo iniciado - [sinal = ", m_digital_signal, "]");
 }
 
 void Spout::setup() {
@@ -124,7 +110,7 @@ void Spout::setup() {
         pinMode(Pin::BRK, OUTPUT);
         pinMode(Pin::EN, OUTPUT);
         // enable is permanently on,  the driver is controlled using only SV and BRK
-        digitalWrite(Pin::EN, LOW);
+        WRITE(Pin::EN, LOW);
 
         // let's make sure we turn everything off at startup :)
         end_pour();
@@ -141,242 +127,193 @@ void Spout::setup() {
     }
 }
 
-void Spout::travel_to_station(const Station& station, float offset) const {
-    travel_to_station(station.index(), offset);
-}
-
-void Spout::travel_to_station(size_t index, float offset) const {
-    LOG_IF(LogTravel, "viajando - [estacao = ", index, " | offset = ", offset, "]");
-
-    const auto beginning = millis();
-    const auto gcode = util::ff("G0 F50000 Y60 X%s", Station::absolute_position(index) + offset);
-    cmd::execute_multiple("G90",
-                          gcode,
-                          "G91");
-    finish_movements();
-
-    LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
-}
-
-void Spout::travel_to_sewer() const {
-    LOG_IF(LogTravel, "viajando para o esgoto");
-
-    const auto beginning = millis();
-    cmd::execute_multiple("G90",
-                          "G0 F5000 Y60 X5",
-                          "G91");
-    finish_movements();
-
-    LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
-}
-
-void Spout::home() const {
-    cmd::execute("G28 XY");
-}
-
-void Spout::finish_movements() const {
-    util::idle_while(&Planner::busy, TickFilter::RecipeQueue);
-}
-
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     if (v == FlowController::INVALID_DIGITAL_SIGNAL) {
-        LOG_ERR("sinal digital invalido, finalizando imediatamente");
+        LOG_ERR("sinal digital invalido, finalizando despejo");
         end_pour();
         return;
     }
     m_digital_signal = v;
-    digitalWrite(Pin::BRK, m_digital_signal > 0 ? HIGH : LOW);
+    WRITE(Pin::BRK, m_digital_signal > 0 ? HIGH : LOW);
     analogWrite(Pin::SV, m_digital_signal);
 }
 
 void Spout::fill_hose(float desired_volume) {
-    constexpr auto FALLBACK_SIGNAL = 1400;        // radomly picked this
-    constexpr auto TIME_TO_FILL_HOSE = 1000 * 20; // 20 sec
+    constexpr auto FALLBACK_SIGNAL = 1400; // radomly picked this
+    constexpr auto TIME_TO_FILL_HOSE = 20s;
 
-    Spout::the().travel_to_sewer();
+    MotionController::the().travel_to_sewer();
 
     if (desired_volume) {
-        pour_with_desired_volume(TIME_TO_FILL_HOSE, desired_volume, CorrectFlow::Yes);
+        pour_with_desired_volume(TIME_TO_FILL_HOSE, desired_volume);
     } else {
         pour_with_digital_signal(TIME_TO_FILL_HOSE, FALLBACK_SIGNAL);
     }
 
-    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", TIME_TO_FILL_HOSE / 1000, "s]");
+    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", uint32_t(TIME_TO_FILL_HOSE.count()), "s]");
     util::idle_for(TIME_TO_FILL_HOSE);
 }
 
 void Spout::begin_pour(millis_t duration) {
     m_pouring = true;
-    m_tick_pour_began = millis();
-    m_pour_duration = duration;
+    m_begin_pour_timer.start();
+    m_end_pour_timer.stop();
+    m_pour_duration = chrono::milliseconds{ duration };
     m_pulses_at_start_of_pour = s_pulse_counter;
 }
 
+void Spout::end_pour() {
+    send_digital_signal_to_driver(0);
+
+    m_pouring = false;
+
+    const auto duration = m_begin_pour_timer.elapsed();
+    m_begin_pour_timer.stop();
+    m_end_pour_timer.start();
+    m_correction_timer.stop();
+    m_pour_duration = {};
+
+    m_total_desired_volume = 0.f;
+    m_pulses_at_end_of_pour = s_pulse_counter;
+
+    const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
+    const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
+    LOG_IF(LogPour, "despejo finalizado - [duracao = ", uint32_t(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
+}
+
+enum class FlowTableStatus {
+    Preparing,
+    Finalizing,
+    Done
+};
+
 void Spout::FlowController::fill_digital_signal_table() {
-    constexpr auto INITIAL_DIGITAL_SIGNAL = 0;
-    constexpr auto INITIAL_DIGITAL_SIGNAL_MOD = 200;
-    constexpr auto DIGITAL_SIGNAL_MOD_AFTER_OBTAINING_MIN_FLOW = 25;
-    constexpr auto MAX_DELTA_BETWEEN_POURS = 1.f;
-
-    constexpr auto TIME_TO_ANALISE_POUR = 1000 * 10;
-    static_assert(TIME_TO_ANALISE_POUR >= 1000, "analysis time must be at least one minute");
-
-    clean_digital_signal_table(SaveToFlash::No);
+    clean_digital_signal_table(RemoveFile::Yes);
 
     const auto beginning = millis();
     // place the spout on the sink and fill the hose so we avoid silly errors
     Spout::the().fill_hose();
 
-    // the signal sent to the driver on every iteration
-    int digital_signal = INITIAL_DIGITAL_SIGNAL;
-    // the amount by which that signal gets modified at the end of the current iteration
-    // can be negative
-    int digital_signal_mod = INITIAL_DIGITAL_SIGNAL_MOD;
-    // the average flow of the last valid iteration
-    float last_iteration_average_flow = 0.f;
-
-    bool obtained_minimum_flow = false;
-    bool was_greater_than_minimum_last_iteration = false;
-
-    size_t number_of_occupied_cells = 0;
-
     // accepts normalized values between 0.f and 1.f
     const auto report_progress = [](float progress) {
-        info::send(info::Event::Calibration, [progress](JsonObject o) {
-            o["progress"] = progress;
-        });
+        info::send(
+            info::Event::Calibration,
+            [progress](JsonObject o) {
+                o["progress"] = progress;
+            });
     };
 
-    while (true) {
-        // let's not fly too close to the sun
-        if (digital_signal >= 4095)
-            break;
+    const auto report_status = [](FlowTableStatus status) {
+        info::send(
+            info::Event::Calibration,
+            [status](JsonObject o) {
+                o["status"] = size_t(status);
+            });
+    };
 
-        const auto starting_pulses = s_pulse_counter;
+    report_status(FlowTableStatus::Preparing);
+    auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
+    save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
 
-        LOG_IF(LogCalibration, "aplicando sinal = ", digital_signal);
-        Spout::the().send_digital_signal_to_driver(digital_signal);
-
-        util::idle_for(TIME_TO_ANALISE_POUR);
-
-        const auto pulses = s_pulse_counter - starting_pulses;
-        const auto average_flow = (pulses * ML_PER_PULSE) / (TIME_TO_ANALISE_POUR / 1000.f);
-
-        LOG_IF(LogCalibration, "flow estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
-
-        { // 1. obtain the minimum flow
-            if (not obtained_minimum_flow) {
-                const auto delta = average_flow - FLOW_MIN;
-                // a .1 gram delta is accepeted
-                if (std::abs(average_flow - FLOW_MIN) <= 0.1) {
-                    obtained_minimum_flow = true;
-                    m_digital_signal_table[0][0] = digital_signal;
-
-                    LOG_IF(LogCalibration, "flow minimo obtido - [sinal = ", digital_signal, "]");
-
-                    digital_signal_mod = DIGITAL_SIGNAL_MOD_AFTER_OBTAINING_MIN_FLOW;
-                    digital_signal += digital_signal_mod;
-
-                    // now the iterative calibration process has properly startd
-                    report_progress(0.f);
-                }
-                // otherwise modify the digital signal appropriately
-                else {
-                    const bool greater_than_minimum = average_flow > float(FLOW_MIN);
-                    // this little algorithm makes us gravitates towards a specific value
-                    // making it guaranteed that, even if it takes a little bit, we achieve
-                    // at the correct digital signal
-                    if (greater_than_minimum != was_greater_than_minimum_last_iteration) {
-                        if (digital_signal_mod < 0) {
-                            digital_signal_mod = std::min(digital_signal_mod / 2, -1);
-                        } else {
-                            digital_signal_mod = std::max(digital_signal_mod / 2, 1);
-                        }
-                        digital_signal_mod *= -1;
-                    }
-
-                    digital_signal += digital_signal_mod;
-
-                    LOG_IF(LogCalibration, "flow minimo nao obtido - ", greater_than_minimum ? "diminuindo" : "aumentando", " o sinal digital para ", digital_signal, " - [modificacao = ", digital_signal_mod, "]");
-
-                    was_greater_than_minimum_last_iteration = greater_than_minimum;
-
-                    // before the minimum flow has been found we cannot achieve a value representing "progress"
-                    // so we tell the host something else instead
-                    info::send(info::Event::Calibration, [](JsonObject o) {
-                        o["preparing"] = true;
-                    });
-                }
-                continue;
+    FlowInfo info_when_finished = { 0.f, 0 };
+    int mod_when_finished = 0;
+    size_t number_of_occupied_cells = 0;
+    begin_iterative_pour(
+        [&, last_average_flow = 0.f](FlowInfo info, int& digital_signal_mod) mutable {
+            if (last_average_flow and info.flow < last_average_flow) {
+                if (digital_signal_mod < 0)
+                    digital_signal_mod *= -1;
+                LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
+                return util::Iter::Continue;
             }
-        }
 
-        // if the flow decreases between iterations, the result is ignored
-        if (last_iteration_average_flow and average_flow < last_iteration_average_flow) {
-            digital_signal += digital_signal_mod;
-            LOG_IF(LogCalibration, "flow diminuiu?! aumentando sinal digital - [last_iteration_average_flow = ", last_iteration_average_flow, "]");
-            continue;
-        }
-
-        // too close to the sun!
-        if (average_flow >= FLOW_MAX) {
-            LOG_IF(LogCalibration, "chegamos no flow maximo, finalizando nivelamento");
-            break;
-        }
-
-        { // let's make sure the jump from one iteartion to the other respects the maximum delta
-            if (last_iteration_average_flow) {
-                // no need to 'abs' this since we chcked that 'last_iteration_average_flow' is smaller
-                const auto delta = average_flow - last_iteration_average_flow;
+            // let's make sure the jump from one iteration to the other respects the maximum delta
+            if (last_average_flow) {
+                // no need to 'abs' this since we chcked that 'last_average_flow' is smaller
+                const auto delta = info.flow - last_average_flow;
                 // big jump! cut the modification and subtract it from the signal
-                if (delta > MAX_DELTA_BETWEEN_POURS) {
+                if (delta > 1.f) {
                     digital_signal_mod = std::max(digital_signal_mod / 2, 1);
-                    digital_signal -= digital_signal_mod;
+                    if (digital_signal_mod > 0)
+                        digital_signal_mod *= -1;
+
                     LOG_IF(LogCalibration, "pulo muito grande de força - [delta = ", delta, " | nova modificacao = ", digital_signal_mod, "]");
-                    continue;
+                    return util::Iter::Continue;
                 }
             }
-        }
 
-        { // it all went well in wonderland, let's report our progress and save the current signal
-            const auto [rounded_volume, decimal] = decompose_flow(average_flow);
-            const auto flow = float(rounded_volume) + (decimal / 10.f);
-            report_progress(util::normalize(flow, FLOW_MIN, FLOW_MAX));
+            if (std::abs(info.flow - FLOW_MAX) <= 0.1) { // lucky!
+                save_flow_info_to_table(info.flow, info.digital_signal);
+                number_of_occupied_cells++;
+                return util::Iter::Break;
+            } else if (info.flow > FLOW_MAX) { // not so lucky
+                info_when_finished = info;
+                mod_when_finished = -digital_signal_mod;
+                return util::Iter::Break;
+            } else {
+                save_flow_info_to_table(info.flow, info.digital_signal);
+                report_progress(util::normalize(info.flow, FLOW_MIN, FLOW_MAX));
+                number_of_occupied_cells++;
+                last_average_flow = info.flow;
+            }
 
-            m_digital_signal_table[rounded_volume - FLOW_MIN][decimal] = digital_signal;
-            LOG_IF(LogCalibration, "sinal digital salvo - [valor = ", digital_signal, "]");
+            return util::Iter::Continue;
+        },
+        minimum_flow_info.digital_signal + 25,
+        25);
 
-            // apply the modification, save the current flow and move on to the next iteration
-            digital_signal += digital_signal_mod;
-            last_iteration_average_flow = average_flow;
-            number_of_occupied_cells++;
-        }
+    // if we didn't find the maximum flow in the iteration above, try finding it now
+    if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
+        report_status(FlowTableStatus::Finalizing);
+        auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
+        save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
     }
 
     // we're done!
+    report_status(FlowTableStatus::Done);
     Spout::the().end_pour();
-    report_progress(1.f);
-    save_digital_signal_table_to_flash();
+    save_digital_signal_table_to_file();
 
-    LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | numero de celulas = ", number_of_occupied_cells, "]");
-    LOG_IF(LogCalibration, "resultado da tabela: ");
+    LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | celulas = ", number_of_occupied_cells, "]");
+    LOG_IF(LogCalibration, "resultado: ");
     for_each_occupied_cell([](DigitalSignal digital_signal, size_t i, size_t j) {
-        LOG_IF(LogCalibration, "m_digital_signal_table[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
+        LOG_IF(LogCalibration, "[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
         return util::Iter::Continue;
     });
 }
 
-void Spout::FlowController::try_fetching_digital_signal_table_from_flash() {
-    auto reader = mem::FlashReader<DigitalSignal>(0);
-    // o flow minimo (m_digital_signal_table[0][0]) é o único valor obrigatoriamente salvo durante o preenchimento
-    const auto possible_stored_first_cell = reader.read(0);
-    if (possible_stored_first_cell == 0 or
-        possible_stored_first_cell >= INVALID_DIGITAL_SIGNAL)
-        // nao temos um valor salvo
-        return;
-
-    LOG_IF(LogCalibration, "tabela de flow sera copiada da flash - [minimo = ", possible_stored_first_cell, "]");
-    fetch_digital_signal_table_from_flash();
+Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(float desired_flow, FlowInfo starting_flow_info, int starting_mod) {
+    FlowInfo result = { 0.f, 0 };
+    begin_iterative_pour(
+        [this,
+         &result,
+         desired_flow,
+         last_greater_than_specific = starting_flow_info.flow > desired_flow](FlowInfo info, int& digital_signal_mod) mutable {
+            if (std::abs(info.flow - desired_flow) <= 0.1f) {
+                result = info;
+                LOG_IF(LogCalibration, "fluxo especifico obtido - [sinal = ", info.digital_signal, "]");
+                return util::Iter::Break;
+            } else {
+                const bool greater_than_specific = info.flow > desired_flow;
+                // this little algorithm makes us gravitates towards a specific value
+                // making it guaranteed that, even if it takes a little bit, we achieve
+                // at the correct digital signal
+                if (greater_than_specific != last_greater_than_specific) {
+                    if (digital_signal_mod < 0) {
+                        digital_signal_mod = std::min(digital_signal_mod / 2, -1);
+                    } else {
+                        digital_signal_mod = std::max(digital_signal_mod / 2, 1);
+                    }
+                    digital_signal_mod *= -1;
+                }
+                last_greater_than_specific = greater_than_specific;
+                LOG_IF(LogCalibration, "fluxo especifico nao obtido - ", greater_than_specific ? "diminuindo" : "aumentando", " o sinal - [mod = ", digital_signal_mod, "]");
+            }
+            return util::Iter::Continue;
+        },
+        starting_flow_info.digital_signal,
+        starting_mod);
+    return result;
 }
 
 // this takes a desired flow and tries to guess the best digital signal to achieve that
@@ -406,27 +343,33 @@ Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flo
     return DigitalSignal(std::round(interpolated));
 }
 
-void Spout::FlowController::clean_digital_signal_table(SaveToFlash salvar) {
+void Spout::FlowController::clean_digital_signal_table(RemoveFile remove) {
     for (auto& t : m_digital_signal_table)
-        for (auto& v : t)
-            v = INVALID_DIGITAL_SIGNAL;
+        std::fill(t.begin(), t.end(), INVALID_DIGITAL_SIGNAL);
 
-    if (salvar == SaveToFlash::Yes)
-        save_digital_signal_table_to_flash();
+    auto sd = util::SD::make();
+    if (remove == RemoveFile::Yes and sd.file_exists(TABLE_FILE_PATH))
+        sd.remove_file(TABLE_FILE_PATH);
 }
 
-void Spout::FlowController::save_digital_signal_table_to_flash() {
-    auto writer = mem::FlashWriter<DigitalSignal>(0);
-    const auto cells = reinterpret_cast<DigitalSignal*>(&m_digital_signal_table);
-    for (size_t i = 0; i < NUMBER_OF_CELLS; ++i)
-        writer.write(i, cells[i]);
+void Spout::FlowController::save_digital_signal_table_to_file() {
+    auto sd = util::SD::make();
+    if (not sd.open(TABLE_FILE_PATH, util::SD::OpenMode::Write)) {
+        LOG_ERR("falha ao abrir arquivo da tabela");
+        return;
+    }
+    if (not sd.write_from(m_digital_signal_table))
+        LOG_ERR("falha ao escrever tabela no cartao");
 }
 
-void Spout::FlowController::fetch_digital_signal_table_from_flash() {
-    auto reader = mem::FlashReader<DigitalSignal>(0);
-    auto cells = reinterpret_cast<DigitalSignal*>(&m_digital_signal_table);
-    for (size_t i = 0; i < NUMBER_OF_CELLS; ++i)
-        cells[i] = reader.read(i);
+void Spout::FlowController::fetch_digital_signal_table_from_file() {
+    auto sd = util::SD::make();
+    if (not sd.open(TABLE_FILE_PATH, util::SD::OpenMode::Read)) {
+        LOG_ERR("falha ao abrir arquivo da tabela");
+        return;
+    }
+    if (not sd.read_into(m_digital_signal_table))
+        LOG_ERR("falha ao ler tabela do cartao");
 }
 
 Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flow(int flow_index, int decimal) const {

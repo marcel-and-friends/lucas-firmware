@@ -80,7 +80,7 @@ void Recipe::build_from_json(JsonObjectConst json) {
     reset();
 
     m_id = json["id"].as<uint32_t>();
-    m_finalization_duration = json["finalizationTime"].as<millis_t>();
+    m_finalization_duration = chrono::milliseconds{ json["finalizationTime"].as<millis_t>() };
 
     // o escaldo é opcional
     if (json.containsKey("scald")) {
@@ -109,8 +109,8 @@ void Recipe::build_from_json(JsonObjectConst json) {
 void Recipe::reset() {
     m_id = 0;
     m_has_scalding_step = false;
-    m_finalization_duration = 0;
-    m_start_finalization_duration = 0;
+    m_finalization_duration = {};
+    m_finalization_timer.stop();
     m_steps = {};
     m_steps_size = 0;
     m_current_step = 0;

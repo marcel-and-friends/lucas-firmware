@@ -14,8 +14,8 @@ void setup() {
 }
 
 void hooks() {
-    if (FirmwareUpdateHook::active()) {
-        FirmwareUpdateHook::the()->think();
+    if (FirmwareUpdateHook::the().active()) {
+        FirmwareUpdateHook::the().think();
     } else {
         DelimitedHook::think();
     }

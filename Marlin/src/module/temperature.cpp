@@ -2011,7 +2011,8 @@ void Temperature::task() {
     TERN_(FILAMENT_WIDTH_SENSOR, filwidth.update_volumetric());
 
     // Handle Bed Temp Errors, Heating Watch, etc.
-    TERN_(HAS_HEATED_BED, manage_heated_bed(ms));
+	// we on our own!! gangasta asf!
+    // TERN_(HAS_HEATED_BED, manage_heated_bed(ms));
 
     // Handle Heated Chamber Temp Errors, Heating Watch, etc.
     TERN_(HAS_HEATED_CHAMBER, manage_heated_chamber(ms));

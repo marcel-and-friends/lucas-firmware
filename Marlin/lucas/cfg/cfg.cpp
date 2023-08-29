@@ -1,7 +1,6 @@
-#include <lucas/cfg/cfg.h>
-#include <lucas/Spout.h>
-#include <lucas/mem/FlashReader.h>
-#include <lucas/mem/FlashWriter.h>
+#include "cfg.h"
+#include <lucas/lucas.h>
+#include <lucas/util/SD.h>
 
 namespace lucas::cfg {
 constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
@@ -37,56 +36,31 @@ static_assert(doesnt_have_duplicated_ids(DEFAULT_OPTIONS), "opcoes duplicadas ir
 
 // vai ser propriamente inicializado na 'setup()'
 static OptionList s_options = {};
-
-constexpr auto CFG_FLASH_ADDRESS_START = sizeof(Spout::FlowController::Table);
-constexpr auto OPTION_SIZE = sizeof(char) + sizeof(bool);
-
-static void fetch_options_from_flash();
+constexpr auto CFG_FILE_PATH = "cfg.txt";
 
 void setup() {
-    auto reader = mem::FlashReader(CFG_FLASH_ADDRESS_START);
-    const auto first_saved_id = reader.read<char>(0);
-    if (first_saved_id != DEFAULT_OPTIONS[0].id) {
-        LOG("cfg salva nao e valida, usando valores padroes");
+    auto sd = util::SD::make();
+    if (not sd.file_exists(CFG_FILE_PATH)) {
         s_options = DEFAULT_OPTIONS;
-        save_options_to_flash();
+        sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write);
+        sd.write_from(s_options);
+        LOG("nao tem cfg salva, salvou a default");
     } else {
-        fetch_options_from_flash();
+        sd.open(CFG_FILE_PATH, util::SD::OpenMode::Read);
+        sd.read_into(s_options);
+        LOG("cfg lida do cartao");
     }
 }
 
-void save_options_to_flash() {
-    auto writer = mem::FlashWriter(CFG_FLASH_ADDRESS_START);
-    for (size_t i = 0; i < s_options.size(); ++i) {
-        const auto& option = s_options[i];
-        const auto offset = i * OPTION_SIZE;
-        writer.write<char>(offset, option.id);
-        writer.write<bool>(offset + sizeof(char), option.active);
-    }
-
-    LOG("opcoes escritas na flash");
-}
-
-static void fetch_options_from_flash() {
-    auto reader = mem::FlashReader(CFG_FLASH_ADDRESS_START);
-    for (size_t i = 0; i < s_options.size(); ++i) {
-        auto& option = s_options[i];
-        const auto offset = i * OPTION_SIZE;
-        option.id = reader.read<char>(offset);
-        option.active = reader.read<bool>(offset + sizeof(char));
-    }
-
-    LOG("opcoes lidas da flash");
+void save_options() {
+    auto sd = util::SD::make();
+    sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write);
+    sd.write_from(s_options);
 }
 
 void reset_options() {
     s_options = DEFAULT_OPTIONS;
-    auto writer = mem::FlashWriter(CFG_FLASH_ADDRESS_START);
-    for (size_t i = 0; i < s_options.size(); ++i) {
-        const auto offset = i * OPTION_SIZE;
-        writer.write<char>(offset, Option::ID_DEFAULT);
-        writer.write<bool>(offset + sizeof(char), false);
-    }
+    util::SD::make().remove_file(CFG_FILE_PATH);
 }
 
 Option get(Options option) {

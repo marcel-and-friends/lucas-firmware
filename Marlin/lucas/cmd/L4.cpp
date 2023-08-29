@@ -11,12 +11,12 @@ void L4() {
     if (parser.seenval('Z')) {
         switch (parser.value_int()) {
         case 0: {
-            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::SaveToFlash::Yes);
-            LOG("tabela foi limpa e salva na flash");
+            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::RemoveFile::Yes);
+            LOG("tabela foi limpa e salva");
         } break;
         case 1: {
             cfg::reset_options();
-            LOG("opcoes foram resetadas e salvas na flash");
+            LOG("opcoes foram resetadas e salvas");
         } break;
         case 2: {
             if (not parser.seenval('R'))
@@ -29,9 +29,8 @@ void L4() {
             }
 
             const auto reason = sec::Reason(reason_number);
-            sec::toggle_reason_validity(reason);
-
-            LOG("razao #", reason_number, " foi ", sec::is_reason_valid(reason) ? "ativada" : "desativada");
+            sec::toggle_reason_block(reason);
+            LOG("razao #", reason_number, " foi ", sec::is_reason_blocked(reason) ? "bloqueada" : "desbloqueada");
         } break;
         case 3: {
             if (not parser.seenval('P'))
@@ -68,6 +67,6 @@ void L4() {
     }
 
     if (updated)
-        cfg::save_options_to_flash();
+        cfg::save_options();
 }
 }

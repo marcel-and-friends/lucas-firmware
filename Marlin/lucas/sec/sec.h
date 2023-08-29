@@ -3,13 +3,11 @@
 #include <lucas/sec/Reason.h>
 
 namespace lucas::sec {
-using IdleWhile = bool (*)();
+void setup();
 
-constexpr IdleWhile NO_RETURN = nullptr;
+void raise_error(Reason);
 
-void raise_error(Reason, IdleWhile condition);
+bool is_reason_blocked(Reason);
 
-bool is_reason_valid(Reason);
-
-void toggle_reason_validity(Reason);
+void toggle_reason_block(Reason);
 }

@@ -24,7 +24,8 @@ enum class Event {
     AllStations,
     Security,
     Calibration,
-    Firmware
+    Firmware,
+    Other,
 };
 
 void send(Event type, util::Fn<void, JsonObject> auto&& callback) {
@@ -36,6 +37,7 @@ void send(Event type, util::Fn<void, JsonObject> auto&& callback) {
         [size_t(Event::Security)] = "infoSecurity",
         [size_t(Event::Calibration)] = "infoCalibration",
         [size_t(Event::Firmware)] = "infoFirmware",
+        [size_t(Event::Other)] = "infoOther",
     });
 
     JsonDocument doc;

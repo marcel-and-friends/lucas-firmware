@@ -1,5 +1,4 @@
 #include "Boiler.h"
-
 #include <lucas/lucas.h>
 #include <lucas/info/info.h>
 #include <lucas/sec/sec.h>
@@ -8,13 +7,23 @@
 namespace lucas {
 enum Pin {
     CoelAlarmOutput = PD11,
-    CoelAlarmInput = PB2
+    CoelAlarmInput = PB2,
+    Resistance = HEATER_BED_PIN
 };
 
 static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
     pinMode(Pin::CoelAlarmInput, INPUT);
+    /* go back to this when everything is setup
+    s_alarm_triggered = READ(Pin::CoelAlarmInput);
+    attachInterrupt(
+        digitalPinToInterrupt(Pin::CoelAlarmInput),
+        +[] {
+            s_alarm_triggered = READ(Pin::CoelAlarmInput);
+        },
+        CHANGE);
+    */
     attachInterrupt(
         digitalPinToInterrupt(Pin::CoelAlarmInput),
         +[] {
@@ -23,85 +32,123 @@ void Boiler::setup() {
         FALLING);
 
     pinMode(Pin::CoelAlarmOutput, OUTPUT);
-    digitalWrite(Pin::CoelAlarmOutput, HIGH);
+    WRITE(Pin::CoelAlarmOutput, HIGH);
 
     if (s_alarm_triggered) {
-        info::send(info::Event::Boiler, [](JsonObject o) {
-            o["filling"] = true;
-        });
+        info::send(
+            info::Event::Boiler,
+            [](JsonObject o) {
+                o["filling"] = true;
+            });
+
         util::idle_while([] { return s_alarm_triggered; });
-        info::send(info::Event::Boiler, [](JsonObject o) {
-            o["filling"] = false;
-        });
+
+        info::send(
+            info::Event::Boiler,
+            [](JsonObject o) {
+                o["filling"] = false;
+            });
     }
 }
 
 void Boiler::tick() {
     if (s_alarm_triggered)
-        sec::raise_error(sec::Reason::BoilerAlarm, [] { return s_alarm_triggered; });
+        sec::raise_error(sec::Reason::WaterLevelAlarm);
+
+    constexpr auto MAXIMUM_TEMPERATURE = 105.f;
+    const auto temperature = this->temperature();
+    if (temperature >= MAXIMUM_TEMPERATURE)
+        sec::raise_error(sec::Reason::MaxTemperatureReached);
+
+    const auto target = target_temperature();
+    if (not target) {
+        control_resistance(LOW);
+        return;
+    }
+
+    control_resistance(temperature < (target - m_hysteresis));
+
+    // security checks and stuff!
+
+    { // out of the valid temperature range for too long
+        if (m_reached_target_temperature) {
+            constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
+            const auto in_target_range = std::abs(target - temperature) <= VALID_TEMPERATURE_RANGE;
+            m_outside_target_range_timer.toggle_based_on(not in_target_range);
+            if (m_outside_target_range_timer.has_elapsed(5min))
+                sec::raise_error(sec::Reason::TemperatureOutOfRange);
+        }
+    }
 }
 
-int Boiler::target_temperature() const {
-    return thermalManager.degTargetBed();
+float Boiler::temperature() const {
+    return thermalManager.degBed();
 }
 
 void Boiler::set_target_temperature_and_wait(int target) {
     set_target_temperature(target);
-    const auto initial_boiler_temp = thermalManager.degBed();
-    if (initial_boiler_temp >= target)
+    if (not target)
         return;
 
-    util::idle_until([&] {
-        constexpr auto LOG_INTERVAL = 5000;
-        static auto s_last_log_tick = 0;
-
-        const auto current_temp = thermalManager.degBed();
-        if (util::elapsed<LOG_INTERVAL>(s_last_log_tick)) {
-            info::send(info::Event::Boiler, [current_temp](JsonObject o) {
-                o["currentTemp"] = current_temp;
-            });
-            s_last_log_tick = millis();
+    m_reached_target_temperature = false;
+    util::idle_until([this,
+                      in_range_timer = util::Timer(),
+                      last_checked_temperature = temperature()] mutable {
+        every(5s) {
+            info::send(
+                info::Event::Boiler,
+                [](JsonObject o) {
+                    o["currentTemp"] = Boiler::the().temperature();
+                });
         }
 
-        const auto in_acceptable_range = std::abs(target - current_temp) <= m_hysteresis;
-        constexpr auto TIME_TO_STABILIZE = 5000;
-        static auto s_tick_temperature_started_to_stabilize = 0;
-        if (s_tick_temperature_started_to_stabilize == 0) {
-            if (in_acceptable_range) {
-                s_tick_temperature_started_to_stabilize = millis();
-            }
-        } else {
-            if (in_acceptable_range) {
-                if (util::elapsed<TIME_TO_STABILIZE>(s_tick_temperature_started_to_stabilize)) {
-                    // boiler is in the acceptable hysteresis range for long enough, stop idling
-                    return true;
-                }
-            } else {
-                s_tick_temperature_started_to_stabilize = 0;
-            }
+        const auto temperature = this->temperature();
+        every(2min) {
+            // if the temperature isn't going up let's kill ourselves NOW
+            if (last_checked_temperature > temperature or
+                temperature - last_checked_temperature < 1.f)
+                sec::raise_error(sec::Reason::TemperatureNotChanging);
+
+            last_checked_temperature = temperature;
         }
-        return false;
+
+        in_range_timer.toggle_based_on(std::abs(m_target_temperature - temperature) <= m_hysteresis);
+        // stop when we have staid in the valid range for 5 seconds
+        m_reached_target_temperature = in_range_timer.has_elapsed(5s);
+        return m_reached_target_temperature;
     });
 
-    info::send(info::Event::Boiler, [target](JsonObject o) {
-        o["currentTemp"] = target;
-    });
+    // and we're done! inform the app of our totaly real temperature
+    info::send(
+        info::Event::Boiler,
+        [](JsonObject o) {
+            o["currentTemp"] = Boiler::the().target_temperature();
+        });
 
+    m_hysteresis = LOW_HYSTERESIS;
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
-
-    m_hysteresis = FINAL_HYSTERESIS;
 }
 
 void Boiler::set_target_temperature(int target) {
-    thermalManager.setTargetBed(target);
+    m_target_temperature = target;
+    if (not m_target_temperature)
+        return;
 
-    const auto delta = std::abs(target - thermalManager.degBed());
-    m_hysteresis = delta < INITIAL_HYSTERESIS ? FINAL_HYSTERESIS : INITIAL_HYSTERESIS;
-
+    const auto delta = std::abs(target - temperature());
+    if (temperature() > target) {
+        m_hysteresis = LOW_HYSTERESIS;
+    } else {
+        m_hysteresis = delta < HIGH_HYSTERESIS ? LOW_HYSTERESIS : HIGH_HYSTERESIS;
+    }
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", target, " | hysteresis = ", m_hysteresis, "]");
 }
 
-void Boiler::disable_heater() {
-    thermalManager.setTargetBed(0);
+void Boiler::control_resistance(bool state) {
+    WRITE(Pin::Resistance, state);
+}
+
+void Boiler::turn_off_resistance() {
+    control_resistance(LOW);
+    set_target_temperature(0);
 }
 }

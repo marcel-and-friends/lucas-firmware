@@ -8,7 +8,7 @@ void L2() {
     if (parser.seenval('D'))
         Spout::the().pour_with_digital_signal(parser.ulongval('T'), parser.ulongval('D'));
     else
-        Spout::the().pour_with_desired_volume(parser.ulongval('T'), parser.floatval('G'), Spout::CorrectFlow::Yes);
+        Spout::the().pour_with_desired_volume(parser.ulongval('T'), parser.floatval('G'));
 
     const bool associated_with_station = RecipeQueue::the().executing();
     util::idle_while([&] {
