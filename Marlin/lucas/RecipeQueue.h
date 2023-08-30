@@ -15,11 +15,11 @@ public:
 
     void schedule_recipe(JsonObjectConst recipe_json);
 
-    void schedule_recipe_for_station(Recipe&, size_t);
+    void schedule_recipe_for_station(Recipe&, usize);
 
-    void map_station_recipe(size_t);
+    void map_station_recipe(usize);
 
-    void cancel_station_recipe(size_t);
+    void cancel_station_recipe(usize);
 
     void remove_finalized_recipes();
 
@@ -32,11 +32,11 @@ public:
     bool is_empty() const { return m_queue_size == 0; }
 
 public:
-    void for_each_recipe(util::IterFn<const Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) const {
+    void for_each_recipe(util::IterFn<const Recipe&, usize> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
+        for (usize i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
@@ -46,11 +46,11 @@ public:
         }
     };
 
-    void for_each_recipe(util::IterFn<Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) {
+    void for_each_recipe(util::IterFn<Recipe&, usize> auto&& callback, const Recipe* exception = nullptr) {
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
+        for (usize i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
@@ -86,11 +86,11 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) {
+    void for_each_mapped_recipe(util::IterFn<Recipe&, usize> auto&& callback, const Recipe* exception = nullptr) {
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
+        for (usize i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
@@ -100,11 +100,11 @@ public:
         }
     };
 
-    void for_each_mapped_recipe(util::IterFn<const Recipe&, size_t> auto&& callback, const Recipe* exception = nullptr) const {
+    void for_each_mapped_recipe(util::IterFn<const Recipe&, usize> auto&& callback, const Recipe* exception = nullptr) const {
         if (m_queue_size == 0)
             return;
 
-        for (size_t i = 0; i < Station::number_of_stations(); ++i) {
+        for (usize i = 0; i < Station::number_of_stations(); ++i) {
             auto& info = m_queue[i];
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
@@ -127,17 +127,17 @@ private:
 
     bool collides_with_other_recipes(const Recipe&) const;
 
-    void add_recipe(size_t);
+    void add_recipe(usize);
 
-    void remove_recipe(size_t);
+    void remove_recipe(usize);
 
-    void recipe_was_cancelled(size_t index);
+    void recipe_was_cancelled(usize index);
 
-    size_t number_of_recipes_executing() const;
+    usize number_of_recipes_executing() const;
 
 private:
     util::Timer m_inactivity_timer;
-    size_t m_recipe_in_execution = Station::INVALID;
+    usize m_recipe_in_execution = Station::INVALID;
 
     struct RecipeInfo {
         Recipe recipe;
@@ -147,6 +147,6 @@ private:
     // o mapeamento de index -> recipe é o mesmo de index -> estação
     // ou seja, a recipe na posição 0 da fila pertence à estação 0
     std::array<RecipeInfo, Station::MAXIMUM_NUMBER_OF_STATIONS> m_queue = {};
-    size_t m_queue_size = 0;
+    usize m_queue_size = 0;
 };
 }

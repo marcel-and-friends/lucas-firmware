@@ -9,7 +9,7 @@
 namespace lucas {
 Station::List Station::s_list = {};
 
-void Station::initialize(size_t num) {
+void Station::initialize(usize num) {
     if (num > MAXIMUM_NUMBER_OF_STATIONS) {
         LOG_ERR("numero de estacoes invalido - [max = ", MAXIMUM_NUMBER_OF_STATIONS, "]");
         return;
@@ -21,8 +21,8 @@ void Station::initialize(size_t num) {
     }
 
     struct InfoStation {
-        int button_pin;
-        int led_pin;
+        s32 button_pin;
+        s32 led_pin;
     };
 
     constexpr std::array<InfoStation, Station::MAXIMUM_NUMBER_OF_STATIONS> infos = {
@@ -33,7 +33,7 @@ void Station::initialize(size_t num) {
         InfoStation{ .button_pin = PC4, .led_pin = PD13}
     };
 
-    for (size_t i = 0; i < num; i++) {
+    for (usize i = 0; i < num; i++) {
         auto& info = infos.at(i);
         auto& station = s_list.at(i);
         station.set_button(info.button_pin);
@@ -120,15 +120,15 @@ void Station::update_leds() {
     }
 }
 
-float Station::absolute_position(size_t index) {
+float Station::absolute_position(usize index) {
     return util::first_station_abs_pos() + index * util::distance_between_each_station();
 }
 
-size_t Station::number() const {
+usize Station::number() const {
     return index() + 1;
 }
 
-size_t Station::index() const {
+usize Station::index() const {
     // cute
     return ((uintptr_t)this - (uintptr_t)&s_list) / sizeof(Station);
 }
@@ -161,7 +161,7 @@ void Station::set_blocked(bool b) {
     LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
 }
 
-void Station::set_status(Status status, std::optional<uint32_t> receita_id) {
+void Station::set_status(Status status, std::optional<u32> receita_id) {
     if (m_status == status)
         return;
 
@@ -171,7 +171,7 @@ void Station::set_status(Status status, std::optional<uint32_t> receita_id) {
         info::Event::Station,
         [this, &receita_id](JsonObject o) {
             o["station"] = index();
-            o["status"] = int(m_status);
+            o["status"] = s32(m_status);
             if (receita_id)
                 o["recipeId"] = *receita_id;
         });

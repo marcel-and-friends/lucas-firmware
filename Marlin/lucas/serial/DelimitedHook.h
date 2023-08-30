@@ -15,7 +15,7 @@ public:
         if (not s_hooks_size)
             return;
 
-        for (size_t i = 0; i < s_hooks_size; ++i)
+        for (usize i = 0; i < s_hooks_size; ++i)
             if (std::invoke(FWD(callback), s_hooks[i]) == util::Iter::Break)
                 break;
     }
@@ -31,7 +31,7 @@ private:
     char m_delimiter = 0;
 
     static List s_hooks;
-    static inline size_t s_hooks_size = 0;
+    static inline usize s_hooks_size = 0;
     DelimitedHook() = default;
 };
 

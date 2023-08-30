@@ -8,14 +8,14 @@
 #include <lucas/RecipeQueue.h>
 
 namespace lucas::sec {
-using BlockedReasonsList = std::array<bool, size_t(Reason::Count)>;
+using BlockedReasonsList = std::array<bool, usize(Reason::Count)>;
 static BlockedReasonsList s_blocked_reasons = {};
 constexpr auto SECURITY_FILE_PATH = "/sec.txt";
 
 using ReturnCondition = bool (*)();
 
 consteval auto make_default_return_conditions() {
-    std::array<ReturnCondition, size_t(Reason::Count)> conditions;
+    std::array<ReturnCondition, usize(Reason::Count)> conditions;
     // most of them are no return
     std::fill(
         conditions.begin(),
@@ -24,7 +24,7 @@ consteval auto make_default_return_conditions() {
             return false;
         });
     // except the water level one
-    conditions[size_t(Reason::WaterLevelAlarm)] = +[] {
+    conditions[usize(Reason::WaterLevelAlarm)] = +[] {
         return not Boiler::the().is_alarm_triggered();
     };
     return conditions;
@@ -45,7 +45,7 @@ void setup() {
 }
 
 void raise_error(Reason reason) {
-    if (s_blocked_reasons[size_t(reason)]) {
+    if (s_blocked_reasons[usize(reason)]) {
         LOG_ERR("essa razao foi bloqueada");
         return;
     }
@@ -55,7 +55,7 @@ void raise_error(Reason reason) {
     info::send(
         info::Event::Security,
         [reason](JsonObject o) {
-            o["reason"] = int(reason);
+            o["reason"] = s32(reason);
             o["active"] = true;
         });
 
@@ -79,7 +79,7 @@ void raise_error(Reason reason) {
 
     // spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
     constexpr auto FILTER = TickFilter::All & ~TickFilter::Spout;
-    util::idle_until(RETURN_CONDITIONS[size_t(reason)], FILTER);
+    util::idle_until(RETURN_CONDITIONS[usize(reason)], FILTER);
 
     sd.remove_file(SECURITY_FILE_PATH);
 
@@ -88,7 +88,7 @@ void raise_error(Reason reason) {
     info::send(
         info::Event::Security,
         [reason](JsonObject o) {
-            o["reason"] = int(reason);
+            o["reason"] = s32(reason);
             o["active"] = false;
         });
 
@@ -96,10 +96,10 @@ void raise_error(Reason reason) {
 }
 
 bool is_reason_blocked(Reason reason) {
-    return s_blocked_reasons[size_t(reason)];
+    return s_blocked_reasons[usize(reason)];
 }
 
 void toggle_reason_block(Reason reason) {
-    s_blocked_reasons[size_t(reason)] = not s_blocked_reasons[size_t(reason)];
+    s_blocked_reasons[usize(reason)] = not s_blocked_reasons[usize(reason)];
 }
 }

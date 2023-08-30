@@ -5,7 +5,7 @@
 #include <span>
 
 namespace lucas::info {
-constexpr size_t BUFFER_SIZE = 1024;
+constexpr usize BUFFER_SIZE = 1024;
 using JsonDocument = StaticJsonDocument<BUFFER_SIZE>;
 
 void setup();
@@ -30,18 +30,18 @@ enum class Event {
 
 void send(Event type, util::Fn<void, JsonObject> auto&& callback) {
     constexpr static auto EVENT_NAMES = std::to_array({
-        [size_t(Event::Boiler)] = "infoBoiler",
-        [size_t(Event::Recipe)] = "infoRecipe",
-        [size_t(Event::Station)] = "infoStation",
-        [size_t(Event::AllStations)] = "infoAllStations",
-        [size_t(Event::Security)] = "infoSecurity",
-        [size_t(Event::Calibration)] = "infoCalibration",
-        [size_t(Event::Firmware)] = "infoFirmware",
-        [size_t(Event::Other)] = "infoOther",
+        [usize(Event::Boiler)] = "infoBoiler",
+        [usize(Event::Recipe)] = "infoRecipe",
+        [usize(Event::Station)] = "infoStation",
+        [usize(Event::AllStations)] = "infoAllStations",
+        [usize(Event::Security)] = "infoSecurity",
+        [usize(Event::Calibration)] = "infoCalibration",
+        [usize(Event::Firmware)] = "infoFirmware",
+        [usize(Event::Other)] = "infoOther",
     });
 
     JsonDocument doc;
-    std::invoke(FWD(callback), doc.createNestedObject(EVENT_NAMES[size_t(type)]));
+    std::invoke(FWD(callback), doc.createNestedObject(EVENT_NAMES[usize(type)]));
     print_json(doc);
 }
 }

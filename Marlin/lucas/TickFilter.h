@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdint>
+#include <lucas/types.h>
 
 namespace lucas {
-enum class TickFilter : uint32_t {
+enum class TickFilter : u8 {
     None = 0,
 
     RecipeQueue = 1 << 0,
@@ -18,15 +18,15 @@ enum class TickFilter : uint32_t {
 };
 
 constexpr TickFilter operator|(const TickFilter a, const TickFilter b) {
-    return TickFilter(uint32_t(a) | uint32_t(b));
+    return TickFilter(u8(a) | u8(b));
 }
 
 constexpr TickFilter operator&(const TickFilter a, const TickFilter b) {
-    return TickFilter(uint32_t(a) & uint32_t(b));
+    return TickFilter(u8(a) & u8(b));
 }
 
 constexpr TickFilter operator~(const TickFilter a) {
-    return TickFilter(~uint32_t(a));
+    return TickFilter(~u8(a));
 }
 
 void apply_filters(TickFilter);

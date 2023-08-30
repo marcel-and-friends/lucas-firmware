@@ -51,7 +51,7 @@ void L1() {
     if (should_pour)
         Spout::the().pour_with_desired_volume(duration, volume_of_water);
 
-    for (int i = 0; i < number_of_arcs; i++) {
+    for (s32 i = 0; i < number_of_arcs; i++) {
         float diameter = circle_diameter;
         if (i % 2 != 0)
             diameter = -diameter;

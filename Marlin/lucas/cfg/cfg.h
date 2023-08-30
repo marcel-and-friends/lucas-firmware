@@ -1,7 +1,7 @@
 #pragma once
 
 #include <array>
-#include <cstddef>
+#include <lucas/types.h>
 
 namespace lucas::cfg {
 struct Option {
@@ -31,7 +31,7 @@ enum Options {
     Count
 };
 
-using OptionList = std::array<Option, size_t(Options::Count)>;
+using OptionList = std::array<Option, usize(Options::Count)>;
 
 constexpr auto FIRMWARE_VERSION = "0.0.1";
 

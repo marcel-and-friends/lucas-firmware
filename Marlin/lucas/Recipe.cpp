@@ -8,7 +8,7 @@
 namespace lucas {
 JsonObjectConst Recipe::standard() {
     // calculado com o Assistant do ArduinoJson
-    constexpr size_t BUFFER_SIZE = 384;
+    constexpr usize BUFFER_SIZE = 384;
     static StaticJsonDocument<BUFFER_SIZE> doc;
 
     static char json[] = R"({
@@ -79,7 +79,7 @@ bool Recipe::Step::collides_with(const Step& other) const {
 void Recipe::build_from_json(JsonObjectConst json) {
     reset();
 
-    m_id = json["id"].as<uint32_t>();
+    m_id = json["id"].as<u32>();
     m_finalization_duration = chrono::milliseconds{ json["finalizationTime"].as<millis_t>() };
 
     // o escaldo é opcional
@@ -94,7 +94,7 @@ void Recipe::build_from_json(JsonObjectConst json) {
     }
 
     auto attacks_obj = json["attacks"].as<JsonArrayConst>();
-    for (size_t i = 0; i < attacks_obj.size(); ++i) {
+    for (usize i = 0; i < attacks_obj.size(); ++i) {
         auto attack_obj = attacks_obj[i];
         auto& attack = m_steps[i + m_has_scalding_step];
 

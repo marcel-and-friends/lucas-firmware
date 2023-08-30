@@ -11,7 +11,7 @@ class Spout : public util::Singleton<Spout> {
 public:
     void tick();
 
-    using DigitalSignal = uint32_t;
+    using DigitalSignal = u32;
 
     void pour_with_desired_volume(millis_t duration, float desired_volume);
     void pour_with_desired_volume(const auto duration, float desired_volume) {
@@ -77,14 +77,14 @@ public:
             DigitalSignal digital_signal;
         };
 
-        void begin_iterative_pour(util::IterFn<FlowInfo, int&> auto&& callback, DigitalSignal starting_signal, int starting_mod) {
+        void begin_iterative_pour(util::IterFn<FlowInfo, s32&> auto&& callback, DigitalSignal starting_signal, s32 starting_mod) {
             constexpr auto TIME_TO_ANALISE_POUR = 10s;
 
             // the signal sent to the driver on every iteration
             DigitalSignal digital_signal = starting_signal;
             // the amount by which that signal gets modified at the end of the current iteration
             // can be negative
-            int digital_signal_mod = starting_mod;
+            s32 digital_signal_mod = starting_mod;
             while (true) {
                 // let's not fly too close to the sun
                 if (digital_signal >= 4095)
@@ -109,14 +109,14 @@ public:
             }
         }
 
-        FlowInfo obtain_specific_flow(float flow, FlowInfo starting_flow_info, int starting_mod);
+        FlowInfo obtain_specific_flow(float flow, FlowInfo starting_flow_info, s32 starting_mod);
 
-        FlowInfo first_flow_info_below_flow(int flow_index, int decimal) const;
-        FlowInfo first_flow_info_above_flow(int flow_index, int decimal) const;
+        FlowInfo first_flow_info_below_flow(s32 flow_index, s32 decimal) const;
+        FlowInfo first_flow_info_above_flow(s32 flow_index, s32 decimal) const;
 
         struct DecomposedFlow {
-            int rounded_flow;
-            int decimal;
+            s32 rounded_flow;
+            s32 decimal;
         };
 
         DecomposedFlow decompose_flow(float flow) const;
@@ -127,10 +127,10 @@ public:
             LOG_IF(LogCalibration, "fluxo info salva - [sinal = ", signal, "]");
         }
 
-        void for_each_occupied_cell(util::IterFn<DigitalSignal, size_t, size_t> auto&& callback) const {
-            for (size_t i = 0; i < m_digital_signal_table.size(); ++i) {
+        void for_each_occupied_cell(util::IterFn<DigitalSignal, usize, usize> auto&& callback) const {
+            for (usize i = 0; i < m_digital_signal_table.size(); ++i) {
                 auto& cells = m_digital_signal_table[i];
-                for (size_t j = 0; j < cells.size(); ++j) {
+                for (usize j = 0; j < cells.size(); ++j) {
                     auto digital_signal = cells[j];
                     if (digital_signal != INVALID_DIGITAL_SIGNAL)
                         if (std::invoke(FWD(callback), digital_signal, i, j) == util::Iter::Break)
@@ -155,9 +155,9 @@ private:
 
     void fill_hose(float desired_volume = 0.f);
 
-    static volatile inline uint32_t s_pulse_counter = 0;
-    uint32_t m_pulses_at_start_of_pour = 0;
-    uint32_t m_pulses_at_end_of_pour = 0;
+    static volatile inline u32 s_pulse_counter = 0;
+    u32 m_pulses_at_start_of_pour = 0;
+    u32 m_pulses_at_end_of_pour = 0;
 
     chrono::milliseconds m_pour_duration;
 

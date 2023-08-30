@@ -11,9 +11,9 @@
 namespace lucas {
 enum Pin {
     SV = PA5,
-    EN = PE10,
-    BRK = PA6,
-    FlowSensor = PA13
+    EN = PC6,
+    BRK = PD13,
+    FlowSensor = PB2
 };
 
 void Spout::tick() {
@@ -150,7 +150,7 @@ void Spout::fill_hose(float desired_volume) {
         pour_with_digital_signal(TIME_TO_FILL_HOSE, FALLBACK_SIGNAL);
     }
 
-    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", uint32_t(TIME_TO_FILL_HOSE.count()), "s]");
+    LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", u32(TIME_TO_FILL_HOSE.count()), "s]");
     util::idle_for(TIME_TO_FILL_HOSE);
 }
 
@@ -178,7 +178,7 @@ void Spout::end_pour() {
 
     const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
     const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
-    LOG_IF(LogPour, "despejo finalizado - [duracao = ", uint32_t(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
+    LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
 enum class FlowTableStatus {
@@ -207,7 +207,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         info::send(
             info::Event::Calibration,
             [status](JsonObject o) {
-                o["status"] = size_t(status);
+                o["status"] = usize(status);
             });
     };
 
@@ -216,10 +216,10 @@ void Spout::FlowController::fill_digital_signal_table() {
     save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
 
     FlowInfo info_when_finished = { 0.f, 0 };
-    int mod_when_finished = 0;
-    size_t number_of_occupied_cells = 0;
+    s32 mod_when_finished = 0;
+    usize number_of_occupied_cells = 0;
     begin_iterative_pour(
-        [&, last_average_flow = 0.f](FlowInfo info, int& digital_signal_mod) mutable {
+        [&, last_average_flow = 0.f](FlowInfo info, s32& digital_signal_mod) mutable {
             if (last_average_flow and info.flow < last_average_flow) {
                 if (digital_signal_mod < 0)
                     digital_signal_mod *= -1;
@@ -233,7 +233,7 @@ void Spout::FlowController::fill_digital_signal_table() {
                 const auto delta = info.flow - last_average_flow;
                 // big jump! cut the modification and subtract it from the signal
                 if (delta > 1.f) {
-                    digital_signal_mod = std::max(digital_signal_mod / 2, 1);
+                    digital_signal_mod = std::max<s32>(digital_signal_mod / 2, 1);
                     if (digital_signal_mod > 0)
                         digital_signal_mod *= -1;
 
@@ -276,19 +276,19 @@ void Spout::FlowController::fill_digital_signal_table() {
 
     LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | celulas = ", number_of_occupied_cells, "]");
     LOG_IF(LogCalibration, "resultado: ");
-    for_each_occupied_cell([](DigitalSignal digital_signal, size_t i, size_t j) {
+    for_each_occupied_cell([](DigitalSignal digital_signal, usize i, usize j) {
         LOG_IF(LogCalibration, "[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
         return util::Iter::Continue;
     });
 }
 
-Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(float desired_flow, FlowInfo starting_flow_info, int starting_mod) {
+Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(float desired_flow, FlowInfo starting_flow_info, s32 starting_mod) {
     FlowInfo result = { 0.f, 0 };
     begin_iterative_pour(
         [this,
          &result,
          desired_flow,
-         last_greater_than_specific = starting_flow_info.flow > desired_flow](FlowInfo info, int& digital_signal_mod) mutable {
+         last_greater_than_specific = starting_flow_info.flow > desired_flow](FlowInfo info, s32& digital_signal_mod) mutable {
             if (std::abs(info.flow - desired_flow) <= 0.1f) {
                 result = info;
                 LOG_IF(LogCalibration, "fluxo especifico obtido - [sinal = ", info.digital_signal, "]");
@@ -300,9 +300,9 @@ Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(floa
                 // at the correct digital signal
                 if (greater_than_specific != last_greater_than_specific) {
                     if (digital_signal_mod < 0) {
-                        digital_signal_mod = std::min(digital_signal_mod / 2, -1);
+                        digital_signal_mod = std::min<s32>(digital_signal_mod / 2, -1);
                     } else {
-                        digital_signal_mod = std::max(digital_signal_mod / 2, 1);
+                        digital_signal_mod = std::max<s32>(digital_signal_mod / 2, 1);
                     }
                     digital_signal_mod *= -1;
                 }
@@ -372,7 +372,7 @@ void Spout::FlowController::fetch_digital_signal_table_from_file() {
         LOG_ERR("falha ao ler tabela do cartao");
 }
 
-Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flow(int flow_index, int decimal) const {
+Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flow(s32 flow_index, s32 decimal) const {
     for (; flow_index >= 0; --flow_index, decimal = 9) {
         auto& cells = m_digital_signal_table[flow_index];
         for (; decimal >= 0; --decimal) {
@@ -386,7 +386,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flo
     return { 0.f, INVALID_DIGITAL_SIGNAL };
 }
 
-Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flow(int flow_index, int decimal) const {
+Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flow(s32 flow_index, s32 decimal) const {
     for (; flow_index < FLOW_RANGE; ++flow_index, decimal = 0) {
         auto& cells = m_digital_signal_table[flow_index];
         for (; decimal < 10; ++decimal) {
@@ -403,6 +403,6 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flo
 Spout::FlowController::DecomposedFlow Spout::FlowController::decompose_flow(float flow) const {
     const auto rounded = std::round(flow * 10.f) / 10.f;
     const auto clamped = std::clamp(rounded, float(FLOW_MIN), float(FLOW_MAX) - 0.1f);
-    return { int(clamped), int(clamped * 10) % 10 };
+    return { s32(clamped), s32(clamped * 10) % 10 };
 }
 }

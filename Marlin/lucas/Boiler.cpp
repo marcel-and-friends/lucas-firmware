@@ -6,33 +6,29 @@
 
 namespace lucas {
 enum Pin {
-    CoelAlarmOutput = PD11,
-    CoelAlarmInput = PB2,
+    WaterLevelAlarm = PC5,
     Resistance = HEATER_BED_PIN
 };
 
 static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
-    pinMode(Pin::CoelAlarmInput, INPUT);
+    pinMode(Pin::WaterLevelAlarm, INPUT);
     /* go back to this when everything is setup
-    s_alarm_triggered = READ(Pin::CoelAlarmInput);
+    s_alarm_triggered = READ(Pin::WaterLevelAlarm);
     attachInterrupt(
-        digitalPinToInterrupt(Pin::CoelAlarmInput),
+        digitalPinToInterrupt(Pin::WaterLevelAlarm),
         +[] {
-            s_alarm_triggered = READ(Pin::CoelAlarmInput);
+            s_alarm_triggered = READ(Pin::WaterLevelAlarm);
         },
         CHANGE);
     */
     attachInterrupt(
-        digitalPinToInterrupt(Pin::CoelAlarmInput),
+        digitalPinToInterrupt(Pin::WaterLevelAlarm),
         +[] {
             s_alarm_triggered = not s_alarm_triggered;
         },
         FALLING);
-
-    pinMode(Pin::CoelAlarmOutput, OUTPUT);
-    WRITE(Pin::CoelAlarmOutput, HIGH);
 
     if (s_alarm_triggered) {
         info::send(
@@ -85,7 +81,7 @@ float Boiler::temperature() const {
     return thermalManager.degBed();
 }
 
-void Boiler::set_target_temperature_and_wait(int target) {
+void Boiler::set_target_temperature_and_wait(s32 target) {
     set_target_temperature(target);
     if (not target)
         return;
@@ -129,7 +125,7 @@ void Boiler::set_target_temperature_and_wait(int target) {
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
 }
 
-void Boiler::set_target_temperature(int target) {
+void Boiler::set_target_temperature(s32 target) {
     m_target_temperature = target;
     if (not m_target_temperature)
         return;

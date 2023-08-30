@@ -29,7 +29,7 @@ void RecipeQueue::tick() {
             compensate_for_missed_step(recipe, station);
         }
     } else {
-        for_each_mapped_recipe([this](Recipe& recipe, size_t index) {
+        for_each_mapped_recipe([this](Recipe& recipe, usize index) {
             const auto starting_tick = recipe.current_step().starting_tick;
             // a ordem desses ifs importa por causa da subtracao de numeros unsigned, tome cuideido...
             if (starting_tick < millis()) {
@@ -55,7 +55,7 @@ void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
         return;
     }
 
-    for (size_t i = 0; i < m_queue.size(); i++) {
+    for (usize i = 0; i < m_queue.size(); i++) {
         auto& station = Station::list().at(i);
         if (station.status() != Station::Status::Free or station.blocked())
             continue;
@@ -71,7 +71,7 @@ void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
     LOG_ERR("nao foi possivel encontrar uma estacao disponivel");
 }
 
-void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, size_t index) {
+void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, usize index) {
     auto& station = Station::list().at(index);
     if (m_queue[index].active) {
         LOG_ERR("estacao ja possui uma receita na fila - [estacao = ", index, "]");
@@ -89,7 +89,7 @@ void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, size_t index) {
     LOG_IF(LogQueue, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
 }
 
-void RecipeQueue::map_station_recipe(size_t index) {
+void RecipeQueue::map_station_recipe(usize index) {
     auto& station = Station::list().at(index);
     if (not m_queue[index].active) {
         LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
@@ -109,7 +109,7 @@ void RecipeQueue::map_station_recipe(size_t index) {
 
     // por conta do if acima nesse momento a recipe só pode estar em um de dois estados - 'ConfirmingScald' e 'ConfirmingAttacks'
     // os próximo estados após esses são 'Scalding' e 'Attacking', respectivamente
-    const auto next_status = int(station.status()) + 1;
+    const auto next_status = s32(station.status()) + 1;
     station.set_status(Station::Status(next_status), recipe.id());
     map_recipe(recipe, station);
 }
@@ -167,8 +167,8 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     LOG_IF(LogQueue, "executando passo - [estacao = ", station.index(), " | passo = ", recipe.current_step_index(), " | tick = ", millis(), "]");
 
     const auto& current_step = recipe.current_step();
-    const size_t current_step_index = recipe.current_step_index();
-    auto dispatch_step_event = [](size_t station, size_t step, millis_t first_attack_tick, bool ending) {
+    const usize current_step_index = recipe.current_step_index();
+    auto dispatch_step_event = [](usize station, usize step, millis_t first_attack_tick, bool ending) {
         info::send(
             info::Event::Recipe,
             [&](JsonObject o) {
@@ -253,10 +253,10 @@ void RecipeQueue::compensate_for_missed_step(Recipe& recipe, Station& station) {
 // ao ocorrer uma mudança na fila (ex: cancelar uma recipe)
 // as receitas que ainda não começaram são trazidas para frente, para evitar grandes períodos onde a máquina não faz nada
 void RecipeQueue::remap_recipes_after_changes_in_queue() {
-    util::StaticVector<size_t, Station::MAXIMUM_NUMBER_OF_STATIONS> recipes_to_remap = {};
+    util::StaticVector<usize, Station::MAXIMUM_NUMBER_OF_STATIONS> recipes_to_remap = {};
 
-    for_each_mapped_recipe([&](Recipe& recipe, size_t index) {
-        const size_t min_step = recipe.has_scalding_step() and recipe.scalded();
+    for_each_mapped_recipe([&](Recipe& recipe, usize index) {
+        const usize min_step = recipe.has_scalding_step() and recipe.scalded();
         const bool executed_a_step = recipe.current_step_index() > min_step;
         if (executed_a_step or m_recipe_in_execution == index)
             // caso a recipe ja tenha comecado não é remapeada
@@ -297,7 +297,7 @@ bool RecipeQueue::collides_with_other_recipes(const Recipe& new_recipe) const {
     return colides;
 }
 
-void RecipeQueue::cancel_station_recipe(size_t index) {
+void RecipeQueue::cancel_station_recipe(usize index) {
     if (not m_queue[index].active) {
         LOG_ERR("tentando cancelar receita de estacao que nao esta na fila - [estacao = ", index, "]");
         return;
@@ -324,7 +324,7 @@ void RecipeQueue::remove_finalized_recipes() {
     if (m_queue_size == 0) [[likely]]
         return;
 
-    for_each_recipe([this](const Recipe& recipe, size_t index) {
+    for_each_recipe([this](const Recipe& recipe, usize index) {
         auto& station = Station::list().at(index);
         if (station.status() == Station::Status::Finalizing) [[unlikely]] {
             // FIXME: use a timer for this
@@ -366,7 +366,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() {
     }
 }
 
-void RecipeQueue::recipe_was_cancelled(size_t index) {
+void RecipeQueue::recipe_was_cancelled(usize index) {
     LOG_IF(LogQueue, "receita cancelada - [estacao = ", index, "]");
     remap_recipes_after_changes_in_queue();
 }
@@ -374,8 +374,8 @@ void RecipeQueue::recipe_was_cancelled(size_t index) {
 // o conceito de uma recipe "em execucao" engloba somente os despejos em sí (escaldo e ataques)
 // estacões que estão aguardando input do usuário ou finalizando não possuem seus passos pendentes mapeados
 // consequentemente, não são consideradas como "em execucao" por mais que estejão na fila
-size_t RecipeQueue::number_of_recipes_executing() const {
-    size_t num = 0;
+usize RecipeQueue::number_of_recipes_executing() const {
+    usize num = 0;
     for_each_mapped_recipe([&num](const auto&) {
         ++num;
         return util::Iter::Continue;
@@ -392,7 +392,7 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
 
             auto arr = o.createNestedArray("stations");
             for (const auto json_variant : stations) {
-                const auto index = json_variant.as<size_t>();
+                const auto index = json_variant.as<usize>();
                 if (index >= Station::number_of_stations()) {
                     LOG_ERR("index invalido para requisicao - [index = ", index, "]");
                     continue;
@@ -405,7 +405,7 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
                 const auto tick = millis();
                 auto obj = arr.createNestedObject();
                 obj["index"] = station.index();
-                obj["status"] = int(station.status());
+                obj["status"] = s32(station.status());
 
                 // os campos seguintes só aparecem para receitas em execução
                 if (not m_queue[index].active)
@@ -449,13 +449,13 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
 }
 
 void RecipeQueue::cancel_all_recipes() {
-    for_each_recipe([this](Recipe& recipe, size_t index) {
+    for_each_recipe([this](Recipe& recipe, usize index) {
         cancel_station_recipe(index);
         return util::Iter::Continue;
     });
 }
 
-void RecipeQueue::add_recipe(size_t index) {
+void RecipeQueue::add_recipe(usize index) {
     if (m_queue_size == m_queue.size()) {
         LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
         return;
@@ -465,7 +465,7 @@ void RecipeQueue::add_recipe(size_t index) {
     m_queue[index].active = true;
 }
 
-void RecipeQueue::remove_recipe(size_t index) {
+void RecipeQueue::remove_recipe(usize index) {
     if (m_queue_size == 0) {
         LOG_ERR("tentando remover receita com a fila vazia - [estacao = ", index, "]");
         return;

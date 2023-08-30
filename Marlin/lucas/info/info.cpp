@@ -107,19 +107,19 @@ void interpret_command_from_host(std::span<char> buffer) {
 
             auto array = v.as<JsonArrayConst>();
             Station::initialize(array.size());
-            Station::for_each([&array](Station& station, size_t i) {
+            Station::for_each([&array](Station& station, usize i) {
                 station.set_blocked(not array[i].as<bool>());
                 return util::Iter::Continue;
             });
         } break;
         case Command::SetBoilerTemperature: {
-            if (not v.is<int>()) {
+            if (not v.is<s32>()) {
                 LOG_ERR("valor json invalido para temperatura target do boiler");
                 break;
             }
 
             if (not CFG(GigaMode))
-                core::calibrate(v.as<int>());
+                core::calibrate(v.as<s32>());
         } break;
         case Command::ScheduleRecipe: {
             if (not v.is<JsonObjectConst>()) {
@@ -130,13 +130,13 @@ void interpret_command_from_host(std::span<char> buffer) {
             RecipeQueue::the().schedule_recipe(v.as<JsonObjectConst>());
         } break;
         case Command::CancelRecipe: {
-            if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
+            if (not v.is<usize>() and not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para cancelamento de receita");
                 break;
             }
 
-            if (v.is<size_t>()) {
-                auto index = v.as<size_t>();
+            if (v.is<usize>()) {
+                auto index = v.as<usize>();
                 if (index >= Station::number_of_stations()) {
                     LOG_ERR("index para cancelamento de receita invalido");
                     break;
@@ -144,7 +144,7 @@ void interpret_command_from_host(std::span<char> buffer) {
                 RecipeQueue::the().cancel_station_recipe(index);
             } else if (v.is<JsonArrayConst>()) {
                 for (auto index : v.as<JsonArrayConst>()) {
-                    RecipeQueue::the().cancel_station_recipe(index.as<size_t>());
+                    RecipeQueue::the().cancel_station_recipe(index.as<usize>());
                 }
             }
         } break;
@@ -161,11 +161,11 @@ void interpret_command_from_host(std::span<char> buffer) {
             RecipeQueue::the().send_queue_info(stations);
         } break;
         case Command::FirmwareUpdate: {
-            if (not v.is<size_t>()) {
+            if (not v.is<usize>()) {
                 LOG_ERR("valor json invalido para tamanho do firmware novo");
                 break;
             }
-            core::prepare_for_firmware_update(v.as<size_t>());
+            core::prepare_for_firmware_update(v.as<usize>());
         } break;
         case Command::RequestInfoFirmware: {
             info::send(
@@ -176,22 +176,22 @@ void interpret_command_from_host(std::span<char> buffer) {
         } break;
         /* ~comandos de desenvolvimento~ */
         case Command::DevScheduleStandardRecipe: {
-            if (not v.is<size_t>()) {
+            if (not v.is<usize>()) {
                 LOG_ERR("valor json invalido para envio da receita standard");
                 break;
             }
 
-            for (size_t i = 0; i < v.as<size_t>(); ++i)
+            for (usize i = 0; i < v.as<usize>(); ++i)
                 RecipeQueue::the().schedule_recipe(Recipe::standard());
 
         } break;
         case Command::DevSimulateButtonPress: {
-            if (not v.is<size_t>() and not v.is<JsonArrayConst>()) {
+            if (not v.is<usize>() and not v.is<JsonArrayConst>()) {
                 LOG_ERR("valor json invalido para apertar button");
                 break;
             }
 
-            auto simulate_button_press = [](size_t index) {
+            auto simulate_button_press = [](usize index) {
                 auto& station = Station::list().at(index);
                 if (station.status() == Station::Status::Ready) {
                     station.set_status(Station::Status::Free);
@@ -200,8 +200,8 @@ void interpret_command_from_host(std::span<char> buffer) {
                 }
             };
 
-            if (v.is<size_t>()) {
-                simulate_button_press(v.as<size_t>());
+            if (v.is<usize>()) {
+                simulate_button_press(v.as<usize>());
             } else if (v.is<JsonArrayConst>()) {
                 for (auto index : v.as<JsonArrayConst>()) {
                     simulate_button_press(index);

@@ -3,36 +3,14 @@
 #include <lucas/tick.h>
 #include <lucas/core/TemporaryFilter.h>
 #include <src/MarlinCore.h>
-#include <type_traits>
-#include <cstdint>
-#include <cstddef>
-#include <concepts>
 #include <chrono>
+#include <string_view>
+#include <concepts>
 
 namespace lucas {
-using namespace std::chrono_literals;
-using namespace std::string_view_literals;
-
-using s8 = int8_t;
-using s16 = int16_t;
-using s32 = int32_t;
-using s64 = int64_t;
-
-using u8 = uint8_t;
-using u16 = uint16_t;
-using u32 = uint32_t;
-using u64 = uint64_t;
-
-using f32 = float;
-using f64 = double;
-
-using usize = size_t;
-using ssize = std::make_signed_t<size_t>;
-}
-
 namespace chrono = std::chrono;
-
-namespace lucas::util {
+using namespace std::literals;
+namespace util {
 constexpr millis_t TRAVEL_MARGIN = 1000;
 
 enum class Iter {
@@ -56,7 +34,7 @@ inline const char* fmt(const char* fmt, auto... args) {
 
 const char* ff(const char* str, float valor);
 
-bool is_button_held(int pin);
+bool is_button_held(s32 pin);
 
 constexpr float MS_PER_MM = 12.41f;
 constexpr float DEFAULT_STEPS_PER_MM_X = 22.f;
@@ -107,4 +85,5 @@ inline void idle_until(Fn<bool> auto&& callback, TickFilter filters = TickFilter
             }                                                                                                        \
             return false;                                                                                            \
         }())
+}
 }

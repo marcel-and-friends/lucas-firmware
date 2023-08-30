@@ -1,14 +1,14 @@
 #pragma once
 
 #include <src/core/serial.h>
+#include <lucas/types.h>
 #include <span>
 
 namespace lucas::serial {
 class Hook {
 public:
-    static constexpr size_t MAX_BUFFER_SIZE = 1024;
-    static constexpr size_t MAX_BUFFER_SLICE = 64;
-    static constexpr auto OK_CODE = "ok";
+    static constexpr usize MAX_BUFFER_SIZE = 1024;
+    static constexpr usize MAX_BUFFER_SLICE = 64;
 
     using Callback = void (*)(std::span<char>);
 
@@ -19,7 +19,7 @@ public:
     bool is_valid() const;
 
 public:
-    size_t buffer_size() const {
+    usize buffer_size() const {
         return m_buffer_size;
     }
 
@@ -31,10 +31,10 @@ protected:
 protected:
     Callback m_callback = nullptr;
 
-    size_t m_counter = 0;
+    usize m_counter = 0;
 
     char m_buffer[MAX_BUFFER_SIZE] = {};
 
-    size_t m_buffer_size = 0;
+    usize m_buffer_size = 0;
 };
 }

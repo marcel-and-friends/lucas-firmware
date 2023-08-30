@@ -44,10 +44,6 @@ void calibrate(float target_temperature) {
     LOG_IF(LogCalibration, "nivelamento finalizado");
 }
 
-bool calibrated() {
-    return s_calibrated;
-}
-
 void inform_calibration_status() {
     info::send(
         info::Event::Calibration,
@@ -56,8 +52,8 @@ void inform_calibration_status() {
         });
 }
 
-static size_t s_new_firmware_size = 0;
-static size_t s_total_bytes_written = 0;
+static usize s_new_firmware_size = 0;
+static usize s_total_bytes_written = 0;
 static util::SD s_sd;
 constexpr auto FIRMWARE_FILE_PATH = "/Robin_nano_V3.bin";
 
@@ -82,7 +78,7 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
     }
 }
 
-void prepare_for_firmware_update(size_t size) {
+void prepare_for_firmware_update(usize size) {
     s_new_firmware_size = size;
 
     // cfg::reset_options();

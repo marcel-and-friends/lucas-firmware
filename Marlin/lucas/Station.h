@@ -11,18 +11,18 @@
 namespace lucas {
 class Station {
 public:
-    static constexpr size_t INVALID = static_cast<size_t>(-1);
+    static constexpr usize INVALID = static_cast<usize>(-1);
 
-    static constexpr size_t MAXIMUM_NUMBER_OF_STATIONS = 5;
+    static constexpr usize MAXIMUM_NUMBER_OF_STATIONS = 5;
     using List = std::array<Station, MAXIMUM_NUMBER_OF_STATIONS>;
 
-    static void initialize(size_t num);
+    static void initialize(usize num);
 
     static void for_each(util::IterFn<Station&> auto&& callback) {
         if (s_list_size == 0)
             return;
 
-        for (size_t i = 0; i < s_list_size; ++i) {
+        for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
             if (station.m_blocked)
                 continue;
@@ -31,11 +31,11 @@ public:
         }
     }
 
-    static void for_each(util::IterFn<Station&, size_t> auto&& callback) {
+    static void for_each(util::IterFn<Station&, usize> auto&& callback) {
         if (s_list_size == 0)
             return;
 
-        for (size_t i = 0; i < s_list_size; ++i) {
+        for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
             if (station.m_blocked)
                 continue;
@@ -48,7 +48,7 @@ public:
         if (s_list_size == 0)
             return;
 
-        for (size_t i = 0; i < s_list_size; ++i) {
+        for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
             if (station.m_blocked)
                 continue;
@@ -65,9 +65,9 @@ public:
 
     static List& list() { return s_list; }
 
-    static float absolute_position(size_t index);
+    static float absolute_position(usize index);
 
-    static size_t number_of_stations() { return s_list_size; }
+    static usize number_of_stations() { return s_list_size; }
 
     Station(const Station&) = delete;
     Station(Station&&) = delete;
@@ -94,8 +94,8 @@ public:
         Ready
     };
 
-    size_t number() const;
-    size_t index() const;
+    usize number() const;
+    usize index() const;
 
     bool waiting_user_confirmation() const { return m_status == Status::ConfirmingScald or m_status == Status::ConfirmingAttacks; }
     bool waiting_user_input() const { return waiting_user_confirmation() or m_status == Status::Ready; }
@@ -121,13 +121,13 @@ public:
     void set_blocked(bool);
 
     Status status() const { return m_status; }
-    void set_status(Status, std::optional<uint32_t> receita_id = std::nullopt);
+    void set_status(Status, std::optional<u32> receita_id = std::nullopt);
 
 private:
     // initialized out of line porque nesse momento a classe 'Station' é incompleta
     static List s_list;
 
-    static inline size_t s_list_size = 0;
+    static inline usize s_list_size = 0;
 
 private:
     Station() = default;

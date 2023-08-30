@@ -8,7 +8,7 @@ namespace lucas::mem {
 template<typename T = void>
 class FlashWriter {
 public:
-    constexpr explicit FlashWriter(size_t offset)
+    constexpr explicit FlashWriter(usize offset)
         : m_offset{ offset } {
     }
 
@@ -18,7 +18,7 @@ public:
 
     template<typename U = T>
     requires std::is_integral_v<U>
-    void write(size_t index, U value) {
+    void write(usize index, U value) {
         if constexpr (std::same_as<T, void>)
             mem::buffered_write_flash(m_offset + index, value);
         else
@@ -26,6 +26,6 @@ public:
     }
 
 private:
-    size_t m_offset = 0;
+    usize m_offset = 0;
 };
 }

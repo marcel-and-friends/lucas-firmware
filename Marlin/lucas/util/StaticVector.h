@@ -6,7 +6,7 @@
 #include <src/MarlinCore.h>
 
 namespace lucas::util {
-template<typename T, size_t Size>
+template<typename T, usize Size>
 class StaticVector {
 public:
     void push_back(T value) {
@@ -24,10 +24,10 @@ public:
     decltype(auto) end() { return std::next(m_array.begin(), m_size); }
     decltype(auto) end() const { return std::next(m_array.begin(), m_size); }
 
-    size_t size() const { return m_size; }
+    usize size() const { return m_size; }
 
 private:
     std::array<T, Size> m_array = {};
-    size_t m_size = 0;
+    usize m_size = 0;
 };
 }

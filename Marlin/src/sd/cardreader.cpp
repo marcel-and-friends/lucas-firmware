@@ -760,7 +760,7 @@ void CardReader::openFileWrite(const char* const path) {
         return openFailed(path);
 
     #if DISABLED(SDCARD_READONLY)
-    if (file.open(diveDir, fname, O_CREAT | O_APPEND | O_WRITE | O_TRUNC)) {
+    if (file.open(diveDir, fname, O_CREAT | O_APPEND | O_WRITE | O_TRUNC | O_SYNC)) {
         flag.saving = true;
         selectFileByName(fname);
         TERN_(EMERGENCY_PARSER, emergency_parser.disable());

@@ -22,8 +22,8 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
 });
 
 consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
-    for (size_t i = 1; i < opcoes.size(); ++i)
-        for (size_t j = 0; j < i; ++j)
+    for (usize i = 1; i < opcoes.size(); ++i)
+        for (usize j = 0; j < i; ++j)
             if (opcoes[i].id != Option::ID_DEFAULT and opcoes[j].id != Option::ID_DEFAULT)
                 if (opcoes[i].id == opcoes[j].id)
                     return false;
@@ -64,7 +64,7 @@ void reset_options() {
 }
 
 Option get(Options option) {
-    return s_options[size_t(option)];
+    return s_options[usize(option)];
 }
 
 OptionList& opcoes() {

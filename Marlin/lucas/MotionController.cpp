@@ -9,7 +9,7 @@ void MotionController::travel_to_station(const Station& station, float offset) {
     travel_to_station(station.index(), offset);
 }
 
-void MotionController::travel_to_station(size_t index, float offset) {
+void MotionController::travel_to_station(usize index, float offset) {
     if (m_current_station == index)
         return;
 

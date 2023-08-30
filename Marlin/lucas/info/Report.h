@@ -22,7 +22,7 @@ struct Report {
         if (not s_num_reports)
             return;
 
-        for (size_t i = 0; i < s_num_reports; ++i)
+        for (usize i = 0; i < s_num_reports; ++i)
             if (std::invoke(FWD(callback), s_reports[i]) == util::Iter::Break)
                 break;
     }
@@ -33,6 +33,6 @@ struct Report {
 
 private:
     static List s_reports;
-    static inline size_t s_num_reports = 0;
+    static inline usize s_num_reports = 0;
 };
 }

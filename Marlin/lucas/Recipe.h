@@ -57,18 +57,18 @@ public:
             return;
         }
 
-        for (size_t i = m_current_step; i < m_steps_size; ++i)
+        for (usize i = m_current_step; i < m_steps_size; ++i)
             if (std::invoke(FWD(callback), m_steps[i]) == util::Iter::Break)
                 return;
     }
 
-    void for_each_remaining_step(util::IterFn<Step&, size_t> auto&& callback) {
+    void for_each_remaining_step(util::IterFn<Step&, usize> auto&& callback) {
         if (m_has_scalding_step and not scalded()) {
             std::invoke(FWD(callback), m_steps.front());
             return;
         }
 
-        for (size_t i = m_current_step; i < m_steps_size; ++i)
+        for (usize i = m_current_step; i < m_steps_size; ++i)
             if (std::invoke(FWD(callback), m_steps[i], i) == util::Iter::Break)
                 return;
     }
@@ -79,18 +79,18 @@ public:
             return;
         }
 
-        for (size_t i = m_current_step; i < m_steps_size; ++i)
+        for (usize i = m_current_step; i < m_steps_size; ++i)
             if (std::invoke(FWD(callback), m_steps[i]) == util::Iter::Break)
                 return;
     }
 
-    void for_each_remaining_step(util::IterFn<const Step&, size_t> auto&& callback) const {
+    void for_each_remaining_step(util::IterFn<const Step&, usize> auto&& callback) const {
         if (m_has_scalding_step and not scalded()) {
             std::invoke(FWD(callback), m_steps.front());
             return;
         }
 
-        for (size_t i = m_current_step; i < m_steps_size; ++i)
+        for (usize i = m_current_step; i < m_steps_size; ++i)
             if (std::invoke(FWD(callback), m_steps[i], i) == util::Iter::Break)
                 return;
     }
@@ -105,7 +105,7 @@ public:
     const util::Timer& finalization_timer() const { return m_finalization_timer; }
     util::Timer& finalization_timer() { return m_finalization_timer; }
 
-    uint32_t id() const { return m_id; }
+    u32 id() const { return m_id; }
 
     bool scalded() const { return m_has_scalding_step and m_current_step > 0; }
 
@@ -114,7 +114,7 @@ public:
     const Step& current_step() const { return m_steps[m_current_step]; }
     Step& current_step() { return m_steps[m_current_step]; }
 
-    size_t current_step_index() const { return m_current_step; }
+    usize current_step_index() const { return m_current_step; }
 
     bool finished() const { return m_current_step == m_steps_size; }
 
@@ -122,7 +122,7 @@ public:
 
     const Step& first_step() const { return m_steps.front(); }
 
-    const Step& step(size_t index) const { return m_steps[index]; }
+    const Step& step(usize index) const { return m_steps[index]; }
 
 private:
     void reset();
@@ -132,7 +132,7 @@ private:
     friend class RecipeQueue;
     Recipe() = default;
 
-    uint32_t m_id = 0;
+    u32 m_id = 0;
 
     chrono::milliseconds m_finalization_duration = {};
     util::Timer m_finalization_timer;
@@ -143,11 +143,11 @@ private:
     static constexpr auto MAX_STEPS = MAX_ATTACKS + 1; // incluindo o escaldo
     // finge que isso é um vector
     std::array<Step, MAX_STEPS> m_steps = {};
-    size_t m_steps_size = 0;
+    usize m_steps_size = 0;
 
     // a index dos passos de uma recipe depende da existencia do escaldo
     // o primeiro ataque de uma recipe com escaldo tem index 1
     // o primeiro ataque de uma recipe sem escaldo tem index 0
-    size_t m_current_step = 0;
+    usize m_current_step = 0;
 };
 }

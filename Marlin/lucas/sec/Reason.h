@@ -1,14 +1,14 @@
 #pragma once
 
-#include <cstdint>
+#include <lucas/types.h>
 
 namespace lucas::sec {
-enum class Reason : uint32_t {
-    MaxTemperatureReached,
-    TemperatureNotChanging = 0,
+enum class Reason : u8 {
+    MaxTemperatureReached = 0,
+    TemperatureNotChanging,
     TemperatureOutOfRange,
-    PourVolumeMismatch,
     WaterLevelAlarm,
+    PourVolumeMismatch,
     NoSDCard,
     Count
 };
