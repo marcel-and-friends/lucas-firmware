@@ -9,6 +9,12 @@
 namespace lucas::util {
 class Timer {
 public:
+    static Timer started() {
+        Timer t;
+        t.start();
+        return t;
+    }
+
     void start() {
         m_tick = millis();
     }
@@ -18,7 +24,7 @@ public:
     }
 
     void restart() {
-        m_tick = millis();
+        start();
     }
 
     void toggle_based_on(bool condition) {
@@ -52,19 +58,19 @@ public:
 
 public:
     bool operator>(const auto duration) const {
-        return is_active() and elapsed() > duration;
+        return elapsed() > duration;
     }
 
     bool operator>=(const auto duration) const {
-        return is_active() and elapsed() >= duration;
+        return elapsed() >= duration;
     }
 
     bool operator<(const auto duration) const {
-        return is_active() and elapsed() < duration;
+        return elapsed() < duration;
     }
 
     bool operator<=(const auto duration) const {
-        return is_active() and elapsed() <= duration;
+        return elapsed() <= duration;
     }
 
 private:

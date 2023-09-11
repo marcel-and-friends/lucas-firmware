@@ -15,6 +15,8 @@ public:
     float hysteresis() const { return m_hysteresis; }
     void set_hysteresis(float f) { m_hysteresis = f; }
 
+    void inform_temperature_to_host();
+
     s32 target_temperature() const { return m_target_temperature; }
     void set_target_temperature(s32);
     void set_target_temperature_and_wait(s32);

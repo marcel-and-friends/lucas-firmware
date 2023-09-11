@@ -44,6 +44,8 @@ void setup() {
     }
 }
 
+static Reason s_active_error = Reason::Invalid;
+
 void raise_error(Reason reason) {
     if (s_blocked_reasons[usize(reason)]) {
         LOG_ERR("essa razao foi bloqueada");
@@ -52,12 +54,8 @@ void raise_error(Reason reason) {
 
     // alarm was raised! oh no
     // inform the host that something has happened so that the user can be informed too
-    info::send(
-        info::Event::Security,
-        [reason](JsonObject o) {
-            o["reason"] = s32(reason);
-            o["active"] = true;
-        });
+    s_active_error = reason;
+    inform_active_error(true);
 
     // store the temperature we were at when the alarm was triggered
     // this way we can (potentially) go back to it
@@ -78,21 +76,30 @@ void raise_error(Reason reason) {
     sd.write_from(reason);
 
     // spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
-    constexpr auto FILTER = TickFilter::All & ~TickFilter::Spout;
+    constexpr auto FILTER = TickFilter::RecipeQueue | TickFilter::Boiler | TickFilter::Info;
     util::idle_until(RETURN_CONDITIONS[usize(reason)], FILTER);
 
     sd.remove_file(SECURITY_FILE_PATH);
 
     // if this is reached then the security threat has been successfully dealt with
     // let the host know it is no longer active and go back to our old temperature
-    info::send(
-        info::Event::Security,
-        [reason](JsonObject o) {
-            o["reason"] = s32(reason);
-            o["active"] = false;
-        });
+    inform_active_error(false);
+    s_active_error = Reason::Invalid;
 
     Boiler::the().set_target_temperature_and_wait(old_temperature);
+}
+
+Reason active_error() {
+    return s_active_error;
+}
+
+void inform_active_error(bool state) {
+    info::send(
+        info::Event::Security,
+        [state](JsonObject o) {
+            o["reason"] = s32(s_active_error);
+            o["active"] = state;
+        });
 }
 
 bool is_reason_blocked(Reason reason) {

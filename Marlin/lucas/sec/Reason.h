@@ -10,6 +10,7 @@ enum class Reason : u8 {
     WaterLevelAlarm,
     PourVolumeMismatch,
     NoSDCard,
-    Count
+    Count,
+    Invalid
 };
 }

@@ -37,7 +37,13 @@ void Boiler::setup() {
                 o["filling"] = true;
             });
 
-        util::idle_while([] { return s_alarm_triggered; });
+        util::idle_while(
+            [timeout = util::Timer::started()] {
+                if (timeout >= 25min)
+                    sec::raise_error(sec::Reason::WaterLevelAlarm);
+
+                return s_alarm_triggered;
+            });
 
         info::send(
             info::Event::Boiler,
@@ -71,7 +77,7 @@ void Boiler::tick() {
             constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
             const auto in_target_range = std::abs(target - temperature) <= VALID_TEMPERATURE_RANGE;
             m_outside_target_range_timer.toggle_based_on(not in_target_range);
-            if (m_outside_target_range_timer.has_elapsed(5min))
+            if (m_outside_target_range_timer >= 5min)
                 sec::raise_error(sec::Reason::TemperatureOutOfRange);
         }
     }
@@ -79,6 +85,14 @@ void Boiler::tick() {
 
 float Boiler::temperature() const {
     return thermalManager.degBed();
+}
+
+void Boiler::inform_temperature_to_host() {
+    info::send(
+        info::Event::Boiler,
+        [](JsonObject o) {
+            o["currentTemp"] = Boiler::the().temperature();
+        });
 }
 
 void Boiler::set_target_temperature_and_wait(s32 target) {
@@ -91,11 +105,7 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
                       in_range_timer = util::Timer(),
                       last_checked_temperature = temperature()] mutable {
         every(5s) {
-            info::send(
-                info::Event::Boiler,
-                [](JsonObject o) {
-                    o["currentTemp"] = Boiler::the().temperature();
-                });
+            inform_temperature_to_host();
         }
 
         const auto temperature = this->temperature();
@@ -110,7 +120,7 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
 
         in_range_timer.toggle_based_on(std::abs(m_target_temperature - temperature) <= m_hysteresis);
         // stop when we have staid in the valid range for 5 seconds
-        m_reached_target_temperature = in_range_timer.has_elapsed(5s);
+        m_reached_target_temperature = in_range_timer >= 5s;
         return m_reached_target_temperature;
     });
 
@@ -140,7 +150,7 @@ void Boiler::set_target_temperature(s32 target) {
 }
 
 void Boiler::control_resistance(bool state) {
-    WRITE(Pin::Resistance, state);
+    analogWrite(Pin::Resistance, state * (4095 / 2));
 }
 
 void Boiler::turn_off_resistance() {

@@ -81,7 +81,7 @@ inline void idle_until(Fn<bool> auto&& callback, TickFilter filters = TickFilter
             const auto delta = millis() - _s_last_tick;                                                              \
             if (delta >= _interval) {                                                                                \
                 _s_last_tick = millis();                                                                             \
-                return delta <= 5;                                                                                   \
+                return delta - _interval <= 5;                                                                       \
             }                                                                                                        \
             return false;                                                                                            \
         }())

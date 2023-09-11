@@ -1,5 +1,6 @@
 #include "RecipeQueue.h"
 #include <lucas/Spout.h>
+#include <lucas/Boiler.h>
 #include <lucas/info/info.h>
 #include <lucas/MotionController.h>
 #include <lucas/util/ScopedGuard.h>
@@ -115,20 +116,20 @@ void RecipeQueue::map_station_recipe(usize index) {
 }
 
 void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
-    util::StaticVector<millis_t, Station::MAXIMUM_NUMBER_OF_STATIONS> candidates = {};
+    util::StaticVector<millis_t, Station::MAXIMUM_NUMBER_OF_STATIONS> candidates;
 
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras recipe
     // esse processo é feito de forma bruta, homem das cavernas, mas como o número de receitas/passos é pequeno, não chega a ser um problema
     for_each_mapped_recipe(
         [&](const Recipe& mapped_recipe) {
-            mapped_recipe.for_each_remaining_step([&](const Recipe::Step& passo) {
+            mapped_recipe.for_each_remaining_step([&](const Recipe::Step& step) {
                 // temos que sempre levar a margem de viagem em consideração quando procuramos pelo tick magico
-                for (auto interval_offset = util::TRAVEL_MARGIN; interval_offset <= passo.interval - util::TRAVEL_MARGIN; interval_offset += util::TRAVEL_MARGIN) {
-                    const auto starting_tick = passo.ending_tick() + interval_offset;
+                for (auto interval_offset = util::TRAVEL_MARGIN; interval_offset <= step.interval - util::TRAVEL_MARGIN; interval_offset += util::TRAVEL_MARGIN) {
+                    const auto starting_tick = step.ending_tick() + interval_offset;
                     recipe.map_remaining_steps(starting_tick);
                     if (not collides_with_other_recipes(recipe)) {
                         // deu boa, adicionamos o tick inicial na list de candidates
-                        candidates.push_back(starting_tick);
+                        candidates.emplace_back(starting_tick);
                         // poderiamos parar o loop exterior aqui mas continuamos procurando em outras receitas
                         // pois talvez exista um tick inicial melhor
                         return util::Iter::Break;
@@ -144,7 +145,7 @@ void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
     if (not candidates.is_empty()) {
         // pegamos o menor valor da list de candidates, para que a recipe comece o mais cedo possível
         // obs: nao tem perigo de dar deref no iterator direto aqui
-        first_step_tick = *std::min_element(candidates.begin(), candidates.end());
+        first_step_tick = *candidates.min();
         recipe.map_remaining_steps(first_step_tick);
     } else {
         // se não foi achado nenhum candidato a fila está vazia
@@ -213,6 +214,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     if (station.status() == Station::Status::Scalding) {
         station.set_status(Station::Status::ConfirmingAttacks, recipe.id());
     } else if (recipe.finished()) {
+        Boiler::the().inform_temperature_to_host();
         if (recipe.finalization_duration() != 0ms) {
             station.set_status(Station::Status::Finalizing, recipe.id());
             recipe.finalization_timer().start();
@@ -328,7 +330,7 @@ void RecipeQueue::remove_finalized_recipes() {
         auto& station = Station::list().at(index);
         if (station.status() == Station::Status::Finalizing) [[unlikely]] {
             // FIXME: use a timer for this
-            if (recipe.finalization_timer().has_elapsed(recipe.finalization_duration())) {
+            if (recipe.finalization_timer() >= recipe.finalization_duration()) {
                 LOG_IF(LogQueue, "tempo de finalizacao acabou - [estacao = ", index, "]");
                 station.set_status(Station::Status::Ready, recipe.id());
                 remove_recipe(index);
@@ -341,7 +343,7 @@ void RecipeQueue::remove_finalized_recipes() {
 // se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
 void RecipeQueue::try_heating_hose_after_inactivity() {
-    if (m_inactivity_timer.has_elapsed(1min)) {
+    if (m_inactivity_timer >= 10min) {
         LOG_IF(LogQueue, "aquecendo mangueira apos inatividade");
 
         constexpr auto POUR_DURATION = 20s;

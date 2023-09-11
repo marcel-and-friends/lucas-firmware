@@ -50,9 +50,9 @@ OptionList& opcoes();
         if (CFG(option)) {                                           \
             const auto& option_cfg = cfg::get(cfg::Options::option); \
             if (option_cfg.id != cfg::Option::ID_DEFAULT)            \
-                SERIAL_ECHO(AS_CHAR(option_cfg.id));                 \
+                SERIAL_CHAR(option_cfg.id);                          \
             else                                                     \
-                SERIAL_ECHO(AS_CHAR('?'));                           \
+                SERIAL_CHAR('?');                                    \
             LOG("", ": ", __VA_ARGS__);                              \
         }                                                            \
     } while (false)

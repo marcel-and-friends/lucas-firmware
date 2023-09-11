@@ -59,9 +59,8 @@ public:
         static constexpr auto FLOW_MAX = 15;
         static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
         static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;
-        static_assert(FLOW_MAX > FLOW_MIN, "FLOW_MAX deve ser maior que FLOW_MIN");
-
         using Table = std::array<std::array<DigitalSignal, 10>, FLOW_RANGE>;
+
         static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "unexpected table size");
         static constexpr auto TABLE_FILE_PATH = "/table.txt";
 

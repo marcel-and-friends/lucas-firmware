@@ -11,9 +11,9 @@
 namespace lucas {
 enum Pin {
     SV = PA5,
-    EN = PC6,
-    BRK = PD13,
-    FlowSensor = PB2
+    EN = PD11,
+    BRK = PB2,
+    FlowSensor = PC5
 };
 
 void Spout::tick() {
@@ -44,23 +44,21 @@ void Spout::tick() {
             }
 
             const auto elapsed_seconds = time_elapsed().count() / 1000.f;
-            const auto duration_seconds = chrono::duration_cast<chrono::seconds>(m_pour_duration);
+            const auto duration_seconds = m_pour_duration.count() / 1000.f;
             // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
             // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
             if (time_elapsed() >= 2s) {
-                const auto ideal_flow = m_total_desired_volume / duration_seconds.count();
+                const auto ideal_flow = m_total_desired_volume / duration_seconds;
                 const auto expected_volume = ideal_flow * elapsed_seconds;
                 const auto ratio = poured_so_far() / expected_volume;
                 // 50% is a pretty generous margin, could try to go lower
                 constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
-                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR) {
-                    LOG_ERR("ratio = ", ratio, " | volume = ", poured_so_far(), " | esperado = ", expected_volume, " | ideal = ", ideal_flow);
+                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
                     sec::raise_error(sec::Reason::PourVolumeMismatch);
-                }
             }
 
             // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
-            const auto ideal_flow = (m_total_desired_volume - poured_so_far()) / (duration_seconds.count() - elapsed_seconds);
+            const auto ideal_flow = (m_total_desired_volume - poured_so_far()) / (duration_seconds - elapsed_seconds);
             send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
 
             m_correction_timer.restart();
@@ -181,19 +179,13 @@ void Spout::end_pour() {
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
-enum class FlowTableStatus {
-    Preparing,
+enum class CalibrationStatus {
+    Preparing = 0,
     Finalizing,
     Done
 };
 
 void Spout::FlowController::fill_digital_signal_table() {
-    clean_digital_signal_table(RemoveFile::Yes);
-
-    const auto beginning = millis();
-    // place the spout on the sink and fill the hose so we avoid silly errors
-    Spout::the().fill_hose();
-
     // accepts normalized values between 0.f and 1.f
     const auto report_progress = [](float progress) {
         info::send(
@@ -203,7 +195,7 @@ void Spout::FlowController::fill_digital_signal_table() {
             });
     };
 
-    const auto report_status = [](FlowTableStatus status) {
+    const auto report_status = [](CalibrationStatus status) {
         info::send(
             info::Event::Calibration,
             [status](JsonObject o) {
@@ -211,7 +203,13 @@ void Spout::FlowController::fill_digital_signal_table() {
             });
     };
 
-    report_status(FlowTableStatus::Preparing);
+    clean_digital_signal_table(RemoveFile::Yes);
+    report_status(CalibrationStatus::Preparing);
+
+    const auto beginning = millis();
+    // place the spout on the sink and fill the hose so we avoid silly errors
+    Spout::the().fill_hose();
+
     auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
     save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
 
@@ -219,7 +217,9 @@ void Spout::FlowController::fill_digital_signal_table() {
     s32 mod_when_finished = 0;
     usize number_of_occupied_cells = 0;
     begin_iterative_pour(
-        [&, last_average_flow = 0.f](FlowInfo info, s32& digital_signal_mod) mutable {
+        [&,
+         last_average_flow = 0.f,
+         fixed_bad_delta = false](FlowInfo info, s32& digital_signal_mod) mutable {
             if (last_average_flow and info.flow < last_average_flow) {
                 if (digital_signal_mod < 0)
                     digital_signal_mod *= -1;
@@ -232,13 +232,21 @@ void Spout::FlowController::fill_digital_signal_table() {
                 // no need to 'abs' this since we chcked that 'last_average_flow' is smaller
                 const auto delta = info.flow - last_average_flow;
                 // big jump! cut the modification and subtract it from the signal
-                if (delta > 1.f) {
-                    digital_signal_mod = std::max<s32>(digital_signal_mod / 2, 1);
-                    if (digital_signal_mod > 0)
+                if (delta > 1.f and last_average_flow + delta < FLOW_MAX) {
+                    if (digital_signal_mod > 0) {
+                        LOG_IF(LogCalibration, "inverteu legal");
                         digital_signal_mod *= -1;
+                    }
+
+                    digital_signal_mod = std::min(digital_signal_mod / 2, -1);
+                    fixed_bad_delta = true;
 
                     LOG_IF(LogCalibration, "pulo muito grande de força - [delta = ", delta, " | nova modificacao = ", digital_signal_mod, "]");
                     return util::Iter::Continue;
+                } else if (delta < 1.f and fixed_bad_delta) {
+                    fixed_bad_delta = false;
+                    digital_signal_mod *= -1;
+                    LOG_IF(LogCalibration, "inverteu denovo");
                 }
             }
 
@@ -248,7 +256,7 @@ void Spout::FlowController::fill_digital_signal_table() {
                 return util::Iter::Break;
             } else if (info.flow > FLOW_MAX) { // not so lucky
                 info_when_finished = info;
-                mod_when_finished = -digital_signal_mod;
+                mod_when_finished = digital_signal_mod > 0 ? -digital_signal_mod : digital_signal_mod;
                 return util::Iter::Break;
             } else {
                 save_flow_info_to_table(info.flow, info.digital_signal);
@@ -264,13 +272,13 @@ void Spout::FlowController::fill_digital_signal_table() {
 
     // if we didn't find the maximum flow in the iteration above, try finding it now
     if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
-        report_status(FlowTableStatus::Finalizing);
+        report_status(CalibrationStatus::Finalizing);
         auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
         save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
     }
 
     // we're done!
-    report_status(FlowTableStatus::Done);
+    report_status(CalibrationStatus::Done);
     Spout::the().end_pour();
     save_digital_signal_table_to_file();
 
@@ -300,9 +308,9 @@ Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(floa
                 // at the correct digital signal
                 if (greater_than_specific != last_greater_than_specific) {
                     if (digital_signal_mod < 0) {
-                        digital_signal_mod = std::min<s32>(digital_signal_mod / 2, -1);
+                        digital_signal_mod = std::min(digital_signal_mod / 2, -1);
                     } else {
-                        digital_signal_mod = std::max<s32>(digital_signal_mod / 2, 1);
+                        digital_signal_mod = std::max(digital_signal_mod / 2, 1);
                     }
                     digital_signal_mod *= -1;
                 }
@@ -327,7 +335,7 @@ Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flo
 
     // otherwise we get the two closest values above and below the desired flow
     // then interpolate between them
-    // it works surprisignly well!
+    // it works surprisingly well!
     const auto [flow_below, digital_signal_below] = first_flow_info_below_flow(flow_index, decimal);
     const auto [flow_above, digital_signal_above] = first_flow_info_above_flow(flow_index, decimal);
 

@@ -1,21 +1,22 @@
 #include "info.h"
 #include <lucas/lucas.h>
-#include <lucas/core/core.h>
 #include <lucas/Station.h>
-#include <lucas/cmd/cmd.h>
-#include <lucas/serial/serial.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/Spout.h>
+#include <lucas/core/core.h>
+#include <lucas/cmd/cmd.h>
+#include <lucas/sec/sec.h>
+#include <lucas/serial/serial.h>
 #include <src/module/temperature.h>
 
 namespace lucas::info {
 void setup() {
-    Report::make(
-        "oi",
-        5'000,
-        [](JsonObject obj) {
-            obj["temp"] = thermalManager.degBed();
-        });
+    // Report::make(
+    //     "infoBoiler",
+    //     5'000,
+    //     [](JsonObject obj) {
+    //         obj["temp"] = thermalManager.degBed();
+    //     });
 }
 
 void tick() {
@@ -97,7 +98,11 @@ void interpret_command_from_host(std::span<char> buffer) {
             LOG_ERR("comando invalido");
         } break;
         case Command::RequestInfoCalibration: {
-            core::inform_calibration_status();
+            if (sec::active_error() != sec::Reason::Invalid) {
+                sec::inform_active_error(true);
+            } else {
+                core::inform_calibration_status();
+            }
         } break;
         case Command::InitializeStations: {
             if (not v.is<JsonArrayConst>()) {
