@@ -1,6 +1,7 @@
 #include "Spout.h"
 #include <lucas/lucas.h>
 #include <lucas/Station.h>
+#include <lucas/Boiler.h>
 #include <lucas/MotionController.h>
 #include <lucas/info/info.h>
 #include <lucas/util/SD.h>
@@ -200,6 +201,7 @@ void Spout::FlowController::fill_digital_signal_table() {
             info::Event::Calibration,
             [status](JsonObject o) {
                 o["status"] = usize(status);
+                o["currentTemp"] = Boiler::the().temperature();
             });
     };
 

@@ -168,14 +168,15 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     LOG_IF(LogQueue, "executando passo - [estacao = ", station.index(), " | passo = ", recipe.current_step_index(), " | tick = ", millis(), "]");
 
     const auto& current_step = recipe.current_step();
-    const usize current_step_index = recipe.current_step_index();
-    auto dispatch_step_event = [](usize station, usize step, millis_t first_attack_tick, bool ending) {
+    const auto current_step_index = recipe.current_step_index();
+    const auto dispatch_step_event = [](usize station, usize step, millis_t first_attack_tick, bool ending) {
         info::send(
             info::Event::Recipe,
             [&](JsonObject o) {
                 o["station"] = station;
                 o["step"] = step;
                 o["done"] = ending;
+                o["currentTemp"] = Boiler::the().temperature();
 
                 const auto tick = millis();
                 if (tick_has_happened(first_attack_tick, tick))

@@ -99,6 +99,8 @@ void inform_active_error(bool state) {
         [state](JsonObject o) {
             o["reason"] = s32(s_active_error);
             o["active"] = state;
+            if (s_active_error == Reason::WaterLevelAlarm)
+                o["currentTemp"] = Boiler::the().temperature();
         });
 }
 

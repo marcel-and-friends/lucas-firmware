@@ -3,6 +3,7 @@
 #include <src/module/temperature.h>
 #include <lucas/info/info.h>
 #include <lucas/Spout.h>
+#include <lucas/Boiler.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/cmd/cmd.h>
 
@@ -172,6 +173,7 @@ void Station::set_status(Status status, std::optional<u32> receita_id) {
         [this, &receita_id](JsonObject o) {
             o["station"] = index();
             o["status"] = s32(m_status);
+            o["currentTemp"] = Boiler::the().temperature();
             if (receita_id)
                 o["recipeId"] = *receita_id;
         });

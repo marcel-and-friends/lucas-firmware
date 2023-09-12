@@ -9,35 +9,6 @@
 
 namespace lucas {
 void tick() {
-    constexpr auto PINS = std::array{
-        X_ENABLE_PIN,
-        Y_ENABLE_PIN,
-        Z_ENABLE_PIN,
-        E0_ENABLE_PIN,
-        E1_ENABLE_PIN,
-        PC5,
-        PC6,
-        PD11,
-        PA5,
-        PE6
-    };
-
-    static bool last_state = false;
-    static bool once = false;
-    every(2s) {
-        if (not once) {
-            for (auto pin : PINS)
-                pinMode(pin, OUTPUT);
-            once = true;
-        }
-
-        for (auto pin : PINS)
-            analogWrite(pin, last_state * 4095);
-
-        last_state = not last_state;
-        LOG("oi 3");
-    }
-
     { // boiler
         if (not filtered(TickFilter::Boiler))
             Boiler::the().tick();
