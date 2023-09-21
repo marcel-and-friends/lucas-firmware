@@ -17,7 +17,7 @@ void Station::initialize(usize num) {
     }
 
     if (s_list_size != 0) {
-        LOG_ERR("estacoes ja foram inicializadas");
+        LOG_IF(LogStations, "estacoes ja foram inicializadas");
         return;
     }
 

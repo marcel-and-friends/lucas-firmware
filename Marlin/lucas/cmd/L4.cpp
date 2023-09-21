@@ -37,14 +37,14 @@ void L4() {
                 return;
 
             const auto pin = parser.value_int();
-            const auto mode = parser.seenval('T') ? parser.value_int() : OUTPUT;
-            const auto value = parser.seenval('V') ? parser.value_long() : -1;
+            const auto mode = parser.intval('M', OUTPUT);
+            const auto value = parser.longval('V', -1);
 
             pinMode(pin, mode);
             if (value != -1)
                 analogWrite(pin, value);
 
-            LOG("aplicando modificacoes - [pino = ", pin, " | modo = ", mode, " | valor = ", value, "]");
+            LOG("pino modificado - [pino = ", pin, " | modo = ", mode, " | valor = ", value, "]");
         } break;
         case 4: {
             if (not parser.seenval('P'))

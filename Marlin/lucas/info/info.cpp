@@ -44,9 +44,7 @@ void tick() {
 
 // https://www.notion.so/Comandos-enviados-do-app-para-a-m-quina-683dd32fcf93481bbe72d6ca276e7bfb?pvs=4
 enum class Command {
-    InvalidCommand = 0,
-
-    RequestInfoCalibration,
+    RequestInfoCalibration = 0,
     InitializeStations,
     SetBoilerTemperature,
     ScheduleRecipe,
@@ -58,23 +56,26 @@ enum class Command {
     /* ~comandos de desenvolvimento~ */
     DevScheduleStandardRecipe,
     DevSimulateButtonPress,
+
+    InvalidCommand,
 };
 
 static Command command_from_string(std::string_view cmd) {
-    static std::unordered_map<std::string_view, Command> map = {
-        {"reqInfoCalibration",         Command::RequestInfoCalibration   },
-        { "cmdInitializeStations",     Command::InitializeStations       },
-        { "cmdSetBoilerTemperature",   Command::SetBoilerTemperature     },
-        { "cmdScheduleRecipe",         Command::ScheduleRecipe           },
-        { "cmdCancelRecipe",           Command::CancelRecipe             },
-        { "reqInfoAllStations",        Command::RequestInfoAllStations   },
-        { "cmdFirmwareUpdate",         Command::FirmwareUpdate           },
-        { "reqInfoFirmware",           Command::RequestInfoFirmware      },
-        { "devScheduleStandardRecipe", Command::DevScheduleStandardRecipe},
-        { "devSimulateButtonPress",    Command::DevSimulateButtonPress   }
-    };
-    auto it = map.find(cmd);
-    return it == map.end() ? Command::InvalidCommand : it->second;
+    static constexpr auto map = std::to_array({
+        [usize(Command::RequestInfoCalibration)] = "reqInfoCalibration"sv,
+        [usize(Command::InitializeStations)] = "cmdInitializeStations"sv,
+        [usize(Command::SetBoilerTemperature)] = "cmdSetBoilerTemperature"sv,
+        [usize(Command::ScheduleRecipe)] = "cmdScheduleRecipe"sv,
+        [usize(Command::CancelRecipe)] = "cmdCancelRecipe"sv,
+        [usize(Command::RequestInfoAllStations)] = "reqInfoAllStations"sv,
+        [usize(Command::FirmwareUpdate)] = "cmdFirmwareUpdate"sv,
+        [usize(Command::RequestInfoFirmware)] = "reqInfoFirmware"sv,
+        [usize(Command::DevScheduleStandardRecipe)] = "devScheduleStandardRecipe"sv,
+        [usize(Command::DevSimulateButtonPress)] = "devSimulateButtonPress"sv,
+    });
+
+    auto it = std::find(map.begin(), map.end(), cmd);
+    return it == map.end() ? Command::InvalidCommand : Command(std::distance(map.begin(), it));
 }
 
 void interpret_command_from_host(std::span<char> buffer) {
@@ -123,8 +124,7 @@ void interpret_command_from_host(std::span<char> buffer) {
                 break;
             }
 
-            if (not CFG(GigaMode))
-                core::calibrate(v.as<s32>());
+            core::calibrate(v.as<s32>());
         } break;
         case Command::ScheduleRecipe: {
             if (not v.is<JsonObjectConst>()) {
@@ -212,7 +212,7 @@ void interpret_command_from_host(std::span<char> buffer) {
                     simulate_button_press(index);
                 }
             }
-        } break;
+        }
         }
     }
 }

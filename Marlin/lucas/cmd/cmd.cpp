@@ -27,6 +27,7 @@ void interpret_gcode_from_host(std::span<char> buffer) {
 ~ recipes ~
 #{"devScheduleStandardRecipe":1}#
 #{"devSimulateButtonPress":0}#
+#{"devSimulateButtonPress":[0,1,2,3,4]}#
 #{"devScheduleStandardRecipe":1,"devSimulateButtonPress":0}#
 #{"devScheduleStandardRecipe":5,"devSimulateButtonPress":[0,1,2,3,4]}#
 #{"cmdCancelRecipe":0}#
@@ -34,4 +35,7 @@ void interpret_gcode_from_host(std::span<char> buffer) {
 
 ~ rest ~
 #{"reqInfoAllStations":[0,1,2,3,4]}#
+#{"cmdScheduleRecipe":{"id":61680,"finalizationTime":0,"attacks":[{"duration":30000,"gcode":"L2 T30000 G300"}]}}#
+#{"cmdScheduleRecipe":{"id":0,"finalizationTime":10000,"attacks":[{"duracao":30000,"gcode":"L2 T30000 G300"}]}}#
+#{"devSimulateButtonPress":0}#
 */

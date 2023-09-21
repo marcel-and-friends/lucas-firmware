@@ -53,6 +53,8 @@ public:
         void save_digital_signal_table_to_file();
         void fetch_digital_signal_table_from_file();
 
+        void inform_progress_to_host() const;
+
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
         static constexpr auto FLOW_MIN = 5;
@@ -145,6 +147,18 @@ public:
         // 		- the cell for the flow '5.5 g/s' is located at 'table[0][5]'
         // 		- the cell for the flow '10.3 g/s' is located at 'table[5][3]'
         Table m_digital_signal_table;
+
+        enum class CalibrationStatus {
+            Preparing = 0,
+            Finalizing,
+            Done,
+
+            Executing,
+            None
+        };
+
+        CalibrationStatus m_calibration_status = CalibrationStatus::None;
+        float m_calibration_progress = 0.f;
     };
 
 private:

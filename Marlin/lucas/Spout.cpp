@@ -12,9 +12,9 @@
 namespace lucas {
 enum Pin {
     SV = PA5,
-    EN = PD11,
-    BRK = PB2,
-    FlowSensor = PC5
+    EN = PA6,
+    BRK = PE8,
+    FlowSensor = PA13
 };
 
 void Spout::tick() {
@@ -108,7 +108,7 @@ void Spout::setup() {
         pinMode(Pin::SV, OUTPUT);
         pinMode(Pin::BRK, OUTPUT);
         pinMode(Pin::EN, OUTPUT);
-        // enable is permanently on,  the driver is controlled using only SV and BRK
+        // enable is permanently on, the driver is controlled using only SV and BRK
         WRITE(Pin::EN, LOW);
 
         // let's make sure we turn everything off at startup :)
@@ -180,116 +180,128 @@ void Spout::end_pour() {
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
-enum class CalibrationStatus {
-    Preparing = 0,
-    Finalizing,
-    Done
-};
-
 void Spout::FlowController::fill_digital_signal_table() {
     // accepts normalized values between 0.f and 1.f
-    const auto report_progress = [](float progress) {
-        info::send(
-            info::Event::Calibration,
-            [progress](JsonObject o) {
-                o["progress"] = progress;
-            });
+    const auto report_progress = [this](float progress) {
+        m_calibration_progress = progress;
+        inform_progress_to_host();
     };
 
-    const auto report_status = [](CalibrationStatus status) {
-        info::send(
-            info::Event::Calibration,
-            [status](JsonObject o) {
-                o["status"] = usize(status);
-                o["currentTemp"] = Boiler::the().temperature();
-            });
+    const auto report_status = [this](CalibrationStatus status) {
+        m_calibration_status = status;
+        inform_progress_to_host();
     };
 
     clean_digital_signal_table(RemoveFile::Yes);
     report_status(CalibrationStatus::Preparing);
-
     const auto beginning = millis();
-    // place the spout on the sink and fill the hose so we avoid silly errors
-    Spout::the().fill_hose();
 
-    auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
-    save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
+    if (CFG(GigaMode)) {
+        m_calibration_status = CalibrationStatus::Executing;
 
-    FlowInfo info_when_finished = { 0.f, 0 };
-    s32 mod_when_finished = 0;
-    usize number_of_occupied_cells = 0;
-    begin_iterative_pour(
-        [&,
-         last_average_flow = 0.f,
-         fixed_bad_delta = false](FlowInfo info, s32& digital_signal_mod) mutable {
-            if (last_average_flow and info.flow < last_average_flow) {
-                if (digital_signal_mod < 0)
-                    digital_signal_mod *= -1;
-                LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
-                return util::Iter::Continue;
-            }
+        for (size_t i = 0; i < 100; i++) {
+            report_progress(i / 100.f);
+            util::idle_for(500ms);
+        }
 
-            // let's make sure the jump from one iteration to the other respects the maximum delta
-            if (last_average_flow) {
-                // no need to 'abs' this since we chcked that 'last_average_flow' is smaller
-                const auto delta = info.flow - last_average_flow;
-                // big jump! cut the modification and subtract it from the signal
-                if (delta > 1.f and last_average_flow + delta < FLOW_MAX) {
-                    if (digital_signal_mod > 0) {
-                        LOG_IF(LogCalibration, "inverteu legal");
-                        digital_signal_mod *= -1;
-                    }
-
-                    digital_signal_mod = std::min(digital_signal_mod / 2, -1);
-                    fixed_bad_delta = true;
-
-                    LOG_IF(LogCalibration, "pulo muito grande de força - [delta = ", delta, " | nova modificacao = ", digital_signal_mod, "]");
-                    return util::Iter::Continue;
-                } else if (delta < 1.f and fixed_bad_delta) {
-                    fixed_bad_delta = false;
-                    digital_signal_mod *= -1;
-                    LOG_IF(LogCalibration, "inverteu denovo");
-                }
-            }
-
-            if (std::abs(info.flow - FLOW_MAX) <= 0.1) { // lucky!
-                save_flow_info_to_table(info.flow, info.digital_signal);
-                number_of_occupied_cells++;
-                return util::Iter::Break;
-            } else if (info.flow > FLOW_MAX) { // not so lucky
-                info_when_finished = info;
-                mod_when_finished = digital_signal_mod > 0 ? -digital_signal_mod : digital_signal_mod;
-                return util::Iter::Break;
-            } else {
-                save_flow_info_to_table(info.flow, info.digital_signal);
-                report_progress(util::normalize(info.flow, FLOW_MIN, FLOW_MAX));
-                number_of_occupied_cells++;
-                last_average_flow = info.flow;
-            }
-
-            return util::Iter::Continue;
-        },
-        minimum_flow_info.digital_signal + 25,
-        25);
-
-    // if we didn't find the maximum flow in the iteration above, try finding it now
-    if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
+        util::idle_for(2s);
         report_status(CalibrationStatus::Finalizing);
-        auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
-        save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
+
+        util::idle_for(2s);
+        report_status(CalibrationStatus::Done);
+    } else {
+        // place the spout on the sink and fill the hose so we avoid silly errors
+        Spout::the().fill_hose();
+
+        auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
+        save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
+
+        auto info_when_finished = FlowInfo{ 0.f, 0 };
+        auto mod_when_finished = 0;
+        auto number_of_occupied_cells = 0;
+
+        m_calibration_status = CalibrationStatus::Executing;
+
+        begin_iterative_pour(
+            [&,
+             last_average_flow = 0.f,
+             fixed_bad_delta = false,
+             flow_decreased_counter = 0](FlowInfo info, s32& digital_signal_mod) mutable {
+                if (last_average_flow and info.flow < last_average_flow) {
+                    if (digital_signal_mod < 0)
+                        digital_signal_mod *= -1;
+
+                    if (++flow_decreased_counter >= 5)
+                        sec::raise_error(sec::Reason::PourVolumeMismatch);
+
+                    LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
+                    return util::Iter::Continue;
+                } else {
+                    flow_decreased_counter = 0;
+                }
+
+                // let's make sure the jump from one iteration to the other respects the maximum delta
+                if (last_average_flow) {
+                    // no need to 'abs' this since we chcked that 'last_average_flow' is smaller
+                    const auto delta = info.flow - last_average_flow;
+                    // big jump! cut the modification and subtract it from the signal
+                    if (delta > 1.f and last_average_flow + delta < FLOW_MAX) {
+                        if (digital_signal_mod > 0) {
+                            LOG_IF(LogCalibration, "inverteu legal");
+                            digital_signal_mod *= -1;
+                        }
+
+                        digital_signal_mod = std::min(digital_signal_mod / 2, -1);
+                        fixed_bad_delta = true;
+
+                        LOG_IF(LogCalibration, "pulo muito grande de força - [delta = ", delta, " | nova modificacao = ", digital_signal_mod, "]");
+                        return util::Iter::Continue;
+                    } else if (delta < 1.f and fixed_bad_delta) {
+                        fixed_bad_delta = false;
+                        digital_signal_mod *= -1;
+                        LOG_IF(LogCalibration, "inverteu denovo");
+                    }
+                }
+
+                if (std::abs(info.flow - FLOW_MAX) <= 0.1) { // lucky!
+                    save_flow_info_to_table(info.flow, info.digital_signal);
+                    number_of_occupied_cells++;
+                    return util::Iter::Break;
+                } else if (info.flow > FLOW_MAX) { // not so lucky
+                    info_when_finished = info;
+                    mod_when_finished = digital_signal_mod > 0 ? -digital_signal_mod : digital_signal_mod;
+                    return util::Iter::Break;
+                } else {
+                    save_flow_info_to_table(info.flow, info.digital_signal);
+                    report_progress(util::normalize(info.flow, FLOW_MIN, FLOW_MAX));
+                    number_of_occupied_cells++;
+                    last_average_flow = info.flow;
+                }
+
+                return util::Iter::Continue;
+            },
+            minimum_flow_info.digital_signal + 25,
+            25);
+
+        // if we didn't find the maximum flow in the iteration above, try finding it now
+        if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
+            report_status(CalibrationStatus::Finalizing);
+            auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
+            save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
+        }
+
+        LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | celulas = ", number_of_occupied_cells, "]");
+        LOG_IF(LogCalibration, "resultado: ");
+        for_each_occupied_cell([](DigitalSignal digital_signal, usize i, usize j) {
+            LOG_IF(LogCalibration, "[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
+            return util::Iter::Continue;
+        });
+
+        // we're done!
+        report_status(CalibrationStatus::Done);
+        Spout::the().end_pour();
+        save_digital_signal_table_to_file();
     }
-
-    // we're done!
-    report_status(CalibrationStatus::Done);
-    Spout::the().end_pour();
-    save_digital_signal_table_to_file();
-
-    LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | celulas = ", number_of_occupied_cells, "]");
-    LOG_IF(LogCalibration, "resultado: ");
-    for_each_occupied_cell([](DigitalSignal digital_signal, usize i, usize j) {
-        LOG_IF(LogCalibration, "[", i, "][", j, "] = ", digital_signal, " = ", i + FLOW_MIN, ".", j, "g/s");
-        return util::Iter::Continue;
-    });
 }
 
 Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(float desired_flow, FlowInfo starting_flow_info, s32 starting_mod) {
@@ -330,7 +342,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(floa
 Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flow) const {
     const auto [rounded_flow, decimal] = decompose_flow(flow);
     const auto flow_index = rounded_flow - FLOW_MIN;
-    auto& stored_value = m_digital_signal_table[flow_index][decimal];
+    const auto stored_value = m_digital_signal_table[flow_index][decimal];
     // if we already have the right value on the table just return that, no need to get fancy
     if (stored_value != INVALID_DIGITAL_SIGNAL)
         return stored_value;
@@ -360,6 +372,9 @@ void Spout::FlowController::clean_digital_signal_table(RemoveFile remove) {
     auto sd = util::SD::make();
     if (remove == RemoveFile::Yes and sd.file_exists(TABLE_FILE_PATH))
         sd.remove_file(TABLE_FILE_PATH);
+
+    m_calibration_progress = 0.f;
+    m_calibration_status = CalibrationStatus::None;
 }
 
 void Spout::FlowController::save_digital_signal_table_to_file() {
@@ -382,9 +397,28 @@ void Spout::FlowController::fetch_digital_signal_table_from_file() {
         LOG_ERR("falha ao ler tabela do cartao");
 }
 
+void Spout::FlowController::inform_progress_to_host() const {
+    if (m_calibration_status == CalibrationStatus::None)
+        return;
+
+    if (m_calibration_status == CalibrationStatus::Executing) {
+        info::send(
+            info::Event::Calibration,
+            [this](JsonObject o) {
+                o["progress"] = m_calibration_progress;
+            });
+    } else {
+        info::send(
+            info::Event::Calibration,
+            [this](JsonObject o) {
+                o["status"] = usize(m_calibration_status);
+            });
+    }
+}
+
 Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flow(s32 flow_index, s32 decimal) const {
     for (; flow_index >= 0; --flow_index, decimal = 9) {
-        auto& cells = m_digital_signal_table[flow_index];
+        const auto& cells = m_digital_signal_table[flow_index];
         for (; decimal >= 0; --decimal) {
             if (cells[decimal] != INVALID_DIGITAL_SIGNAL) {
                 const auto flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;
@@ -398,7 +432,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flo
 
 Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_above_flow(s32 flow_index, s32 decimal) const {
     for (; flow_index < FLOW_RANGE; ++flow_index, decimal = 0) {
-        auto& cells = m_digital_signal_table[flow_index];
+        const auto& cells = m_digital_signal_table[flow_index];
         for (; decimal < 10; ++decimal) {
             if (cells[decimal] != INVALID_DIGITAL_SIGNAL) {
                 const auto flow = float(flow_index + FLOW_MIN) + float(decimal) / 10.f;

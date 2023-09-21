@@ -365,6 +365,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() {
             TickFilter::RecipeQueue);
 
         m_inactivity_timer.restart();
+
         LOG_IF(LogQueue, "aquecimento finalizado");
     }
 }

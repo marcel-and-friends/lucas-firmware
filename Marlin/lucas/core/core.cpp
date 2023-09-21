@@ -12,6 +12,7 @@
 
 namespace lucas::core {
 static bool s_calibrated = false;
+static auto s_calibration_phase = CalibrationPhase::None;
 
 void setup() {
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
@@ -25,22 +26,23 @@ void setup() {
 }
 
 void calibrate(float target_temperature) {
-    core::TemporaryFilter f{ TickFilter::RecipeQueue & TickFilter::Station };
     LOG_IF(LogCalibration, "iniciando nivelamento");
     s_calibrated = true;
 
-    MotionController::the().home();
-
-    if (CFG(SetTargetTemperatureOnCalibration))
+    if (CFG(SetTargetTemperatureOnCalibration)) {
+        s_calibration_phase = CalibrationPhase::WaitingForTemperatureToStabilize;
         Boiler::the().set_target_temperature_and_wait(target_temperature);
+    }
 
     if (CFG(FillDigitalSignalTableOnCalibration)) {
+        s_calibration_phase = CalibrationPhase::FillingDigitalSignalTable;
         Spout::FlowController::the().fill_digital_signal_table();
     } else {
         if (util::SD::make().file_exists(Spout::FlowController::TABLE_FILE_PATH))
             Spout::FlowController::the().fetch_digital_signal_table_from_file();
     }
 
+    s_calibration_phase = CalibrationPhase::None;
     LOG_IF(LogCalibration, "nivelamento finalizado");
 }
 
@@ -50,6 +52,17 @@ void inform_calibration_status() {
         [](JsonObject o) {
             o["needsCalibration"] = not s_calibrated;
         });
+
+    switch (s_calibration_phase) {
+    case CalibrationPhase::WaitingForTemperatureToStabilize: {
+        Boiler::the().inform_temperature_to_host();
+    } break;
+    case CalibrationPhase::FillingDigitalSignalTable: {
+        Spout::FlowController::the().inform_progress_to_host();
+    } break;
+    default:
+        break;
+    }
 }
 
 static usize s_new_firmware_size = 0;

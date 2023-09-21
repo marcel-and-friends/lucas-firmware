@@ -16,8 +16,8 @@ void setup() {
     s_initializing = true;
 
     cfg::setup();
-    sec::setup();
     serial::setup();
+    sec::setup();
     info::setup();
     core::setup();
 

@@ -5,6 +5,13 @@
 
 namespace lucas::cmd {
 void L2() {
+    if (CFG(GigaMode)) {
+        LOG_IF(LogLn, "iniciando L2 em modo giga");
+        util::idle_for(chrono::milliseconds{ parser.ulongval('T') });
+        LOG_IF(LogLn, "L2 finalizado");
+        return;
+    }
+
     if (parser.seenval('D'))
         Spout::the().pour_with_digital_signal(parser.ulongval('T'), parser.ulongval('D'));
     else

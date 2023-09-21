@@ -41,6 +41,7 @@ void MotionController::travel_to_sewer() {
 
 void MotionController::home() {
     cmd::execute("G28 XY");
+    m_current_station = Station::INVALID;
 }
 
 void MotionController::finish_movements() const {
