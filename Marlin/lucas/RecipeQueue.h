@@ -11,11 +11,15 @@
 namespace lucas {
 class RecipeQueue : public util::Singleton<RecipeQueue> {
 public:
+    void setup();
+
     void tick();
 
     void schedule_recipe(JsonObjectConst recipe_json);
 
     void schedule_recipe_for_station(Recipe&, usize);
+
+    void set_fixed_recipe(JsonObjectConst recipe_json);
 
     void map_station_recipe(usize);
 
@@ -147,6 +151,7 @@ private:
     // o mapeamento de index -> recipe é o mesmo de index -> estação
     // ou seja, a recipe na posição 0 da fila pertence à estação 0
     std::array<RecipeInfo, Station::MAXIMUM_NUMBER_OF_STATIONS> m_queue = {};
+    std::array<RecipeInfo, Station::MAXIMUM_NUMBER_OF_STATIONS> m_fixed_recipes = {};
     usize m_queue_size = 0;
 };
 }

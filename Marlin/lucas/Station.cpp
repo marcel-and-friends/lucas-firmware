@@ -21,78 +21,62 @@ void Station::initialize(usize num) {
         return;
     }
 
-    struct InfoStation {
+    s_list_size = num;
+
+    struct PinSetup {
         pin_t button_pin;
         pin_t led_pin;
         pin_t powerled_pin;
     };
 
-    constexpr std::array<InfoStation, Station::MAXIMUM_NUMBER_OF_STATIONS> infos = {
-        InfoStation{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = Z_STEP_PIN },
-        InfoStation{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = E0_STEP_PIN},
-        InfoStation{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = E1_STEP_PIN},
-        InfoStation{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = Z_DIR_PIN  },
-        InfoStation{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = E0_DIR_PIN }
+    constexpr auto PIN_DATA = std::array{
+        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
+        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
+        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
+        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
+        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
     };
 
-    for (usize i = 0; i < num; i++) {
-        auto& info = infos.at(i);
+    for (usize i = 0; i < s_list_size; i++) {
+        auto& pin_data = PIN_DATA.at(i);
         auto& station = s_list.at(i);
-        station.set_button(info.button_pin);
-        station.set_led(info.led_pin);
+
+        station.set_button(pin_data.button_pin);
+        station.set_led(pin_data.led_pin);
+        station.set_powerled(pin_data.powerled_pin);
+
         station.set_status(Status::Free);
     }
 
-    s_list_size = num;
-
-    LOG_IF(LogStations, "maquina vai usar ", num, " estacoes");
+    LOG_IF(LogStations, "maquina vai usar ", s_list_size, " estacoes");
 }
 
 void Station::tick() {
     for_each([](Station& station) {
-        const auto tick = millis();
+        bool button_being_held = util::is_button_held(station.button());
+        bool button_released = not button_being_held and station.m_button_held_timer.is_active();
 
-        // atualizacao simples do estado do button
-        bool held_before = station.is_button_held();
-        bool held_now = util::is_button_held(station.button());
-        station.set_is_button_held(held_now);
+        if (button_released) {
+            LOG("botao #", station.index(), "apertado");
 
-        // {
-        //     constexpr auto TIME_TO_CANCEL_RECIPE = 3000; // 3s
-        //     if (held_now) {
-        //         if (not station.tick_button_was_pressed())
-        //             station.set_tick_button_was_pressed(tick);
-
-        //         if (tick - station.tick_button_was_pressed() >= TIME_TO_CANCEL_RECIPE) {
-        //             RecipeQueue::the().cancel_station_recipe(station.index());
-        //             station.set_recipe_was_cancelled(true);
-        //             return util::Iter::Continue;
-        //         }
-        //     }
-        // }
-
-        if (held_before and not held_now) {
-            LOG("botao da estacao ", station.number(), " foi solto");
-            station.set_tick_button_was_pressed(0);
-        }
-
-        if (station.recipe_was_cancelled()) {
-            // se a recipe acabou de ser cancelada, podemos voltar ao normal
-            // o proposito disso é não enviar a recipe standard imediatamente após cancelar uma recipe
-            station.set_recipe_was_cancelled(false);
-            return util::Iter::Continue;
-        }
-
-        switch (station.status()) {
-        case Status::ConfirmingScald:
-        case Status::ConfirmingAttacks:
-            RecipeQueue::the().map_station_recipe(station.index());
-            break;
-        case Status::Ready:
-            station.set_status(Status::Free);
-            break;
-        default:
-            break;
+            // switch (station.status()) {
+            // case Status::Free:
+            // case Status::ConfirmingScald:
+            // case Status::ConfirmingAttacks:
+            //     RecipeQueue::the().map_station_recipe(station.index());
+            //     break;
+            // case Status::Ready:
+            //     station.set_status(Status::Free);
+            //     break;
+            // default:
+            //     break;
+            // }
+        } else {
+            station.m_button_held_timer.toggle_based_on(button_being_held);
+            if (station.m_button_held_timer >= 3s) {
+                RecipeQueue::the().cancel_station_recipe(station.index());
+                station.m_button_held_timer.stop();
+            }
         }
 
         return util::Iter::Continue;
@@ -107,7 +91,7 @@ void Station::update_leds() {
         static bool s_last_led_state = true;
         s_last_led_state = not s_last_led_state;
         for_each_if(&Station::waiting_user_input, [](const Station& station) {
-            WRITE(station.led(), s_last_led_state);
+            analogWrite(station.led(), s_last_led_state * 4095);
             return util::Iter::Continue;
         });
     }
@@ -158,7 +142,7 @@ void Station::set_blocked(bool b) {
 
     m_blocked = b;
     if (m_blocked)
-        WRITE(m_led_pin, LOW);
+        analogWrite(m_led_pin, LOW);
     LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
 }
 
@@ -180,12 +164,12 @@ void Station::set_status(Status status, std::optional<u32> receita_id) {
 
     switch (m_status) {
     case Status::Free:
-        WRITE(m_led_pin, LOW);
+        analogWrite(m_led_pin, LOW);
         return;
     case Status::Scalding:
     case Status::Attacking:
     case Status::Finalizing:
-        WRITE(m_led_pin, HIGH);
+        analogWrite(m_led_pin, 4095);
         return;
     default:
         return;

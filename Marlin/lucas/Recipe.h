@@ -36,9 +36,8 @@ public:
 
     void build_from_json(JsonObjectConst);
 
-    Recipe(const Recipe&) = delete;
+    Recipe(const Recipe&) = default;
     Recipe(Recipe&&) = delete;
-    Recipe& operator=(const Recipe&) = delete;
     Recipe& operator=(Recipe&&) = delete;
 
 public:
@@ -131,6 +130,7 @@ private:
     // por isso os copy/move constructors são deletados e só a RecipeQueue pode acessar o constructor default
     friend class RecipeQueue;
     Recipe() = default;
+    Recipe& operator=(const Recipe&) = default;
 
     u32 m_id = 0;
 

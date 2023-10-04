@@ -21,6 +21,7 @@ void setup() {
     Boiler::the().setup();
     Spout::the().setup();
     MotionController::the().home();
+    RecipeQueue::the().setup();
 
     inform_calibration_status();
 }

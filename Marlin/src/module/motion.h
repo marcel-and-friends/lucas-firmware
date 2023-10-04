@@ -134,10 +134,19 @@ inline int8_t pgm_read_any(const int8_t* p) {
         return pgm_read_any(&NAME##_P[axis]);                                                                                                           \
     }
 XYZ_DEFS(float, base_min_pos, MIN_POS);
-XYZ_DEFS(float, base_max_pos, MAX_POS);
 XYZ_DEFS(float, base_home_pos, HOME_POS);
-XYZ_DEFS(float, max_length, MAX_LENGTH);
 XYZ_DEFS(int8_t, home_dir, HOME_DIR);
+
+#include <lucas/core/core.h>
+
+inline float base_max_pos(const AxisEnum axis) {
+    static const XYZval<float> base_max_pos_P = { lucas::util::g_machine_size_x, 120, 0 };
+    return pgm_read_any(&base_max_pos_P[axis]);
+}
+
+inline float max_length(const AxisEnum axis) {
+    return base_max_pos(axis);
+}
 
 inline float home_bump_mm(const AxisEnum axis) {
     static const xyz_pos_t home_bump_mm_P DEFS_PROGMEM = HOMING_BUMP_MM;

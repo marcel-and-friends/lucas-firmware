@@ -5,12 +5,21 @@
 #include <lucas/MotionController.h>
 #include <lucas/util/ScopedGuard.h>
 #include <lucas/util/StaticVector.h>
+#include <lucas/util/SD.h>
 #include <src/module/motion.h>
 #include <src/module/planner.h>
 #include <numeric>
 #include <ranges>
 
 namespace lucas {
+void RecipeQueue::setup() {
+    auto sd = util::SD::make();
+    if (not sd.open("/fixed_recipes.txt", util::SD::OpenMode::Read))
+        return;
+
+    sd.read_into(m_fixed_recipes);
+}
+
 void RecipeQueue::tick() {
     try_heating_hose_after_inactivity();
 
@@ -56,7 +65,7 @@ void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
         return;
     }
 
-    for (usize i = 0; i < m_queue.size(); i++) {
+    for (usize i = 0; i < Station::number_of_stations(); i++) {
         auto& station = Station::list().at(i);
         if (station.status() != Station::Status::Free or station.blocked())
             continue;
@@ -90,10 +99,47 @@ void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, usize index) {
     LOG_IF(LogQueue, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
 }
 
+void RecipeQueue::set_fixed_recipe(JsonObjectConst recipe_json) {
+    if (not recipe_json.containsKey("recipe") or
+        not recipe_json.containsKey("station")) {
+        LOG_ERR("json da receita nao possui todos os campos obrigatorios");
+        return;
+    }
+
+    const auto index = recipe_json["station"].as<usize>();
+    const auto recipe_obj = recipe_json["recipe"].as<JsonObjectConst>();
+
+    auto& info = m_fixed_recipes[index];
+    if (not recipe_obj.isNull()) {
+        info.recipe.build_from_json(recipe_obj);
+        info.active = true;
+        LOG_IF(LogQueue, "receita fixa setada - [estacao = ", index, "]");
+    } else {
+        info.recipe.reset();
+        info.active = false;
+        LOG_IF(LogQueue, "receita fixa removida - [estacao = ", index, "]");
+    }
+
+    auto sd = util::SD::make();
+    if (not sd.open("/fixed_recipes.txt", util::SD::OpenMode::Write))
+        return;
+
+    sd.write_from(m_fixed_recipes);
+}
+
 void RecipeQueue::map_station_recipe(usize index) {
     auto& station = Station::list().at(index);
     if (not m_queue[index].active) {
-        LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
+        if (m_fixed_recipes[index].active) {
+            auto& recipe = m_queue[index].recipe = m_fixed_recipes[index].recipe;
+
+            add_recipe(index);
+            map_recipe(recipe, station);
+
+            station.set_status(recipe.has_scalding_step() ? Station::Status::Scalding : Station::Status::Attacking, recipe.id());
+        } else {
+            LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
+        }
         return;
     }
 
@@ -460,7 +506,7 @@ void RecipeQueue::cancel_all_recipes() {
 }
 
 void RecipeQueue::add_recipe(usize index) {
-    if (m_queue_size == m_queue.size()) {
+    if (m_queue_size == Station::number_of_stations()) {
         LOG_ERR("tentando adicionar receita com a fila cheia - [estacao = ", index, "]");
         return;
     }

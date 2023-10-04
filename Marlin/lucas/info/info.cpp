@@ -58,6 +58,7 @@ enum class Command {
     RequestInfoAllStations,
     FirmwareUpdate,
     RequestInfoFirmware,
+    SetFixedRecipe,
 
     /* ~comandos de desenvolvimento~ */
     DevScheduleStandardRecipe,
@@ -76,6 +77,7 @@ static Command command_from_string(std::string_view cmd) {
         [usize(Command::RequestInfoAllStations)] = "reqInfoAllStations"sv,
         [usize(Command::FirmwareUpdate)] = "cmdFirmwareUpdate"sv,
         [usize(Command::RequestInfoFirmware)] = "reqInfoFirmware"sv,
+        [usize(Command::SetFixedRecipe)] = "cmdSetFixedRecipe"sv,
         [usize(Command::DevScheduleStandardRecipe)] = "devScheduleStandardRecipe"sv,
         [usize(Command::DevSimulateButtonPress)] = "devSimulateButtonPress"sv,
     });
@@ -118,6 +120,7 @@ void interpret_command_from_host(std::span<char> buffer) {
             }
 
             auto array = v.as<JsonArrayConst>();
+            util::g_machine_size_x = array.size() == 3 ? 470 : 780;
             Station::initialize(array.size());
             Station::for_each([&array](Station& station, usize i) {
                 station.set_blocked(not array[i].as<bool>());
@@ -184,6 +187,14 @@ void interpret_command_from_host(std::span<char> buffer) {
                 [](JsonObject o) {
                     o["version"] = cfg::FIRMWARE_VERSION;
                 });
+        } break;
+        case Command::SetFixedRecipe: {
+            if (not v.is<JsonObjectConst>()) {
+                LOG_ERR("valor json invalido para envio de uma receita fixa");
+                break;
+            }
+
+            RecipeQueue::the().set_fixed_recipe(v.as<JsonObjectConst>());
         } break;
         /* ~comandos de desenvolvimento~ */
         case Command::DevScheduleStandardRecipe: {

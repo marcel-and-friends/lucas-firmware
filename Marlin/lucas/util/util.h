@@ -43,6 +43,7 @@ constexpr float DEFAULT_STEPS_PER_MM_Y = 12.f;
 float step_ratio_x();
 float step_ratio_y();
 
+inline int g_machine_size_x = 0;
 float first_station_abs_pos();
 float distance_between_each_station();
 

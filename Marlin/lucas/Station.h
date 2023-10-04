@@ -1,11 +1,10 @@
 #pragma once
 
-#include <array>
 #include <string>
 #include <optional>
-#include <string_view>
 #include <lucas/lucas.h>
 #include <lucas/Recipe.h>
+#include <lucas/util/Timer.h>
 #include <ArduinoJson.h>
 
 namespace lucas {
@@ -103,19 +102,8 @@ public:
 
 public:
     pin_t button() const { return m_button_pin; }
-    void set_button(pin_t pin);
-
     pin_t led() const { return m_led_pin; }
-    void set_led(pin_t pin);
-
     pin_t powerled() const { return m_powerled_pin; }
-    void set_powerled(pin_t pin);
-
-    bool is_button_held() const { return m_is_button_held; }
-    void set_is_button_held(bool b) { m_is_button_held = b; }
-
-    millis_t tick_button_was_pressed() const { return m_tick_button_was_pressed; }
-    void set_tick_button_was_pressed(millis_t t) { m_tick_button_was_pressed = t; }
 
     bool recipe_was_cancelled() const { return m_recipe_was_cancelled; }
     void set_recipe_was_cancelled(bool b) { m_recipe_was_cancelled = b; }
@@ -132,6 +120,10 @@ private:
 
     static inline usize s_list_size = 0;
 
+    void set_button(pin_t pin);
+    void set_led(pin_t pin);
+    void set_powerled(pin_t pin);
+
 private:
     Station() = default;
 
@@ -144,15 +136,11 @@ private:
     // o pin físico da nossa led
     pin_t m_led_pin = 0;
 
-    // o pin físico da powerled
+    // o pin físico da nossa powerled
     pin_t m_powerled_pin = 0;
 
-    // o ultimo tick em que o button foi apertado
     // usado para cancelar uma recipe
-    millis_t m_tick_button_was_pressed = 0;
-
-    // usado como um debounce para ativar uma station somente quando o botão é solto
-    bool m_is_button_held = false;
+    util::Timer m_button_held_timer = {};
 
     // se a recipe acabou de ser cancelada e o button ainda nao foi solto
     bool m_recipe_was_cancelled = false;
