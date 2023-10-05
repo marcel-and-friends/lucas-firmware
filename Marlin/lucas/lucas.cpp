@@ -21,6 +21,9 @@ void setup() {
     info::setup();
     core::setup();
 
+    Station::initialize(5);
+    analogWrite(PE14, 4095);
+
     s_initialized = true;
 }
 

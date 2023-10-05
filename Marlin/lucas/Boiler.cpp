@@ -7,7 +7,7 @@
 
 namespace lucas {
 enum Pin {
-    WaterLevelAlarm = PC5,
+    WaterLevelAlarm = PE12,
     Resistance = HEATER_BED_PIN
 };
 

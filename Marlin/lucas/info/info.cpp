@@ -20,6 +20,12 @@ void setup() {
 }
 
 void tick() {
+    if (CFG(LogTemperatureForTesting)) {
+        every(1s) {
+            LOG("TEMPERATURA: ", thermalManager.degBed());
+        }
+    }
+
     JsonDocument doc;
     bool updated = false;
     Report::for_each([&](Report& report) {

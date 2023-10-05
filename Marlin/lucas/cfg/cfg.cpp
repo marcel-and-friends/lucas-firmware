@@ -4,21 +4,24 @@
 
 namespace lucas::cfg {
 constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
-    [LogPour] = {.id = 'D',  .active = true },
-    [LogTravel] = { .id = 'V', .active = true },
-    [LogQueue] = { .id = 'F', .active = true },
-    [LogCalibration] = { .id = 'N', .active = true },
-    [LogStations] = { .id = 'E', .active = true },
+    [LogPour] = {.id = 'D',                 .active = true },
+    [LogTravel] = { .id = 'V',                .active = true },
+    [LogQueue] = { .id = 'F',                .active = true },
+    [LogCalibration] = { .id = 'N',                .active = true },
+    [LogStations] = { .id = 'E',                .active = true },
 
-    [LogSerial] = { .id = 'S', .active = false},
-    [LogWifi] = { .id = 'W', .active = false},
-    [LogGcode] = { .id = 'G', .active = false},
-    [LogLn] = { .id = 'L', .active = false},
+    [LogSerial] = { .id = 'S',                .active = false},
+    [LogWifi] = { .id = 'W',                .active = false},
+    [LogGcode] = { .id = 'G',                .active = false},
+    [LogLn] = { .id = 'L',                .active = false},
 
-    [GigaMode] = { .id = 'M', .active = false},
+    [LogFlowSensorDataForTesting] = { .id = Option::ID_DEFAULT, .active = false},
+    [LogTemperatureForTesting] = { .id = Option::ID_DEFAULT, .active = false},
 
-    [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
-    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = true },
+    [GigaMode] = { .id = 'M',                .active = false},
+
+    [SetTargetTemperatureOnCalibration] = { .id = 'T',                .active = true },
+    [FillDigitalSignalTableOnCalibration] = { .id = 'X',                .active = true },
 });
 
 consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
@@ -63,7 +66,7 @@ void reset_options() {
     util::SD::make().remove_file(CFG_FILE_PATH);
 }
 
-Option get(Options option) {
+Option& get(Options option) {
     return s_options[usize(option)];
 }
 

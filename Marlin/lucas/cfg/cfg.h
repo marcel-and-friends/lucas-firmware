@@ -23,6 +23,9 @@ enum Options {
     LogGcode,
     LogLn,
 
+    LogFlowSensorDataForTesting,
+    LogTemperatureForTesting,
+
     GigaMode,
 
     SetTargetTemperatureOnCalibration,
@@ -41,7 +44,7 @@ void save_options();
 
 void reset_options();
 
-Option get(Options option);
+Option& get(Options option);
 OptionList& opcoes();
 
 #define CFG(option) cfg::get(cfg::Options::option).active

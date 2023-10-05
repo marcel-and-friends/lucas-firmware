@@ -14,10 +14,16 @@ enum Pin {
     SV = PA5,
     EN = PA6,
     BRK = PE8,
-    FlowSensor = PA13
+    FlowSensor = PE11
 };
 
 void Spout::tick() {
+    static u32 s_stored_pulse_counter_for_logging = 0;
+    if (CFG(LogFlowSensorDataForTesting) and s_stored_pulse_counter_for_logging != s_pulse_counter) {
+        LOG("SENSOR_FLUXO: ", s_pulse_counter);
+        s_stored_pulse_counter_for_logging = s_pulse_counter;
+    }
+
     if (m_pouring) {
         const auto time_elapsed = [this] {
             return m_begin_pour_timer.elapsed();

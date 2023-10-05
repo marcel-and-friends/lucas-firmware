@@ -108,6 +108,9 @@ public:
     pin_t led() const { return m_led_pin; }
     void set_led(pin_t pin);
 
+    pin_t powerled() const { return m_powerled_pin; }
+    void set_powerled(pin_t pin);
+
     bool is_button_held() const { return m_is_button_held; }
     void set_is_button_held(bool b) { m_is_button_held = b; }
 
@@ -140,6 +143,9 @@ private:
 
     // o pin físico da nossa led
     pin_t m_led_pin = 0;
+
+    // o pin físico da powerled
+    pin_t m_powerled_pin = 0;
 
     // o ultimo tick em que o button foi apertado
     // usado para cancelar uma recipe
