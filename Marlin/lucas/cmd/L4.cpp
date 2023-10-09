@@ -51,7 +51,13 @@ void L4() {
                 return;
 
             const auto pin = parser.value_int();
-            LOG("pino #", pin, " valor = ", READ(pin));
+            const auto p = digitalPinToPinName(pin);
+            if (pin_in_pinmap(p, PinMap_ADC)) {
+                LOG("pino #", pin, " (ADC) - valor = ", analogRead(pin));
+            } else {
+                LOG("pino #", pin, " valor = ", digitalRead(pin));
+            }
+
         } break;
         }
         return;
