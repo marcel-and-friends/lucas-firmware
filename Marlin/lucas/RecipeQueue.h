@@ -31,6 +31,10 @@ public:
 
     void cancel_all_recipes();
 
+    bool executing_recipe_in_station(size_t index) const {
+        return m_queue[index].active;
+    }
+
     bool executing() const { return m_recipe_in_execution != Station::INVALID; }
 
     bool is_empty() const { return m_queue_size == 0; }

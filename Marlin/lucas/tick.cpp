@@ -9,33 +9,33 @@
 
 namespace lucas {
 void tick() {
-    { // boiler
-        if (not filtered(TickFilter::Boiler))
-            Boiler::the().tick();
-    }
+    // { // boiler
+    //     if (not filtered(TickFilter::Boiler))
+    //         Boiler::the().tick();
+    // }
 
-    { // queue
-        if (not filtered(TickFilter::RecipeQueue))
-            RecipeQueue::the().tick();
+    // { // queue
+    //     if (not filtered(TickFilter::RecipeQueue))
+    //         RecipeQueue::the().tick();
 
-        RecipeQueue::the().remove_finalized_recipes();
-    }
+    //     RecipeQueue::the().remove_finalized_recipes();
+    // }
 
-    { // stations
-        if (not filtered(TickFilter::Station))
-            Station::tick();
+    // { // stations
+    //     if (not filtered(TickFilter::Station))
+    //         Station::tick();
 
-        Station::update_leds();
-    }
+    //     Station::update_leds();
+    // }
 
-    { // spout
-        if (not filtered(TickFilter::Spout))
-            Spout::the().tick();
-    }
+    // { // spout
+    //     if (not filtered(TickFilter::Spout))
+    //         Spout::the().tick();
+    // }
 
-    { // info
-        if (not filtered(TickFilter::Info))
-            info::tick();
-    }
+    // { // info
+    //     if (not filtered(TickFilter::Info))
+    //         info::tick();
+    // }
 }
 }

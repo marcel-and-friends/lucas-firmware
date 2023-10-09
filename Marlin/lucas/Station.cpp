@@ -29,12 +29,20 @@ void Station::initialize(usize num) {
         pin_t powerled_pin;
     };
 
+    // PIN_WILSON
+    // constexpr auto PIN_DATA = std::array{
+    //     PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
+    //     PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
+    //     PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
+    //     PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
+    //     PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
+    // };
     constexpr auto PIN_DATA = std::array{
-        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
-        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
-        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
-        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
-        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
+        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PB5 },
+        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PD6 },
+        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PD15},
+        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PB4 },
+        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PD3 }
     };
 
     for (usize i = 0; i < s_list_size; i++) {
@@ -57,7 +65,7 @@ void Station::tick() {
         bool button_released = not button_being_held and station.m_button_held_timer.is_active();
 
         if (button_released) {
-            LOG("botao #", station.index(), "apertado");
+            LOG("BOTAO #", station.index() + 1, ": apertado");
 
             // switch (station.status()) {
             // case Status::Free:
@@ -71,13 +79,11 @@ void Station::tick() {
             // default:
             //     break;
             // }
-        } else {
-            station.m_button_held_timer.toggle_based_on(button_being_held);
-            if (station.m_button_held_timer >= 3s) {
-                RecipeQueue::the().cancel_station_recipe(station.index());
-                station.m_button_held_timer.stop();
-            }
         }
+
+        station.m_button_held_timer.toggle_based_on(button_being_held);
+        if (station.m_button_held_timer >= 3s and RecipeQueue::the().executing_recipe_in_station(station.index()))
+            RecipeQueue::the().cancel_station_recipe(station.index());
 
         return util::Iter::Continue;
     });

@@ -131,13 +131,13 @@ private:
     Status m_status = Status::Free;
 
     // o pin físico do nosso botão
-    pin_t m_button_pin = 0;
+    pin_t m_button_pin = -1;
 
     // o pin físico da nossa led
-    pin_t m_led_pin = 0;
+    pin_t m_led_pin = -1;
 
     // o pin físico da nossa powerled
-    pin_t m_powerled_pin = 0;
+    pin_t m_powerled_pin = -1;
 
     // usado para cancelar uma recipe
     util::Timer m_button_held_timer = {};

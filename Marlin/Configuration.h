@@ -1173,13 +1173,13 @@
 // Almost all printers will be using one per axis. Probes will use one or more of the
 // extra connectors. Leave undefined any used for non-endstop and non-probe purposes.
 #define USE_XMIN_PLUG
-// #define USE_YMIN_PLUG
+#define USE_YMIN_PLUG
 #define USE_ZMIN_PLUG
 // #define USE_IMIN_PLUG
 // #define USE_JMIN_PLUG
 // #define USE_KMIN_PLUG
 // #define USE_XMAX_PLUG
-#define USE_YMAX_PLUG
+// #define USE_YMAX_PLUG
 #define USE_ZMAX_PLUG
 // #define USE_IMAX_PLUG
 // #define USE_JMAX_PLUG
@@ -1240,7 +1240,7 @@
 #define X_MIN_ENDSTOP_INVERTING \
     false // Set to true to invert the logic of the endstop.
 #define Y_MIN_ENDSTOP_INVERTING \
-    true // Set to true to invert the logic of the endstop.
+    false // Set to true to invert the logic of the endstop.
 #define Z_MIN_ENDSTOP_INVERTING \
     false // Set to true to invert the logic of the endstop.
 #define I_MIN_ENDSTOP_INVERTING \
@@ -1887,7 +1887,7 @@
 // Invert the stepper direction. Change (or reverse the motor connector) if an
 // axis goes the wrong way.
 #define INVERT_X_DIR true
-#define INVERT_Y_DIR false
+#define INVERT_Y_DIR true
 #define INVERT_Z_DIR false
 // #define INVERT_I_DIR false
 // #define INVERT_J_DIR false
@@ -1932,7 +1932,7 @@
 // Direction of endstops when homing; 1=MAX, -1=MIN
 // :[-1,1]
 #define X_HOME_DIR -1
-#define Y_HOME_DIR 1
+#define Y_HOME_DIR -1
 #define Z_HOME_DIR -1
 // #define I_HOME_DIR -1
 // #define J_HOME_DIR -1
@@ -1944,7 +1944,7 @@
 // @section geometry
 
 // The size of the printable area
-#define X_BED_SIZE 780
+#define X_BED_SIZE 470
 #define Y_BED_SIZE 120
 
 // Travel limits (linear=mm, rotational=°) after homing, corresponding to
@@ -2167,7 +2167,7 @@
  * Turn on with the command 'M111 S32'.
  * NOTE: Requires a lot of PROGMEM!
  */
-// #define DEBUG_LEVELING_FEATURE
+#define DEBUG_LEVELING_FEATURE
 
 #if ANY(MESH_BED_LEVELING, AUTO_BED_LEVELING_UBL, PROBE_MANUALLY)
     // Set a height for the start of manual adjustment
@@ -3547,7 +3547,7 @@
 // Use software PWM to drive the fan, as for the heaters. This uses a very low
 // frequency which is not as annoying as with the hardware PWM. On the other
 // hand, if this frequency is too low, you should also increment SOFT_PWM_SCALE.
-#define FAN_SOFT_PWM
+// #define FAN_SOFT_PWM
 
 // Incrementing this by 1 will double the software PWM frequency,
 // affecting heaters, and the fan if FAN_SOFT_PWM is enabled.

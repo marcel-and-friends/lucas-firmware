@@ -35,7 +35,7 @@ private:
 
     float m_hysteresis = 0.f;
 
-    s32 m_target_temperature = 0.f;
+    s32 m_target_temperature = 0;
 
     bool m_reached_target_temperature = false;
 

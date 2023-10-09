@@ -8,13 +8,17 @@
 namespace lucas {
 enum Pin {
     WaterLevelAlarm = PC5,
-    Resistance = PC14
+    // PIN_WILSON
+    // Resistance = PC14
+    Resistance = PA0
 };
 
 static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
     pinMode(Pin::WaterLevelAlarm, INPUT);
+    pinMode(Pin::Resistance, OUTPUT);
+    control_resistance(LOW);
     /* go back to this when everything is setup
     s_alarm_triggered = READ(Pin::WaterLevelAlarm);
     attachInterrupt(
@@ -63,20 +67,19 @@ void Boiler::tick() {
     if (temperature >= MAXIMUM_TEMPERATURE)
         sec::raise_error(sec::Reason::MaxTemperatureReached);
 
-    const auto target = target_temperature();
-    if (not target) {
+    if (not m_target_temperature) {
         control_resistance(LOW);
         return;
     }
 
-    control_resistance(temperature < (target - m_hysteresis));
+    control_resistance(temperature < (m_target_temperature - m_hysteresis));
 
     // security checks and stuff!
 
     { // out of the valid temperature range for too long
         if (m_reached_target_temperature) {
             constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
-            const auto in_target_range = std::abs(target - temperature) <= VALID_TEMPERATURE_RANGE;
+            const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
             m_outside_target_range_timer.toggle_based_on(not in_target_range);
             if (m_outside_target_range_timer >= 5min)
                 sec::raise_error(sec::Reason::TemperatureOutOfRange);
@@ -168,9 +171,7 @@ void Boiler::set_target_temperature(s32 target) {
 }
 
 void Boiler::control_resistance(bool state) {
-    if (CFG(GigaMode))
-        return;
-    analogWrite(Pin::Resistance, state * (4095 / 2));
+    analogWrite(Pin::Resistance, state * 4095);
 }
 
 void Boiler::turn_off_resistance() {

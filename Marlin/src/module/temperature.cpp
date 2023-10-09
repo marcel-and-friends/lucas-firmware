@@ -3576,7 +3576,7 @@ void Temperature::isr() {
             } while (0)
 
         #if HAS_FAN0
-        _FAN_PWM(0);
+         _FAN_PWM(0);
         #endif
         #if HAS_FAN1
         _FAN_PWM(1);

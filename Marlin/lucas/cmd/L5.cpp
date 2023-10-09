@@ -27,7 +27,7 @@ void L5() {
         LOG("RESISTENCIA: ", status ? "ligou" : "desligou");
     } break;
     case 2: {
-        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = {};
+        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
 
         auto& state = s_last_state[value];
         analogWrite(Station::list().at(value).led(), state * 4095);
@@ -37,7 +37,7 @@ void L5() {
         state = not state;
     } break;
     case 3: {
-        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = {};
+        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = {  true, true, true, true, true  };
 
         auto& state = s_last_state[value];
         analogWrite(Station::list().at(value).powerled(), state * 4095);

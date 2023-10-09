@@ -18,9 +18,12 @@ void setup() {
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
     planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y;
 
+    util::g_machine_size_x = 780;
+    Station::initialize(5);
+
     Boiler::the().setup();
     Spout::the().setup();
-    MotionController::the().home();
+    // MotionController::the().home();
     RecipeQueue::the().setup();
 
     inform_calibration_status();

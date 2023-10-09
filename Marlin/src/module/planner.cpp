@@ -1751,7 +1751,7 @@ void Planner::check_axes_activity() {
     // Update Fan speeds
     // Only if synchronous M106/M107 is disabled
     //
-    TERN_(HAS_TAIL_FAN_SPEED, if (fans_need_update) sync_fan_speeds(tail_fan_speed));
+    // TERN_(HAS_TAIL_FAN_SPEED, if (fans_need_update) sync_fan_speeds(tail_fan_speed));
 
     TERN_(AUTOTEMP, autotemp_task());
 
@@ -2055,6 +2055,7 @@ void Planner::quick_resume() {
 #endif
 
 void Planner::endstop_triggered(const AxisEnum axis) {
+    SERIAL_ECHOLNPGM("ENDSTOP #", AS_CHAR(axis + 'X'), ": ativado");
     // Record stepper position and discard the current block
     stepper.endstop_triggered(axis);
 }

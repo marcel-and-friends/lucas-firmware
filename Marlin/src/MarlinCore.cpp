@@ -969,6 +969,7 @@ void kill(FSTR_P const lcd_error /*=nullptr*/, FSTR_P const lcd_component /*=nul
     if (lcd_error) {
         SERIAL_ECHO_START();
         SERIAL_ECHOLNF(lcd_error);
+        SERIAL_IMPL.flush();
     }
 
 #if HAS_DISPLAY
