@@ -194,35 +194,36 @@ void Spout::FlowController::fill_digital_signal_table() {
     core::TemporaryFilter f{ core::Filter::Station, core::Filter::RecipeQueue };
 
     // accepts normalized values between 0.f and 1.f
-    const auto report_progress = [this](float progress) {
+    const auto update_progress = [this](float progress) {
         m_calibration_progress = progress;
         inform_progress_to_host();
     };
 
-    const auto report_status = [this](CalibrationStatus status) {
+    const auto update_status = [this](CalibrationStatus status) {
         m_calibration_status = status;
         inform_progress_to_host();
     };
 
     clean_digital_signal_table(RemoveFile::Yes);
-    report_status(CalibrationStatus::Preparing);
+    update_status(CalibrationStatus::Preparing);
     const auto beginning = millis();
 
     if (CFG(GigaMode)) {
         m_calibration_status = CalibrationStatus::Executing;
 
         for (size_t i = 0; i < 100; i++) {
-            report_progress(i / 100.f);
+            update_progress(i / 100.f);
             util::idle_for(500ms);
         }
 
         util::idle_for(2s);
-        report_status(CalibrationStatus::Finalizing);
+        update_status(CalibrationStatus::Finalizing);
 
         util::idle_for(2s);
-        report_status(CalibrationStatus::Done);
+        update_status(CalibrationStatus::Done);
     } else {
-        // place the spout on the sink and fill the hose so we avoid silly errors
+        // place the spout on the sewer and fill the hose so we avoid silly errors
+        MotionController::the().travel_to_sewer();
         Spout::the().fill_hose();
 
         auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
@@ -285,7 +286,7 @@ void Spout::FlowController::fill_digital_signal_table() {
                     return util::Iter::Break;
                 } else {
                     save_flow_info_to_table(info.flow, info.digital_signal);
-                    report_progress(util::normalize(info.flow, FLOW_MIN, FLOW_MAX));
+                    update_progress(util::normalize(info.flow, FLOW_MIN, FLOW_MAX));
                     number_of_occupied_cells++;
                     last_average_flow = info.flow;
                 }
@@ -297,7 +298,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
         if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
-            report_status(CalibrationStatus::Finalizing);
+            update_status(CalibrationStatus::Finalizing);
             auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
             save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
         }
@@ -310,7 +311,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         });
 
         // we're done!
-        report_status(CalibrationStatus::Done);
+        update_status(CalibrationStatus::Done);
         Spout::the().end_pour();
         save_digital_signal_table_to_file();
     }
@@ -330,7 +331,7 @@ Spout::FlowController::FlowInfo Spout::FlowController::obtain_specific_flow(floa
             } else {
                 const bool greater_than_specific = info.flow > desired_flow;
                 // this little algorithm makes us gravitates towards a specific value
-                // making it guaranteed that, even if it takes a little bit, we achieve
+                // making it guaranteed that, even if it takes a little bit, we arrive
                 // at the correct digital signal
                 if (greater_than_specific != last_greater_than_specific) {
                     if (digital_signal_mod < 0) {
