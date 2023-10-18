@@ -11,23 +11,7 @@ const char* ff(const char* str, float valor) {
 }
 
 bool is_button_held(s32 pin) {
-    return READ(pin) == false;
-}
-
-float step_ratio_x() {
-    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_PER_MM_X;
-}
-
-float step_ratio_y() {
-    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
-}
-
-float first_station_abs_pos() {
-    return 100.f / step_ratio_x();
-}
-
-float distance_between_each_station() {
-    return 160.f / step_ratio_x();
+    return digitalRead(pin) == LOW;
 }
 
 float normalize(float v, float min, float max) {

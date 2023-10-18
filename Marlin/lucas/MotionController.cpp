@@ -47,7 +47,19 @@ void MotionController::home() {
     cmd::execute("G28 XY");
 }
 
+static constexpr float MS_PER_MM = 12.41f;
+static constexpr float DEFAULT_STEPS_PER_MM_X = 44.5f;
+static constexpr float DEFAULT_STEPS_PER_MM_Y = 22.5f;
+
 void MotionController::finish_movements() const {
     util::idle_while(&Planner::busy, core::Filter::RecipeQueue);
+}
+
+float MotionController::step_ratio_x() const {
+    return planner.settings.axis_steps_per_mm[X_AXIS] / DEFAULT_STEPS_PER_MM_X;
+}
+
+float MotionController::step_ratio_y() const {
+    return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
 }
 }

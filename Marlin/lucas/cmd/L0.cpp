@@ -11,7 +11,7 @@
 namespace lucas::cmd {
 void L0() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    const auto total_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    const auto total_diameter = (parser.floatval('D') / MotionController::the().step_ratio_x()) * 10.f;
     if (total_diameter == 0.f)
         return;
 

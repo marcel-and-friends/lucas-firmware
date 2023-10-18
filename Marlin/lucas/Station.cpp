@@ -5,6 +5,7 @@
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
 #include <lucas/RecipeQueue.h>
+#include <lucas/MotionController.h>
 #include <lucas/cmd/cmd.h>
 
 namespace lucas {
@@ -106,7 +107,9 @@ void Station::update_leds() {
 }
 
 float Station::absolute_position(usize index) {
-    return util::first_station_abs_pos() + index * util::distance_between_each_station();
+    const auto first_station_abs_pos = 100.f / MotionController::the().step_ratio_x();
+    const auto distance_between_each_station = 160.f / MotionController::the().step_ratio_x();
+    return first_station_abs_pos + index * distance_between_each_station;
 }
 
 usize Station::number() const {

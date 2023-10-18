@@ -33,18 +33,7 @@ inline const char* fmt(const char* fmt, auto... args) {
 
 const char* ff(const char* str, float valor);
 
-bool is_button_held(s32 pin);
-
-constexpr float MS_PER_MM = 12.41f;
-constexpr float DEFAULT_STEPS_PER_MM_X = 44.5f;
-constexpr float DEFAULT_STEPS_PER_MM_Y = 22.5f;
-
-float step_ratio_x();
-float step_ratio_y();
-
-inline int g_machine_size_x = 0;
-float first_station_abs_pos();
-float distance_between_each_station();
+bool is_button_held(pin_t pin);
 
 float normalize(float v, float min, float max);
 

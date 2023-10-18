@@ -17,6 +17,10 @@ public:
 
     void home();
 
+    float step_ratio_x() const;
+
+    float step_ratio_y() const;
+
 private:
     static constexpr auto INVALID_LOCATION = static_cast<usize>(-1);
     static constexpr auto SEWER_LOCATION = Station::MAXIMUM_NUMBER_OF_STATIONS + 1;

@@ -9,7 +9,7 @@
 namespace lucas::cmd {
 void L1() {
     // o diametro é passado em cm, porem o marlin trabalho com mm
-    const auto circle_diameter = (parser.floatval('D') / util::step_ratio_x()) * 10.f;
+    const auto circle_diameter = (parser.floatval('D') / MotionController::the().step_ratio_x()) * 10.f;
     if (circle_diameter == 0.f)
         return;
 
