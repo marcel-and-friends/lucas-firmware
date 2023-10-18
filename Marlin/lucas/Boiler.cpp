@@ -7,10 +7,10 @@
 
 namespace lucas {
 enum Pin {
-    WaterLevelAlarm = PC5,
+    WaterLevelAlarm = PE13,
     // PIN_WILSON
-    // Resistance = PC14
-    Resistance = PA0
+    Resistance = PC14
+    // Resistance = PA0
 };
 
 static bool s_alarm_triggered = false;
@@ -18,7 +18,7 @@ static bool s_alarm_triggered = false;
 void Boiler::setup() {
     pinMode(Pin::WaterLevelAlarm, INPUT);
     pinMode(Pin::Resistance, OUTPUT);
-    control_resistance(LOW);
+
     /* go back to this when everything is setup
     s_alarm_triggered = READ(Pin::WaterLevelAlarm);
     attachInterrupt(
@@ -35,6 +35,7 @@ void Boiler::setup() {
     //     },
     //     FALLING);
 
+    control_resistance(false);
     if (s_alarm_triggered) {
         info::send(
             info::Event::Boiler,
@@ -68,13 +69,11 @@ void Boiler::tick() {
         sec::raise_error(sec::Reason::MaxTemperatureReached);
 
     if (not m_target_temperature) {
-        control_resistance(LOW);
+        control_resistance(false);
         return;
     }
 
     control_resistance(temperature < (m_target_temperature - m_hysteresis));
-
-    // security checks and stuff!
 
     { // out of the valid temperature range for too long
         if (m_reached_target_temperature) {
@@ -110,7 +109,7 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
         LOG(cooling ? "resfri" : "esquent", "ando boiler no modo giga...");
         util::idle_until([this,
                           timeout = cooling ? 120s : 60s,
-                          timer = util::Timer::started()] mutable {
+                          timer = util::Timer::started()] {
             every(5s) {
                 inform_temperature_to_host();
             }
@@ -171,11 +170,11 @@ void Boiler::set_target_temperature(s32 target) {
 }
 
 void Boiler::control_resistance(bool state) {
-    analogWrite(Pin::Resistance, state * 4095);
+    digitalWrite(Pin::Resistance, state);
 }
 
 void Boiler::turn_off_resistance() {
-    control_resistance(LOW);
+    control_resistance(false);
     set_target_temperature(0);
 }
 }

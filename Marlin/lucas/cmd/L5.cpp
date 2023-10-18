@@ -27,20 +27,20 @@ void L5() {
         LOG("RESISTENCIA: ", status ? "ligou" : "desligou");
     } break;
     case 2: {
-        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
+        static bool s_leds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
 
-        auto& state = s_last_state[value];
-        analogWrite(Station::list().at(value).led(), state * 4095);
+        auto& state = s_leds_state[value];
+        digitalWrite(Station::list().at(value).led(), state);
 
         LOG("LED #", value + 1, ": ", state ? "ligou" : "desligou");
 
         state = not state;
     } break;
     case 3: {
-        static bool s_last_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = {  true, true, true, true, true  };
+        static bool s_powerleds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
 
-        auto& state = s_last_state[value];
-        analogWrite(Station::list().at(value).powerled(), state * 4095);
+        auto& state = s_powerleds_state[value];
+        digitalWrite(Station::list().at(value).powerled(), state);
 
         LOG("POWERLED #", value + 1, ": ", state ? "ligou" : "desligou");
 

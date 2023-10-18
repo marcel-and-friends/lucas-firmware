@@ -43,9 +43,10 @@ void L0() {
     const bool associated_with_station = RecipeQueue::the().executing();
     bool dip = false;
 
-    const auto initial_position = planner.get_axis_positions_mm();
-    auto final_position = initial_position;
+    const auto initial_position = current_position;
     L0_LOG("initial_position.x: ", initial_position.x);
+
+    auto final_position = initial_position;
 
     std::vector<float> diameters;
     diameters.reserve(number_of_arcs * series);
@@ -66,7 +67,7 @@ void L0() {
     dtostrf(radius, 0, 2, buffer_radius);
 
     if (start_on_border) {
-        execute_fmt("G0 F50000 X-%s", buffer_radius);
+        execute_fmt("G0 F10000 X-%s", buffer_radius);
         MotionController::the().finish_movements();
     }
 
@@ -107,7 +108,7 @@ void L0() {
     MotionController::the().finish_movements();
 
     current_position = final_position;
-    L0_LOG("posicao x para o marlin: ", current_position.x);
+    L0_LOG("final_position.x = ", current_position.x);
 
     soft_endstop._enabled = true;
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
@@ -118,7 +119,7 @@ void L0() {
         return;
 
     if (series % 2 != start_on_border) {
-        execute_fmt("G0 F50000 X%s", buffer_radius);
+        execute_fmt("G0 F10000 X%s", buffer_radius);
         MotionController::the().finish_movements();
     }
 

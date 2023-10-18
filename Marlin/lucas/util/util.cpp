@@ -23,7 +23,7 @@ float step_ratio_y() {
 }
 
 float first_station_abs_pos() {
-    return 80.f / step_ratio_x();
+    return 100.f / step_ratio_x();
 }
 
 float distance_between_each_station() {

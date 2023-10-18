@@ -30,20 +30,20 @@ void Station::initialize(usize num) {
     };
 
     // PIN_WILSON
-    // constexpr auto PIN_DATA = std::array{
-    //     PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
-    //     PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
-    //     PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
-    //     PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
-    //     PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
-    // };
     constexpr auto PIN_DATA = std::array{
-        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PB5 },
-        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PD6 },
-        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PD15},
-        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PB4 },
-        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PD3 }
+        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
+        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
+        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
+        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
+        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
     };
+    // constexpr auto PIN_DATA = std::array{
+    //     PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PE14},
+    //     PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE12},
+    //     PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PE10},
+    //     PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PE15},
+    //     PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PC6 }
+    // };
 
     for (usize i = 0; i < s_list_size; i++) {
         auto& pin_data = PIN_DATA.at(i);
@@ -61,24 +61,25 @@ void Station::initialize(usize num) {
 
 void Station::tick() {
     for_each([](Station& station) {
-        bool button_being_held = util::is_button_held(station.button());
-        bool button_released = not button_being_held and station.m_button_held_timer.is_active();
+        const auto button_being_held = util::is_button_held(station.button());
+        const auto button_released = not button_being_held and station.m_button_held_timer.is_active();
 
-        if (button_released) {
+        if (button_released and station.m_last_button_press_timer >= 1s) {
             LOG("BOTAO #", station.index() + 1, ": apertado");
 
-            // switch (station.status()) {
-            // case Status::Free:
-            // case Status::ConfirmingScald:
-            // case Status::ConfirmingAttacks:
-            //     RecipeQueue::the().map_station_recipe(station.index());
-            //     break;
-            // case Status::Ready:
-            //     station.set_status(Status::Free);
-            //     break;
-            // default:
-            //     break;
-            // }
+            switch (station.status()) {
+            case Status::Free:
+            case Status::ConfirmingScald:
+            case Status::ConfirmingAttacks:
+                RecipeQueue::the().map_station_recipe(station.index());
+                break;
+            case Status::Ready:
+                station.set_status(Status::Free);
+                break;
+            default:
+                break;
+            }
+            station.m_last_button_press_timer.restart();
         }
 
         station.m_button_held_timer.toggle_based_on(button_being_held);
@@ -97,7 +98,7 @@ void Station::update_leds() {
         static bool s_last_led_state = true;
         s_last_led_state = not s_last_led_state;
         for_each_if(&Station::waiting_user_input, [](const Station& station) {
-            analogWrite(station.led(), s_last_led_state * 4095);
+            digitalWrite(station.led(), s_last_led_state);
             return util::Iter::Continue;
         });
     }
@@ -122,7 +123,7 @@ void Station::set_led(pin_t pin) {
 
     m_led_pin = pin;
     SET_OUTPUT(m_led_pin);
-    analogWrite(m_led_pin, LOW);
+    digitalWrite(m_led_pin, LOW);
 }
 
 void Station::set_powerled(pin_t pin) {
@@ -131,7 +132,7 @@ void Station::set_powerled(pin_t pin) {
 
     m_powerled_pin = pin;
     SET_OUTPUT(m_powerled_pin);
-    analogWrite(m_powerled_pin, LOW);
+    digitalWrite(m_powerled_pin, HIGH);
 }
 
 void Station::set_button(pin_t pin) {
@@ -148,7 +149,7 @@ void Station::set_blocked(bool b) {
 
     m_blocked = b;
     if (m_blocked)
-        analogWrite(m_led_pin, LOW);
+        digitalWrite(m_led_pin, LOW);
     LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
 }
 
@@ -170,12 +171,12 @@ void Station::set_status(Status status, std::optional<u32> receita_id) {
 
     switch (m_status) {
     case Status::Free:
-        analogWrite(m_led_pin, LOW);
+        digitalWrite(m_led_pin, LOW);
         return;
     case Status::Scalding:
     case Status::Attacking:
     case Status::Finalizing:
-        analogWrite(m_led_pin, 4095);
+        digitalWrite(m_led_pin, HIGH);
         return;
     default:
         return;

@@ -15,14 +15,11 @@ void setup() {
     core::TemporaryFilter f{ TickFilter::Interaction };
     s_initializing = true;
 
-    // PIN_WILSON
-    // analogWrite(PE14, 4095);
-
-    // cfg::setup();
+    cfg::setup();
     serial::setup();
-    // sec::setup();
-    // info::setup();
-    // core::setup();
+    sec::setup();
+    info::setup();
+    core::setup();
 
     s_initialized = true;
 }

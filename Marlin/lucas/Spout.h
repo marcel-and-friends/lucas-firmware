@@ -103,7 +103,7 @@ public:
 
                 LOG_IF(LogCalibration, "fluxo estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
 
-                if (std::invoke(callback, FlowInfo{ average_flow, digital_signal }, digital_signal_mod) == util::Iter::Break)
+                if (std::invoke(FWD(callback), FlowInfo{ average_flow, digital_signal }, digital_signal_mod) == util::Iter::Break)
                     return;
 
                 digital_signal += digital_signal_mod;

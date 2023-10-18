@@ -31,6 +31,8 @@ public:
 
     void cancel_all_recipes();
 
+    void reset_inactivity();
+
     bool executing_recipe_in_station(size_t index) const {
         return m_queue[index].active;
     }

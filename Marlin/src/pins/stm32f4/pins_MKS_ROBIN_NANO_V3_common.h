@@ -116,12 +116,12 @@
 // Temperature Sensors
 //
 // PIN_WILSON
-// #define TEMP_0_PIN PC0   // TH1
-// #define TEMP_1_PIN PA2   // TH2
-// #define TEMP_BED_PIN PC1 // TB1
-#define TEMP_0_PIN PC1   // TH1
+#define TEMP_0_PIN PC0   // TH1
 #define TEMP_1_PIN PA2   // TH2
-#define TEMP_BED_PIN PC0 // TB1
+#define TEMP_BED_PIN PC1 // TB1
+// #define TEMP_0_PIN PC1   // TH1
+// #define TEMP_1_PIN PA2   // TH2
+// #define TEMP_BED_PIN PC0 // TB1
 
 #if HOTENDS == 1 && !REDUNDANT_TEMP_MATCH(SOURCE, E1)
     #if TEMP_SENSOR_PROBE

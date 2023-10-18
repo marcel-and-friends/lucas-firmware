@@ -120,7 +120,6 @@ void interpret_command_from_host(std::span<char> buffer) {
             }
 
             auto array = v.as<JsonArrayConst>();
-            util::g_machine_size_x = array.size() == 3 ? 470 : 780;
             Station::initialize(array.size());
             Station::for_each([&array](Station& station, usize i) {
                 station.set_blocked(not array[i].as<bool>());

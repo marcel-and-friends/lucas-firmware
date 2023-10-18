@@ -3,6 +3,7 @@
 #include <lucas/Station.h>
 #include <lucas/Boiler.h>
 #include <lucas/MotionController.h>
+#include <lucas/RecipeQueue.h>
 #include <lucas/info/info.h>
 #include <lucas/util/SD.h>
 #include <lucas/sec/sec.h>
@@ -72,7 +73,7 @@ void Spout::tick() {
         } else {
             // BRK is realeased after a little bit to not stress the motor too hard
             if (m_end_pour_timer >= 2s and READ(Pin::BRK) == LOW)
-                WRITE(Pin::BRK, HIGH); // fly high 🕊️
+                digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
         }
     }
 }
@@ -115,7 +116,7 @@ void Spout::setup() {
         pinMode(Pin::BRK, OUTPUT);
         pinMode(Pin::EN, OUTPUT);
         // enable is permanently on, the driver is controlled using only SV and BRK
-        WRITE(Pin::EN, LOW);
+        digitalWrite(Pin::EN, LOW);
 
         // let's make sure we turn everything off at startup :)
         end_pour();
@@ -138,9 +139,11 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
         end_pour();
         return;
     }
+
     m_digital_signal = v;
-    WRITE(Pin::BRK, m_digital_signal > 0 ? HIGH : LOW);
+    digitalWrite(Pin::BRK, m_digital_signal);
     analogWrite(Pin::SV, m_digital_signal);
+    RecipeQueue::the().reset_inactivity();
 }
 
 void Spout::fill_hose(float desired_volume) {

@@ -124,8 +124,8 @@
  * host. Currently Ethernet (-2) is only supported on Teensy 4.1 boards.
  * :[-2, -1, 0, 1, 2, 3, 4, 5, 6, 7]
  */
-// #define SERIAL_PORT_2 -1
-// #define BAUDRATE_2 250000   // :[2400, 9600, 19200, 38400, 57600, 115200,
+// #define SERIAL_PORT_2 1
+// #define BAUDRATE_2 250000 // :[2400, 9600, 19200, 38400, 57600, 115200,
 // 250000, 500000, 1000000] Enable to override BAUDRATE
 
 /**
@@ -975,11 +975,11 @@
 
 // #define THERMAL_PROTECTION_HOTENDS // Enable thermal protection for all
 //  extruders
-#define THERMAL_PROTECTION_BED     // Enable thermal protection for the heated bed
-#define THERMAL_PROTECTION_CHAMBER // Enable thermal protection for the heated
-                                   // chamber
-#define THERMAL_PROTECTION_COOLER  // Enable thermal protection for the laser
-                                   // cooling
+// #define THERMAL_PROTECTION_BED     // Enable thermal protection for the heated bed
+// #define THERMAL_PROTECTION_CHAMBER // Enable thermal protection for the heated
+// chamber
+// #define THERMAL_PROTECTION_COOLER  // Enable thermal protection for the laser
+// cooling
 
 //===========================================================================
 //============================= Mechanical Settings =========================

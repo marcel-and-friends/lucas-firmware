@@ -34,7 +34,7 @@ void L1() {
     const bool associated_with_station = RecipeQueue::the().executing();
     bool dip = false;
 
-    const auto initial_position = planner.get_axis_positions_mm();
+    const auto initial_position = current_position;
     auto final_position = initial_position;
 
     execute_ff("G0 F10000 X%s", -circle_radius);

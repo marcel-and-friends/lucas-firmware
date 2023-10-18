@@ -12,9 +12,17 @@
 #include <ranges>
 
 namespace lucas {
+constexpr auto FIXED_RECIPES_FILE_PATH = "/fixed_recipes.txt";
+
 void RecipeQueue::setup() {
+    for (usize i = 0; i < Station::number_of_stations(); i++) {
+        auto& fixed = m_fixed_recipes[i];
+        fixed.active = true;
+        fixed.recipe.build_from_json(Recipe::standard());
+    }
+
     auto sd = util::SD::make();
-    if (not sd.open("/fixed_recipes.txt", util::SD::OpenMode::Read))
+    if (not sd.open(FIXED_RECIPES_FILE_PATH, util::SD::OpenMode::Read))
         return;
 
     sd.read_into(m_fixed_recipes);
@@ -255,8 +263,6 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     const auto actual_duration = millis() - current_step.starting_tick;
     const auto error = (ideal_duration > actual_duration) ? (ideal_duration - actual_duration) : (actual_duration - ideal_duration);
     LOG_IF(LogQueue, "passo acabou - [duracao = ", actual_duration, "ms | erro = ", error, "ms]");
-
-    m_inactivity_timer.restart();
 
     if (station.status() == Station::Status::Scalding) {
         station.set_status(Station::Status::ConfirmingAttacks, recipe.id());
@@ -503,6 +509,10 @@ void RecipeQueue::cancel_all_recipes() {
         cancel_station_recipe(index);
         return util::Iter::Continue;
     });
+}
+
+void RecipeQueue::reset_inactivity() {
+    m_inactivity_timer.restart();
 }
 
 void RecipeQueue::add_recipe(usize index) {

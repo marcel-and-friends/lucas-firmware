@@ -139,8 +139,8 @@ private:
     // o pin físico da nossa powerled
     pin_t m_powerled_pin = -1;
 
-    // usado para cancelar uma recipe
     util::Timer m_button_held_timer = {};
+    util::Timer m_last_button_press_timer = util::Timer::started();
 
     // se a recipe acabou de ser cancelada e o button ainda nao foi solto
     bool m_recipe_was_cancelled = false;

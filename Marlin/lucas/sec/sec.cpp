@@ -10,12 +10,9 @@
 namespace lucas::sec {
 using BlockedReasonsList = std::array<bool, usize(Reason::Count)>;
 static BlockedReasonsList s_blocked_reasons = {};
-constexpr auto SECURITY_FILE_PATH = "/sec.txt";
-
-using ReturnCondition = bool (*)();
 
 consteval auto make_default_return_conditions() {
-    std::array<ReturnCondition, usize(Reason::Count)> conditions;
+    std::array<bool (*)(), usize(Reason::Count)> conditions;
     // most of them are no return
     std::fill(
         conditions.begin(),
@@ -30,12 +27,14 @@ consteval auto make_default_return_conditions() {
     return conditions;
 }
 
+constexpr auto SECURITY_FILE_PATH = "/sec.txt";
 constexpr auto RETURN_CONDITIONS = make_default_return_conditions();
 
 void setup() {
     auto sd = util::SD::make();
     if (sd.file_exists(SECURITY_FILE_PATH)) {
-        sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Read);
+        if (not sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Read))
+            return;
 
         Reason reason_for_last_failure;
         sd.read_into(reason_for_last_failure);
@@ -72,14 +71,15 @@ void raise_error(Reason reason) {
         RecipeQueue::the().cancel_all_recipes();
 
     auto sd = util::SD::make();
-    sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Write);
-    sd.write_from(reason);
+    if (sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Write))
+        sd.write_from(reason);
 
-    // spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
+    // Spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
     constexpr auto FILTER = TickFilter::RecipeQueue | TickFilter::Boiler | TickFilter::Info;
     util::idle_until(RETURN_CONDITIONS[usize(reason)], FILTER);
 
-    sd.remove_file(SECURITY_FILE_PATH);
+    if (sd.is_open())
+        sd.remove_file(SECURITY_FILE_PATH);
 
     // if this is reached then the security threat has been successfully dealt with
     // let the host know it is no longer active and go back to our old temperature

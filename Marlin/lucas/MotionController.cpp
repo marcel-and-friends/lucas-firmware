@@ -16,7 +16,7 @@ void MotionController::travel_to_station(usize index, float offset) {
     LOG_IF(LogTravel, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     const auto beginning = millis();
-    const auto gcode = util::ff("G0 F50000 Y60 X%s", Station::absolute_position(index) + offset);
+    const auto gcode = util::ff("G0 F25000 Y60 X%s", Station::absolute_position(index) + offset);
     cmd::execute_multiple("G90",
                           gcode,
                           "G91");

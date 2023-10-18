@@ -3,26 +3,28 @@
 #include <lucas/util/SD.h>
 
 namespace lucas::cfg {
+// clang-format off
 constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
-    [LogPour] = {.id = 'D',                 .active = true },
-    [LogTravel] = { .id = 'V',                .active = true },
-    [LogQueue] = { .id = 'F',                .active = true },
-    [LogCalibration] = { .id = 'N',                .active = true },
-    [LogStations] = { .id = 'E',                .active = true },
+    [LogPour] = { .id = 'D', .active = true },
+    [LogTravel] = { .id = 'V', .active = true },
+    [LogQueue] = { .id = 'F', .active = true },
+    [LogCalibration] = { .id = 'N', .active = true },
+    [LogStations] = { .id = 'E', .active = true },
 
-    [LogSerial] = { .id = 'S',                .active = false},
-    [LogWifi] = { .id = 'W',                .active = false},
-    [LogGcode] = { .id = 'G',                .active = false},
-    [LogLn] = { .id = 'L',                .active = false},
+    [LogSerial] = { .id = 'S', .active = false},
+    [LogWifi] = { .id = 'W', .active = false},
+    [LogGcode] = { .id = 'G', .active = false},
+    [LogLn] = { .id = 'L', .active = false},
 
     [LogFlowSensorDataForTesting] = { .id = Option::ID_DEFAULT, .active = false},
     [LogTemperatureForTesting] = { .id = Option::ID_DEFAULT, .active = false},
 
-    [GigaMode] = { .id = 'M',                .active = false},
+    [GigaMode] = { .id = 'M', .active = false},
 
-    [SetTargetTemperatureOnCalibration] = { .id = 'T',                .active = true },
-    [FillDigitalSignalTableOnCalibration] = { .id = 'X',                .active = true },
+    [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
+    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = true },
 });
+// clang-format on
 
 consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
     for (usize i = 1; i < opcoes.size(); ++i)
@@ -45,11 +47,15 @@ void setup() {
     auto sd = util::SD::make();
     if (not sd.file_exists(CFG_FILE_PATH)) {
         s_options = DEFAULT_OPTIONS;
-        sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write);
+        if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write))
+            return;
+
         sd.write_from(s_options);
         LOG("nao tem cfg salva, salvou a default");
     } else {
-        sd.open(CFG_FILE_PATH, util::SD::OpenMode::Read);
+        if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Read))
+            return;
+
         sd.read_into(s_options);
         LOG("cfg lida do cartao");
     }
@@ -57,7 +63,8 @@ void setup() {
 
 void save_options() {
     auto sd = util::SD::make();
-    sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write);
+    if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write))
+        return;
     sd.write_from(s_options);
 }
 

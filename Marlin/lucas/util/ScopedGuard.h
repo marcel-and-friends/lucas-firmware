@@ -8,7 +8,7 @@ class ScopedGuard {
 public:
     ScopedGuard(FN fn)
         : m_fn(std::move(fn)) {}
-    ~ScopedGuard() { std::invoke(m_fn); }
+    ~ScopedGuard() { std::invoke(std::move(m_fn)); }
 
 private:
     FN m_fn;

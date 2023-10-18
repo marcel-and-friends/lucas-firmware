@@ -40,6 +40,10 @@ public:
         return card.removeFile(file_path.data());
     }
 
+    bool is_open() {
+        return card.isFileOpen();
+    }
+
     void close() {
         card.closefile();
     }

@@ -36,9 +36,9 @@ public:
     }
 
     void toggle_based_on(Fn<bool> auto&& condition) {
-        if (is_active() and not std::invoke(condition)) {
+        if (is_active() and not std::invoke(FWD(condition))) {
             stop();
-        } else if (not is_active() and std::invoke(condition)) {
+        } else if (not is_active() and std::invoke(FWD(condition))) {
             start();
         }
     }
