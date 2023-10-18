@@ -77,7 +77,7 @@ Option& get(Options option) {
     return s_options[usize(option)];
 }
 
-OptionList& opcoes() {
+OptionList& options() {
     return s_options;
 }
 }

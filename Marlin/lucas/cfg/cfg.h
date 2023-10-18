@@ -45,7 +45,8 @@ void save_options();
 void reset_options();
 
 Option& get(Options option);
-OptionList& opcoes();
+
+OptionList& options();
 
 #define CFG(option) cfg::get(cfg::Options::option).active
 #define LOG_IF(option, ...)                                          \

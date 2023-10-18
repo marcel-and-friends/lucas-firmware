@@ -63,7 +63,7 @@ void L4() {
     }
 
     bool updated = false;
-    for (auto& option : cfg::opcoes()) {
+    for (auto& option : cfg::options()) {
         if (option.id != cfg::Option::ID_DEFAULT and parser.seen(option.id)) {
             option.active = not option.active;
             LOG("option \'", AS_CHAR(option.id), "\' foi ", not option.active ? "des" : "", "ativada");
