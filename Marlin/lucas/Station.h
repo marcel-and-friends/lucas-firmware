@@ -127,25 +127,19 @@ private:
 private:
     Station() = default;
 
-    // status, usado pelo app
     Status m_status = Status::Free;
 
-    // o pin físico do nosso botão
     pin_t m_button_pin = -1;
 
-    // o pin físico da nossa led
     pin_t m_led_pin = -1;
 
-    // o pin físico da nossa powerled
     pin_t m_powerled_pin = -1;
 
     util::Timer m_button_held_timer = {};
+
+    // this begins as 'started' so that the first button press is not ignored
     util::Timer m_last_button_press_timer = util::Timer::started();
 
-    // se a recipe acabou de ser cancelada e o button ainda nao foi solto
-    bool m_recipe_was_cancelled = false;
-
-    // no app voce tem a possibilidade de bloquear um boca
     bool m_blocked = false;
 };
 }

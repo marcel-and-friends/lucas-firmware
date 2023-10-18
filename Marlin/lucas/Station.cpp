@@ -64,6 +64,7 @@ void Station::tick() {
         const auto button_being_held = util::is_button_held(station.button());
         const auto button_released = not button_being_held and station.m_button_held_timer.is_active();
 
+        // allow one button press per second, this avoids accidental double presses caused by bad electronics
         if (button_released and station.m_last_button_press_timer >= 1s) {
             LOG("BOTAO #", station.index() + 1, ": apertado");
 
