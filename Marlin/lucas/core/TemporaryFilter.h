@@ -6,9 +6,14 @@
 namespace lucas::core {
 class TemporaryFilter {
 public:
-    TemporaryFilter(TickFilter filtros) {
+    TemporaryFilter(TickFilter filters) {
         m_backup = current_filters();
-        apply_filters(filtros | m_backup);
+        apply_filters(filters | m_backup);
+    }
+
+    TemporaryFilter(auto... filters) {
+        m_backup = current_filters();
+        apply_filters((filters | ...) | m_backup);
     }
 
     ~TemporaryFilter() {
