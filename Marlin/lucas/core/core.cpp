@@ -13,6 +13,7 @@
 namespace lucas::core {
 static bool s_calibrated = false;
 static auto s_calibration_phase = CalibrationPhase::None;
+static util::Timer s_time_since_setup;
 
 void setup() {
     planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
@@ -24,14 +25,19 @@ void setup() {
     MotionController::the().travel_to_sewer();
     RecipeQueue::the().setup();
 
-    // remove these two lines when we get to prod!
-    Station::initialize(3);
-    calibrate(93);
-
     inform_calibration_status();
+    s_time_since_setup.start();
 }
 
 void tick() {
+    // 30 seconds have past and the app hasn't sent a calibration request
+    // we're probably on our own then
+    if (s_time_since_setup >= 30s and not s_calibrated) {
+        // FIXME: get the amount of stations from somewhere
+        Station::initialize(3);
+        calibrate(93);
+    }
+
     // boiler
     if (not is_filtered(core::Filter::Boiler))
         Boiler::the().tick();
