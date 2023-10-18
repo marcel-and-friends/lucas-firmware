@@ -356,6 +356,7 @@ void RecipeQueue::cancel_station_recipe(usize index) {
     Station::list().at(index).set_status(Station::Status::Free);
 
     if (index == m_recipe_in_execution) {
+        MotionController::the().invalidate_location();
         auto& recipe = m_queue[m_recipe_in_execution].recipe;
         if (not tick_has_happened(recipe.current_step().starting_tick)) {
             // o passo ainda não foi iniciado, ou seja, não estamos dentro da 'RecipeQueue::execute_current_step'
