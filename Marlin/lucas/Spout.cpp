@@ -290,8 +290,8 @@ void Spout::FlowController::fill_digital_signal_table() {
 
                 return util::Iter::Continue;
             },
-            minimum_flow_info.digital_signal + 25,
-            25);
+            minimum_flow_info.digital_signal + 50,
+            50);
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
         if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
