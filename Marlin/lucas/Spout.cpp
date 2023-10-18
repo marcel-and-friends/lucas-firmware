@@ -190,6 +190,9 @@ void Spout::end_pour() {
 }
 
 void Spout::FlowController::fill_digital_signal_table() {
+    // we don't want to interpret button presses and don't want to continue recipes when we start calibrating
+    core::TemporaryFilter f{ core::Filter::Station, core::Filter::RecipeQueue };
+
     // accepts normalized values between 0.f and 1.f
     const auto report_progress = [this](float progress) {
         m_calibration_progress = progress;
