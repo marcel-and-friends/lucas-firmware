@@ -31,6 +31,28 @@ void setup() {
     inform_calibration_status();
 }
 
+void tick() {
+    // boiler
+    if (not is_filtered(core::Filter::Boiler))
+        Boiler::the().tick();
+
+    // queue
+    if (not is_filtered(core::Filter::RecipeQueue))
+        RecipeQueue::the().tick();
+
+    RecipeQueue::the().remove_finalized_recipes();
+
+    // stations
+    if (not is_filtered(core::Filter::Station))
+        Station::tick();
+
+    Station::update_leds();
+
+    // spout
+    if (not is_filtered(core::Filter::Spout))
+        Spout::the().tick();
+}
+
 void calibrate(float target_temperature) {
     LOG_IF(LogCalibration, "iniciando nivelamento");
     s_calibrated = true;
