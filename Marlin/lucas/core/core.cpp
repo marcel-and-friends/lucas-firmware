@@ -79,6 +79,7 @@ void calibrate(float target_temperature) {
             Spout::FlowController::the().fetch_digital_signal_table_from_file();
     }
 
+    tone(BEEPER_PIN, 7000, 1000);
     s_calibration_phase = CalibrationPhase::None;
     LOG_IF(LogCalibration, "nivelamento finalizado");
 }
