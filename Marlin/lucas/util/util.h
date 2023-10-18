@@ -1,6 +1,5 @@
 #pragma once
 
-#include <lucas/tick.h>
 #include <lucas/core/TemporaryFilter.h>
 #include <src/MarlinCore.h>
 #include <chrono>

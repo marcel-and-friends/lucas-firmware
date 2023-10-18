@@ -186,7 +186,6 @@ void HAL_timer_start(const uint8_t timer_num, const uint32_t frequency) {
     }
 }
 
-    #include <lucas/tick.h>
 void HAL_timer_enable_interrupt(const uint8_t timer_num) {
     if (HAL_timer_initialized(timer_num) && !timer_instance[timer_num]->hasInterrupt()) {
         switch (timer_num) {
