@@ -15,12 +15,6 @@ namespace lucas {
 constexpr auto FIXED_RECIPES_FILE_PATH = "/fixed_recipes.txt";
 
 void RecipeQueue::setup() {
-    for (usize i = 0; i < Station::number_of_stations(); i++) {
-        auto& fixed = m_fixed_recipes[i];
-        fixed.active = true;
-        fixed.recipe.build_from_json(Recipe::standard());
-    }
-
     auto sd = util::SD::make();
     if (not sd.open(FIXED_RECIPES_FILE_PATH, util::SD::OpenMode::Read))
         return;
