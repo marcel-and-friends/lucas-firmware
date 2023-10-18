@@ -62,11 +62,16 @@ void Station::initialize(usize num) {
 
 void Station::tick() {
     for_each([](Station& station) {
+        constexpr auto TIME_TO_CANCEL_RECIPE = 3s;
+
         const auto button_being_held = util::is_button_held(station.button());
-        const auto button_released = not button_being_held and station.m_button_held_timer.is_active();
+        const auto button_clicked = not button_being_held and
+                                    station.m_button_held_timer.is_active() and
+                                    // check if the button has not just been released after canceling the recipe
+                                    station.m_button_held_timer < TIME_TO_CANCEL_RECIPE;
 
         // allow one button press per second, this avoids accidental double presses caused by bad electronics
-        if (button_released and station.m_last_button_press_timer >= 1s) {
+        if (button_clicked and station.m_last_button_press_timer >= 1s) {
             LOG("BOTAO #", station.index() + 1, ": apertado");
 
             switch (station.status()) {
@@ -85,7 +90,7 @@ void Station::tick() {
         }
 
         station.m_button_held_timer.toggle_based_on(button_being_held);
-        if (station.m_button_held_timer >= 3s and RecipeQueue::the().executing_recipe_in_station(station.index()))
+        if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().executing_recipe_in_station(station.index()))
             RecipeQueue::the().cancel_station_recipe(station.index());
 
         return util::Iter::Continue;
@@ -107,7 +112,7 @@ void Station::update_leds() {
 }
 
 float Station::absolute_position(usize index) {
-    const auto first_station_abs_pos = 100.f / MotionController::the().step_ratio_x();
+    const auto first_station_abs_pos = 80.f / MotionController::the().step_ratio_x();
     const auto distance_between_each_station = 160.f / MotionController::the().step_ratio_x();
     return first_station_abs_pos + index * distance_between_each_station;
 }
