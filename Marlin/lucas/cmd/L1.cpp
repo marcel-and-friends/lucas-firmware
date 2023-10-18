@@ -41,11 +41,11 @@ void L1() {
     MotionController::the().finish_movements();
 
     const float total_to_move = (2.f * std::numbers::pi_v<float> * circle_radius) * number_of_repetitions;
-    const float steps_por_mm_ratio = duration ? util::MS_PER_MM / (duration / total_to_move) : 1.f;
+    const float steps_por_mm_ratio = duration ? MotionController::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
-    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y * steps_por_mm_ratio;
+    planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y * steps_por_mm_ratio;
     planner.refresh_positioning();
 
     if (should_pour)
@@ -82,8 +82,8 @@ void L1() {
     MotionController::the().finish_movements();
 
     current_position = final_position;
-    planner.settings.axis_steps_per_mm[X_AXIS] = util::DEFAULT_STEPS_PER_MM_X;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = util::DEFAULT_STEPS_PER_MM_Y;
+    planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y;
     planner.refresh_positioning();
     soft_endstop._enabled = true;
 

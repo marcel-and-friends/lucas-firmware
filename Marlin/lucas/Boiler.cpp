@@ -46,7 +46,7 @@ void Boiler::setup() {
         util::idle_while(
             [timeout = util::Timer::started()] {
                 if (timeout >= 25min)
-                    sec::raise_error(sec::Reason::WaterLevelAlarm);
+                    sec::raise_error(sec::Error::WaterLevelAlarm);
 
                 return s_alarm_triggered;
             });
@@ -61,12 +61,12 @@ void Boiler::setup() {
 
 void Boiler::tick() {
     if (s_alarm_triggered)
-        sec::raise_error(sec::Reason::WaterLevelAlarm);
+        sec::raise_error(sec::Error::WaterLevelAlarm);
 
     constexpr auto MAXIMUM_TEMPERATURE = 105.f;
     const auto temperature = this->temperature();
     if (temperature >= MAXIMUM_TEMPERATURE)
-        sec::raise_error(sec::Reason::MaxTemperatureReached);
+        sec::raise_error(sec::Error::MaxTemperatureReached);
 
     if (not m_target_temperature) {
         control_resistance(false);
@@ -81,7 +81,7 @@ void Boiler::tick() {
             const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
             m_outside_target_range_timer.toggle_based_on(not in_target_range);
             if (m_outside_target_range_timer >= 5min)
-                sec::raise_error(sec::Reason::TemperatureOutOfRange);
+                sec::raise_error(sec::Error::TemperatureOutOfRange);
         }
     }
 }
@@ -131,7 +131,7 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
                     // if the temperature isn't going up let's kill ourselves NOW
                     if (last_checked_temperature > temperature or
                         temperature - last_checked_temperature < 1.f)
-                        sec::raise_error(sec::Reason::TemperatureNotChanging);
+                        sec::raise_error(sec::Error::TemperatureNotChanging);
 
                     last_checked_temperature = temperature;
                 }

@@ -107,8 +107,8 @@ void interpret_command_from_host(std::span<char> buffer) {
             LOG_ERR("comando invalido");
         } break;
         case Command::RequestInfoCalibration: {
-            if (sec::active_error() != sec::Reason::Invalid) {
-                sec::inform_active_error(true);
+            if (sec::has_active_error()) {
+                sec::inform_active_error();
             } else {
                 core::inform_calibration_status();
             }

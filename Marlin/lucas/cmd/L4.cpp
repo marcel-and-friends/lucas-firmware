@@ -23,12 +23,12 @@ void L4() {
                 return;
 
             const auto reason_number = parser.value_int();
-            if (reason_number < 0 or reason_number >= usize(sec::Reason::Count)) {
-                LOG_ERR("reason invalida - max = ", usize(sec::Reason::Count));
+            if (reason_number < 0 or reason_number >= usize(sec::Error::Count)) {
+                LOG_ERR("reason invalida - max = ", usize(sec::Error::Count));
                 return;
             }
 
-            const auto reason = sec::Reason(reason_number);
+            const auto reason = sec::Error(reason_number);
             sec::toggle_reason_block(reason);
             LOG("razao #", reason_number, " foi ", sec::is_reason_blocked(reason) ? "bloqueada" : "desbloqueada");
         } break;

@@ -10,7 +10,7 @@ const char* ff(const char* str, float valor) {
     return fmt(str, buffer);
 }
 
-bool is_button_held(s32 pin) {
+bool is_button_held(pin_t pin) {
     return digitalRead(pin) == LOW;
 }
 

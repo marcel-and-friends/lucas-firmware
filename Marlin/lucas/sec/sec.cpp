@@ -8,11 +8,11 @@
 #include <lucas/RecipeQueue.h>
 
 namespace lucas::sec {
-using BlockedReasonsList = std::array<bool, usize(Reason::Count)>;
+using BlockedReasonsList = std::array<bool, usize(Error::Count)>;
 static BlockedReasonsList s_blocked_reasons = {};
 
 consteval auto make_default_return_conditions() {
-    std::array<bool (*)(), usize(Reason::Count)> conditions;
+    std::array<bool (*)(), usize(Error::Count)> conditions;
     // most of them are no return
     std::fill(
         conditions.begin(),
@@ -21,7 +21,7 @@ consteval auto make_default_return_conditions() {
             return false;
         });
     // except the water level one
-    conditions[usize(Reason::WaterLevelAlarm)] = +[] {
+    conditions[usize(Error::WaterLevelAlarm)] = +[] {
         return not Boiler::the().is_alarm_triggered();
     };
     return conditions;
@@ -36,16 +36,16 @@ void setup() {
         if (not sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Read))
             return;
 
-        Reason reason_for_last_failure;
+        Error reason_for_last_failure;
         sd.read_into(reason_for_last_failure);
 
         raise_error(reason_for_last_failure);
     }
 }
 
-static Reason s_active_error = Reason::Invalid;
+static Error s_active_error = Error::Invalid;
 
-void raise_error(Reason reason) {
+void raise_error(Error reason) {
     if (s_blocked_reasons[usize(reason)]) {
         LOG_ERR("essa razao foi bloqueada");
         return;
@@ -54,7 +54,7 @@ void raise_error(Reason reason) {
     // alarm was raised! oh no
     // inform the host that something has happened so that the user can be informed too
     s_active_error = reason;
-    inform_active_error(true);
+    inform_active_error();
 
     // store the temperature we were at when the alarm was triggered
     // this way we can (potentially) go back to it
@@ -83,32 +83,32 @@ void raise_error(Reason reason) {
 
     // if this is reached then the security threat has been successfully dealt with
     // let the host know it is no longer active and go back to our old temperature
-    inform_active_error(false);
-    s_active_error = Reason::Invalid;
+    s_active_error = Error::Invalid;
+    inform_active_error();
 
     Boiler::the().set_target_temperature_and_wait(old_temperature);
 }
 
-Reason active_error() {
-    return s_active_error;
+bool has_active_error() {
+    return s_active_error != Error::Invalid;
 }
 
-void inform_active_error(bool state) {
+void inform_active_error() {
     info::send(
         info::Event::Security,
-        [state](JsonObject o) {
+        [](JsonObject o) {
             o["reason"] = s32(s_active_error);
-            o["active"] = state;
-            if (s_active_error == Reason::WaterLevelAlarm)
+            o["active"] = has_active_error();
+            if (s_active_error == Error::WaterLevelAlarm)
                 o["currentTemp"] = Boiler::the().temperature();
         });
 }
 
-bool is_reason_blocked(Reason reason) {
+bool is_reason_blocked(Error reason) {
     return s_blocked_reasons[usize(reason)];
 }
 
-void toggle_reason_block(Reason reason) {
+void toggle_reason_block(Error reason) {
     s_blocked_reasons[usize(reason)] = not s_blocked_reasons[usize(reason)];
 }
 }

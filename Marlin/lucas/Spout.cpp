@@ -48,7 +48,7 @@ void Spout::tick() {
                 return;
             } else if (poured_so_far() == 0.f) {
                 // no water? bad motor? bad sensor? bad pump? who knows!
-                sec::raise_error(sec::Reason::PourVolumeMismatch);
+                sec::raise_error(sec::Error::PourVolumeMismatch);
             }
 
             const auto elapsed_seconds = time_elapsed().count() / 1000.f;
@@ -62,7 +62,7 @@ void Spout::tick() {
                 // 50% is a pretty generous margin, could try to go lower
                 constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
                 if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
-                    sec::raise_error(sec::Reason::PourVolumeMismatch);
+                    sec::raise_error(sec::Error::PourVolumeMismatch);
             }
 
             // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
@@ -242,7 +242,7 @@ void Spout::FlowController::fill_digital_signal_table() {
                         digital_signal_mod *= -1;
 
                     if (++flow_decreased_counter >= 5)
-                        sec::raise_error(sec::Reason::PourVolumeMismatch);
+                        sec::raise_error(sec::Error::PourVolumeMismatch);
 
                     LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
                     return util::Iter::Continue;

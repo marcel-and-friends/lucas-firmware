@@ -21,6 +21,11 @@ public:
 
     float step_ratio_y() const;
 
+    static constexpr float MS_PER_MM = 12.41f;
+    static constexpr float DEFAULT_STEPS_PER_MM_X = 44.5f;
+    static constexpr float DEFAULT_STEPS_PER_MM_Y = 22.5f;
+
+
 private:
     static constexpr auto INVALID_LOCATION = static_cast<usize>(-1);
     static constexpr auto SEWER_LOCATION = Station::MAXIMUM_NUMBER_OF_STATIONS + 1;
