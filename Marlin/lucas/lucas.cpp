@@ -28,4 +28,8 @@ void tick() {
     if (not is_filtered(core::Filter::Info))
         info::tick();
 }
+
+SetupState setup_state() {
+    return s_setup_state;
+}
 }

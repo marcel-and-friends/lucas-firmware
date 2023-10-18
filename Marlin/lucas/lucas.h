@@ -14,9 +14,5 @@ void setup();
 
 void tick();
 
-void calibrate();
-
 SetupState setup_state();
-
-bool initializing();
 }

@@ -105,9 +105,6 @@ public:
     pin_t led() const { return m_led_pin; }
     pin_t powerled() const { return m_powerled_pin; }
 
-    bool recipe_was_cancelled() const { return m_recipe_was_cancelled; }
-    void set_recipe_was_cancelled(bool b) { m_recipe_was_cancelled = b; }
-
     bool blocked() const { return m_blocked; }
     void set_blocked(bool);
 

@@ -37,13 +37,13 @@ void MotionController::travel_to_sewer() {
                           "G0 F5000 Y60 X5",
                           "G91");
     finish_movements();
-    m_current_location = Station::INVALID;
+    m_current_location = SEWER_LOCATION;
 
     LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
 }
 
 void MotionController::home() {
-    m_current_location = Station::INVALID;
+    m_current_location = INVALID_LOCATION;
     cmd::execute("G28 XY");
 }
 
