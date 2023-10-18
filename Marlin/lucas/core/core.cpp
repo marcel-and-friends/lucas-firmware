@@ -60,6 +60,9 @@ void tick() {
 }
 
 void calibrate(float target_temperature) {
+    // we don't want to interpret button presses and don't want to continue recipes when we start calibrating
+    core::TemporaryFilter f{ core::Filter::Station, core::Filter::RecipeQueue };
+
     LOG_IF(LogCalibration, "iniciando nivelamento");
     s_calibrated = true;
 
