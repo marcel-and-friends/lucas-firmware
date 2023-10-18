@@ -4,13 +4,19 @@
 #include <lucas/cfg/cfg.h>
 
 namespace lucas {
+enum class SetupState {
+    NotStarted,
+    Started,
+    Done,
+};
+
 void setup();
 
 void tick();
 
 void calibrate();
 
-bool initialized();
+SetupState setup_state();
 
 bool initializing();
 }

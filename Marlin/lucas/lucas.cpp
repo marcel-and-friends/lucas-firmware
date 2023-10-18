@@ -8,12 +8,11 @@
 #include <lucas/core/core.h>
 
 namespace lucas {
-static bool s_initialized = false;
-static bool s_initializing = false;
+static auto s_setup_state = SetupState::NotStarted;
 
 void setup() {
     core::TemporaryFilter f{ core::Filter::Interaction };
-    s_initializing = true;
+    s_setup_state = SetupState::Started;
 
     cfg::setup();
     serial::setup();
@@ -21,7 +20,7 @@ void setup() {
     info::setup();
     core::setup();
 
-    s_initialized = true;
+    s_setup_state = SetupState::Done;
 }
 
 void tick() {
@@ -53,13 +52,5 @@ void tick() {
         if (not is_filtered(core::Filter::Info))
             info::tick();
     }
-}
-
-bool initialized() {
-    return s_initialized;
-}
-
-bool initializing() {
-    return s_initializing;
 }
 }
