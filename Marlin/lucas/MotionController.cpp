@@ -10,7 +10,7 @@ void MotionController::travel_to_station(const Station& station, float offset) {
 }
 
 void MotionController::travel_to_station(usize index, float offset) {
-    if (m_current_station == index)
+    if (m_current_location == index)
         return;
 
     LOG_IF(LogTravel, "viajando - [estacao = ", index, " | offset = ", offset, "]");
@@ -21,12 +21,15 @@ void MotionController::travel_to_station(usize index, float offset) {
                           gcode,
                           "G91");
     finish_movements();
-    m_current_station = index;
+    m_current_location = index;
 
     LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
 }
 
 void MotionController::travel_to_sewer() {
+    if (m_current_location == SEWER_LOCATION)
+        return;
+
     LOG_IF(LogTravel, "viajando para o esgoto");
 
     const auto beginning = millis();
@@ -34,14 +37,14 @@ void MotionController::travel_to_sewer() {
                           "G0 F5000 Y60 X5",
                           "G91");
     finish_movements();
-    m_current_station = Station::INVALID;
+    m_current_location = Station::INVALID;
 
     LOG_IF(LogTravel, "chegou - [tempo = ", millis() - beginning, "ms]");
 }
 
 void MotionController::home() {
+    m_current_location = Station::INVALID;
     cmd::execute("G28 XY");
-    m_current_station = Station::INVALID;
 }
 
 void MotionController::finish_movements() const {

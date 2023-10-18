@@ -18,6 +18,9 @@ public:
     void home();
 
 private:
-    usize m_current_station = Station::INVALID;
+    static constexpr auto INVALID_LOCATION = static_cast<usize>(-1);
+    static constexpr auto SEWER_LOCATION = Station::MAXIMUM_NUMBER_OF_STATIONS + 1;
+
+    usize m_current_location = INVALID_LOCATION;
 };
 }
