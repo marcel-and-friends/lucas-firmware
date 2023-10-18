@@ -12,7 +12,7 @@ static bool s_initialized = false;
 static bool s_initializing = false;
 
 void setup() {
-    core::TemporaryFilter f{ TickFilter::Interaction };
+    core::TemporaryFilter f{ core::Filter::Interaction };
     s_initializing = true;
 
     cfg::setup();

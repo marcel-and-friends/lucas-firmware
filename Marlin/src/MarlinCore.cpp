@@ -420,7 +420,7 @@ inline void finishSDPrinting() {
 #include <lucas/serial/serial.h>
 inline void manage_inactivity(const bool no_stepper_sleep = false) {
     if (lucas::initialized()) {
-        if (not lucas::filtered(lucas::TickFilter::SerialHooks)) {
+        if (not lucas::core::is_filtered(lucas::core::Filter::SerialHooks)) {
             lucas::serial::hooks();
         } else {
             lucas::serial::clean_serial();

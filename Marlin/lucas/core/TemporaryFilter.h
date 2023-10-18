@@ -1,12 +1,12 @@
 #pragma once
 
-#include <lucas/TickFilter.h>
+#include <lucas/core/Filter.h>
 #include <src/core/serial.h>
 
 namespace lucas::core {
 class TemporaryFilter {
 public:
-    TemporaryFilter(TickFilter filters) {
+    TemporaryFilter(core::Filter filters) {
         m_backup = current_filters();
         apply_filters(filters | m_backup);
     }
@@ -21,6 +21,6 @@ public:
     }
 
 private:
-    TickFilter m_backup;
+    core::Filter m_backup;
 };
 }

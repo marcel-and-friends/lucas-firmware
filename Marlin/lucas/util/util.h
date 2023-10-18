@@ -49,7 +49,7 @@ float distance_between_each_station();
 
 float normalize(float v, float min, float max);
 
-void idle_for(const auto duration, TickFilter filtros = TickFilter::None) {
+void idle_for(const auto duration, core::Filter filtros = core::Filter::None) {
     core::TemporaryFilter f{ filtros };
     const auto ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
     const auto comeco = millis();
@@ -62,13 +62,13 @@ bool elapsed(millis_t last) {
     return millis() - last >= INTERVAL;
 }
 
-inline void idle_while(Fn<bool> auto&& callback, TickFilter filters = TickFilter::None) {
+inline void idle_while(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
     core::TemporaryFilter f{ filters };
     while (std::invoke(FWD(callback)))
         idle();
 }
 
-inline void idle_until(Fn<bool> auto&& callback, TickFilter filters = TickFilter::None) {
+inline void idle_until(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
     idle_while(std::not_fn(FWD(callback)), filters);
 }
 

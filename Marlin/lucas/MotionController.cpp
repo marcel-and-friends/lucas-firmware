@@ -45,6 +45,6 @@ void MotionController::home() {
 }
 
 void MotionController::finish_movements() const {
-    util::idle_while(&Planner::busy, TickFilter::RecipeQueue);
+    util::idle_while(&Planner::busy, core::Filter::RecipeQueue);
 }
 }

@@ -75,7 +75,7 @@ void raise_error(Reason reason) {
         sd.write_from(reason);
 
     // Spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
-    constexpr auto FILTER = TickFilter::RecipeQueue | TickFilter::Boiler | TickFilter::Info;
+    constexpr auto FILTER = core::Filter::RecipeQueue | core::Filter::Boiler | core::Filter::Info;
     util::idle_until(RETURN_CONDITIONS[usize(reason)], FILTER);
 
     if (sd.is_open())

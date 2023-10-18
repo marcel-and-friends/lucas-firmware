@@ -2,7 +2,7 @@
 #include <src/gcode/parser.h>
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
-#include <lucas/TickFilter.h>
+#include <lucas/core/Filter.h>
 #include <lucas/Station.h>
 #include <src/libs/buzzer.h>
 
@@ -21,7 +21,7 @@ void L5() {
         LOG("DESPEJO: ", status ? "iniciou" : "terminou");
     } break;
     case 1: {
-        auto filter = status ? TickFilter::Boiler : TickFilter::None;
+        auto filter = status ? core::Filter::Boiler : core::Filter::None;
         apply_filters(filter);
         Boiler::the().control_resistance(status);
         LOG("RESISTENCIA: ", status ? "ligou" : "desligou");

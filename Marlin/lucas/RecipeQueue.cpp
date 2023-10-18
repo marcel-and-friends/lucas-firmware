@@ -244,7 +244,7 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
         m_recipe_in_execution = station.index();
 
         {
-            core::TemporaryFilter f{ TickFilter::RecipeQueue }; // nada de tick()!
+            core::TemporaryFilter f{ core::Filter::RecipeQueue }; // nada de tick()!
             recipe.execute_current_step();
         }
 
@@ -414,7 +414,7 @@ void RecipeQueue::try_heating_hose_after_inactivity() {
                 }
                 return Spout::the().pouring();
             },
-            TickFilter::RecipeQueue);
+            core::Filter::RecipeQueue);
 
         m_inactivity_timer.restart();
 
