@@ -13,7 +13,6 @@ enum class Filter : u8 {
     SerialHooks = 1 << 4,
     Boiler = 1 << 5,
 
-    Interaction = RecipeQueue | Station | SerialHooks,
     All = RecipeQueue | Station | Spout | Info | SerialHooks | Boiler,
 };
 

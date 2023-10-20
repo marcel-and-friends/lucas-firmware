@@ -3,13 +3,6 @@
 #include <lucas/types.h>
 
 namespace lucas::core {
-enum class CalibrationPhase {
-    WaitingForTemperatureToStabilize,
-    FillingDigitalSignalTable,
-
-    None
-};
-
 void setup();
 
 void tick();

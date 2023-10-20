@@ -6,7 +6,16 @@
 namespace lucas {
 class Boiler : public util::Singleton<Boiler> {
 public:
+    enum Pin {
+        WaterLevelAlarm = PE12,
+        // PIN_WILSON
+        Resistance = PC14
+        // Resistance = PA0
+    };
+
     void setup();
+
+    void setup_pins();
 
     void tick();
 

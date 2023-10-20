@@ -26,6 +26,12 @@ void tick() {
         }
     }
 
+    static u32 s_stored_pulse_counter_for_logging = 0;
+    if (CFG(LogFlowSensorDataForTesting) and s_stored_pulse_counter_for_logging != Spout::s_pulse_counter) {
+        LOG("SENSOR_FLUXO: ", Spout::s_pulse_counter);
+        s_stored_pulse_counter_for_logging = Spout::s_pulse_counter;
+    }
+
     JsonDocument doc;
     bool updated = false;
     Report::for_each([&](Report& report) {

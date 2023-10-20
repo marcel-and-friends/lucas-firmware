@@ -2054,8 +2054,10 @@ void Planner::quick_resume() {
 
 #endif
 
+#include <lucas/cfg/cfg.h>
 void Planner::endstop_triggered(const AxisEnum axis) {
-    SERIAL_ECHOLNPGM("ENDSTOP #", AS_CHAR(axis + 'X'), ": ativado");
+    if (CFG(MaintenanceMode))
+        SERIAL_ECHOLNPGM("ENDSTOP #", AS_CHAR(axis + 'X'), ": ativado");
     // Record stepper position and discard the current block
     stepper.endstop_triggered(axis);
 }

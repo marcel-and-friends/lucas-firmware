@@ -8,9 +8,6 @@
 #include <lucas/RecipeQueue.h>
 
 namespace lucas::sec {
-using BlockedReasonsList = std::array<bool, usize(Error::Count)>;
-static BlockedReasonsList s_blocked_reasons = {};
-
 consteval auto make_default_return_conditions() {
     std::array<bool (*)(), usize(Error::Count)> conditions;
     // most of them are no return
@@ -46,11 +43,6 @@ void setup() {
 static Error s_active_error = Error::Invalid;
 
 void raise_error(Error reason) {
-    if (s_blocked_reasons[usize(reason)]) {
-        LOG_ERR("essa razao foi bloqueada");
-        return;
-    }
-
     // alarm was raised! oh no
     // inform the host that something has happened so that the user can be informed too
     s_active_error = reason;
@@ -104,11 +96,9 @@ void inform_active_error() {
         });
 }
 
-bool is_reason_blocked(Error reason) {
-    return s_blocked_reasons[usize(reason)];
-}
-
-void toggle_reason_block(Error reason) {
-    s_blocked_reasons[usize(reason)] = not s_blocked_reasons[usize(reason)];
+void remove_stored_error() {
+    auto sd = util::SD::make();
+    if (sd.file_exists(SECURITY_FILE_PATH))
+        sd.remove_file(SECURITY_FILE_PATH);
 }
 }

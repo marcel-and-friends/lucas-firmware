@@ -11,7 +11,5 @@ bool has_active_error();
 
 void inform_active_error();
 
-bool is_reason_blocked(Error);
-
-void toggle_reason_block(Error);
+void remove_stored_error();
 }

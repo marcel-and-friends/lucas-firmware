@@ -72,26 +72,31 @@ void Station::tick() {
 
         // allow one button press per second, this avoids accidental double presses caused by bad electronics
         if (button_clicked and station.m_last_button_press_timer >= 1s) {
-            LOG("BOTAO #", station.index() + 1, ": apertado");
-
-            switch (station.status()) {
-            case Status::Free:
-            case Status::ConfirmingScald:
-            case Status::ConfirmingAttacks:
-                RecipeQueue::the().map_station_recipe(station.index());
-                break;
-            case Status::Ready:
-                station.set_status(Status::Free);
-                break;
-            default:
-                break;
+            if (not CFG(MaintenanceMode)) {
+                switch (station.status()) {
+                case Status::Free:
+                case Status::ConfirmingScald:
+                case Status::ConfirmingAttacks:
+                    RecipeQueue::the().map_station_recipe(station.index());
+                    break;
+                case Status::Ready:
+                    station.set_status(Status::Free);
+                    break;
+                default:
+                    break;
+                }
+            } else {
+                LOG("BOTAO #", station.index() + 1, ": apertado");
             }
+
             station.m_last_button_press_timer.restart();
         }
 
         station.m_button_held_timer.toggle_based_on(button_being_held);
-        if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().executing_recipe_in_station(station.index()))
-            RecipeQueue::the().cancel_station_recipe(station.index());
+        if (not CFG(MaintenanceMode)) {
+            if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().executing_recipe_in_station(station.index()))
+                RecipeQueue::the().cancel_station_recipe(station.index());
+        }
 
         return util::Iter::Continue;
     });
@@ -181,13 +186,17 @@ void Station::set_status(Status status, std::optional<u32> receita_id) {
     switch (m_status) {
     case Status::Free:
         digitalWrite(m_led_pin, LOW);
+        digitalWrite(m_powerled_pin, HIGH);
         return;
     case Status::Scalding:
     case Status::Attacking:
     case Status::Finalizing:
         digitalWrite(m_led_pin, HIGH);
+        digitalWrite(m_powerled_pin, LOW);
         return;
     default:
+        digitalWrite(m_led_pin, LOW);
+        digitalWrite(m_powerled_pin, HIGH);
         return;
     }
 }

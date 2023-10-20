@@ -14,20 +14,22 @@ void L5() {
     switch (test_type) {
     case 0: {
         if (status) {
-            Spout::the().pour_with_digital_signal(10min, value);
+            analogWrite(Spout::Pin::SV, value);
+            digitalWrite(Spout::Pin::BRK, HIGH);
+            digitalWrite(Spout::Pin::EN, LOW);
         } else {
-            Spout::the().end_pour();
+            analogWrite(Spout::Pin::SV, LOW);
+            digitalWrite(Spout::Pin::BRK, LOW);
+            digitalWrite(Spout::Pin::EN, LOW);
         }
         LOG("DESPEJO: ", status ? "iniciou" : "terminou");
     } break;
     case 1: {
-        auto filter = status ? core::Filter::Boiler : core::Filter::None;
-        apply_filters(filter);
-        Boiler::the().control_resistance(status);
+        digitalWrite(Boiler::Pin::Resistance, status);
         LOG("RESISTENCIA: ", status ? "ligou" : "desligou");
     } break;
     case 2: {
-        static bool s_leds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
+        static bool s_leds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { HIGH, HIGH, HIGH, HIGH, HIGH };
 
         auto& state = s_leds_state[value];
         digitalWrite(Station::list().at(value).led(), state);
@@ -37,7 +39,7 @@ void L5() {
         state = not state;
     } break;
     case 3: {
-        static bool s_powerleds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { true, true, true, true, true };
+        static bool s_powerleds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { LOW, LOW, LOW, LOW, LOW };
 
         auto& state = s_powerleds_state[value];
         digitalWrite(Station::list().at(value).powerled(), state);
@@ -58,6 +60,12 @@ void L5() {
         status ? tone(BEEPER_PIN, value, 10000) : noTone(BEEPER_PIN, true);
         LOG("BEEPER: ", status ? "ativado" : "desativado");
     } break;
+    case 7: {
+        status ? Boiler::the().set_target_temperature(93) : Boiler::the().turn_off_resistance();
+        LOG("BOILER: maquina vai ", status ? "aquecer" : "esfriar");
+    } break;
+    default:
+        break;
     };
 }
 }

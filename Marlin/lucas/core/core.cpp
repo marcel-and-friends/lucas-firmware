@@ -11,13 +11,26 @@
 #include <src/module/planner.h>
 
 namespace lucas::core {
-static bool s_calibrated = false;
+enum class CalibrationPhase {
+    None,
+    WaitingForTemperatureToStabilize,
+    FillingDigitalSignalTable,
+    Done
+};
+
 static auto s_calibration_phase = CalibrationPhase::None;
-static util::Timer s_time_since_setup;
+static util::Timer s_time_since_setup = {};
 
 void setup() {
     planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X;
     planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y;
+
+    if (CFG(MaintenanceMode)) {
+        Spout::the().setup_pins();
+        Boiler::the().setup_pins();
+        Station::initialize(5);
+        return;
+    }
 
     Boiler::the().setup();
     Spout::the().setup();
@@ -30,9 +43,17 @@ void setup() {
 }
 
 void tick() {
+    if (CFG(MaintenanceMode)) {
+        // we need this for button press logs
+        Station::tick();
+        if (Boiler::the().target_temperature())
+            Boiler::the().tick();
+        return;
+    }
+
     // 30 seconds have past and the app hasn't sent a calibration request
     // we're probably on our own then
-    if (s_time_since_setup >= 30s and not s_calibrated) {
+    if (s_time_since_setup >= 30s and s_calibration_phase == CalibrationPhase::None) {
         // FIXME: get the amount of stations from somewhere
         Station::initialize(3);
         calibrate(93);
@@ -64,7 +85,6 @@ void calibrate(float target_temperature) {
     core::TemporaryFilter f{ core::Filter::Station, core::Filter::RecipeQueue };
 
     LOG_IF(LogCalibration, "iniciando nivelamento");
-    s_calibrated = true;
 
     if (CFG(SetTargetTemperatureOnCalibration)) {
         s_calibration_phase = CalibrationPhase::WaitingForTemperatureToStabilize;
@@ -79,8 +99,8 @@ void calibrate(float target_temperature) {
             Spout::FlowController::the().fetch_digital_signal_table_from_file();
     }
 
+    s_calibration_phase = CalibrationPhase::Done;
     tone(BEEPER_PIN, 7000, 1000);
-    s_calibration_phase = CalibrationPhase::None;
     LOG_IF(LogCalibration, "nivelamento finalizado");
 }
 
@@ -88,7 +108,7 @@ void inform_calibration_status() {
     info::send(
         info::Event::Calibration,
         [](JsonObject o) {
-            o["needsCalibration"] = not s_calibrated;
+            o["needsCalibration"] = s_calibration_phase == CalibrationPhase::None;
         });
 
     switch (s_calibration_phase) {

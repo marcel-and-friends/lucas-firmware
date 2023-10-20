@@ -9,6 +9,13 @@ namespace lucas {
 class Station;
 class Spout : public util::Singleton<Spout> {
 public:
+    enum Pin {
+        SV = PA5,
+        EN = PA6,
+        BRK = PE8,
+        FlowSensor = PE11
+    };
+
     void tick();
 
     using DigitalSignal = u32;
@@ -35,7 +42,11 @@ public:
 
     void setup();
 
+    void setup_pins();
+
     bool pouring() const { return m_pouring; }
+
+    static volatile inline u32 s_pulse_counter = 0;
 
     class FlowController : public util::Singleton<FlowController> {
     public:
@@ -168,7 +179,6 @@ private:
 
     void fill_hose(float desired_volume = 0.f);
 
-    static volatile inline u32 s_pulse_counter = 0;
     u32 m_pulses_at_start_of_pour = 0;
     u32 m_pulses_at_end_of_pour = 0;
 

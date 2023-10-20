@@ -27,6 +27,7 @@ enum Options {
     LogTemperatureForTesting,
 
     GigaMode,
+    MaintenanceMode,
 
     SetTargetTemperatureOnCalibration,
     FillDigitalSignalTableOnCalibration,
@@ -48,16 +49,16 @@ Option& get(Options option);
 
 OptionList& options();
 
-#define CFG(option) cfg::get(cfg::Options::option).active
-#define LOG_IF(option, ...)                                          \
-    do {                                                             \
-        if (CFG(option)) {                                           \
-            const auto& option_cfg = cfg::get(cfg::Options::option); \
-            if (option_cfg.id != cfg::Option::ID_DEFAULT)            \
-                SERIAL_CHAR(option_cfg.id);                          \
-            else                                                     \
-                SERIAL_CHAR('?');                                    \
-            LOG("", ": ", __VA_ARGS__);                              \
-        }                                                            \
+#define CFG(option) ::lucas::cfg::get(::lucas::cfg::Options::option).active
+#define LOG_IF(option, ...)                                                            \
+    do {                                                                               \
+        if (CFG(option)) {                                                             \
+            const auto& option_cfg = ::lucas::cfg::get(::lucas::cfg::Options::option); \
+            if (option_cfg.id != ::lucas::cfg::Option::ID_DEFAULT)                     \
+                SERIAL_CHAR(option_cfg.id);                                            \
+            else                                                                       \
+                SERIAL_CHAR('?');                                                      \
+            SERIAL_ECHOLNPGM("", ": ", __VA_ARGS__);                                   \
+        }                                                                              \
     } while (false)
 }

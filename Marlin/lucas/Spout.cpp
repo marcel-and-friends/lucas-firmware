@@ -11,20 +11,7 @@
 #include <src/module/planner.h>
 
 namespace lucas {
-enum Pin {
-    SV = PA5,
-    EN = PA6,
-    BRK = PE8,
-    FlowSensor = PE11
-};
-
 void Spout::tick() {
-    static u32 s_stored_pulse_counter_for_logging = 0;
-    if (CFG(LogFlowSensorDataForTesting) and s_stored_pulse_counter_for_logging != s_pulse_counter) {
-        LOG("SENSOR_FLUXO: ", s_pulse_counter);
-        s_stored_pulse_counter_for_logging = s_pulse_counter;
-    }
-
     if (m_pouring) {
         const auto time_elapsed = [this] {
             return m_begin_pour_timer.elapsed();
@@ -108,29 +95,29 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
 }
 
 void Spout::setup() {
-    { // driver setup
-        // 12 bit DAC pins!
-        analogWriteResolution(12);
+    setup_pins();
+}
 
-        pinMode(Pin::SV, OUTPUT);
-        pinMode(Pin::BRK, OUTPUT);
-        pinMode(Pin::EN, OUTPUT);
-        // enable is permanently on, the driver is controlled using only SV and BRK
-        digitalWrite(Pin::EN, LOW);
+void Spout::setup_pins() {
+    // driver setup
+    analogWriteResolution(12);
 
-        // let's make sure we turn everything off at startup :)
-        end_pour();
-    }
+    pinMode(Pin::SV, OUTPUT);
+    pinMode(Pin::BRK, OUTPUT);
+    pinMode(Pin::EN, OUTPUT);
+    // enable is permanently on, the driver is controlled using only SV and BRK
+    analogWrite(Pin::SV, LOW);
+    digitalWrite(Pin::BRK, HIGH);
+    digitalWrite(Pin::EN, LOW);
 
-    { // flow sensor setup
-        pinMode(Pin::FlowSensor, INPUT);
-        attachInterrupt(
-            digitalPinToInterrupt(Pin::FlowSensor),
-            +[] {
-                ++s_pulse_counter;
-            },
-            RISING);
-    }
+    // flow sensor
+    pinMode(Pin::FlowSensor, INPUT);
+    attachInterrupt(
+        digitalPinToInterrupt(Pin::FlowSensor),
+        +[] {
+            ++s_pulse_counter;
+        },
+        RISING);
 }
 
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
@@ -290,8 +277,8 @@ void Spout::FlowController::fill_digital_signal_table() {
 
                 return util::Iter::Continue;
             },
-            minimum_flow_info.digital_signal + 50,
-            50);
+            minimum_flow_info.digital_signal + 25,
+            25);
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
         if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {

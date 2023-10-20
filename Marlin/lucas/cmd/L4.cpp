@@ -19,18 +19,8 @@ void L4() {
             LOG("opcoes foram resetadas e salvas");
         } break;
         case 2: {
-            if (not parser.seenval('R'))
-                return;
-
-            const auto reason_number = parser.value_int();
-            if (reason_number < 0 or reason_number >= usize(sec::Error::Count)) {
-                LOG_ERR("reason invalida - max = ", usize(sec::Error::Count));
-                return;
-            }
-
-            const auto reason = sec::Error(reason_number);
-            sec::toggle_reason_block(reason);
-            LOG("razao #", reason_number, " foi ", sec::is_reason_blocked(reason) ? "bloqueada" : "desbloqueada");
+            sec::remove_stored_error();
+            LOG("erro salvo foi removido");
         } break;
         case 3: {
             if (not parser.seenval('P'))

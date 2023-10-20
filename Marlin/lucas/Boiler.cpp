@@ -6,36 +6,26 @@
 #include <src/module/temperature.h>
 
 namespace lucas {
-enum Pin {
-    WaterLevelAlarm = PE13,
-    // PIN_WILSON
-    Resistance = PC14
-    // Resistance = PA0
-};
-
 static bool s_alarm_triggered = false;
 
 void Boiler::setup() {
-    pinMode(Pin::WaterLevelAlarm, INPUT);
-    pinMode(Pin::Resistance, OUTPUT);
-
+    setup_pins();
     /* go back to this when everything is setup
-    s_alarm_triggered = READ(Pin::WaterLevelAlarm);
+    s_alarm_triggered = digitalRead(Pin::WaterLevelAlarm);
     attachInterrupt(
         digitalPinToInterrupt(Pin::WaterLevelAlarm),
         +[] {
-            s_alarm_triggered = READ(Pin::WaterLevelAlarm);
+            s_alarm_triggered = digitalRead(Pin::WaterLevelAlarm);
         },
         CHANGE);
+    attachInterrupt(
+        digitalPinToInterrupt(Pin::WaterLevelAlarm),
+        +[] {
+            s_alarm_triggered = not s_alarm_triggered;
+        },
+        FALLING);
     */
-    // attachInterrupt(
-    //     digitalPinToInterrupt(Pin::WaterLevelAlarm),
-    //     +[] {
-    //         s_alarm_triggered = not s_alarm_triggered;
-    //     },
-    //     FALLING);
 
-    control_resistance(false);
     if (s_alarm_triggered) {
         info::send(
             info::Event::Boiler,
@@ -59,6 +49,15 @@ void Boiler::setup() {
     }
 }
 
+void Boiler::setup_pins() {
+    pinMode(Pin::Resistance, OUTPUT);
+    digitalWrite(Boiler::Pin::Resistance, LOW);
+
+    pinMode(Pin::WaterLevelAlarm, OUTPUT);
+    analogWrite(Boiler::Pin::WaterLevelAlarm, LOW);
+    pinMode(Pin::WaterLevelAlarm, INPUT);
+}
+
 void Boiler::tick() {
     if (s_alarm_triggered)
         sec::raise_error(sec::Error::WaterLevelAlarm);
@@ -75,13 +74,15 @@ void Boiler::tick() {
 
     control_resistance(temperature < (m_target_temperature - m_hysteresis));
 
-    { // out of the valid temperature range for too long
-        if (m_reached_target_temperature) {
-            constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
-            const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
-            m_outside_target_range_timer.toggle_based_on(not in_target_range);
-            if (m_outside_target_range_timer >= 5min)
-                sec::raise_error(sec::Error::TemperatureOutOfRange);
+    if (not CFG(MaintenanceMode)) {
+        { // out of the valid temperature range for too long
+            if (m_reached_target_temperature) {
+                constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
+                const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
+                m_outside_target_range_timer.toggle_based_on(not in_target_range);
+                if (m_outside_target_range_timer >= 5min)
+                    sec::raise_error(sec::Error::TemperatureOutOfRange);
+            }
         }
     }
 }

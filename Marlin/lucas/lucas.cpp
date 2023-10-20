@@ -11,7 +11,7 @@ namespace lucas {
 static auto s_setup_state = SetupState::NotStarted;
 
 void setup() {
-    core::TemporaryFilter f{ core::Filter::Interaction };
+    core::TemporaryFilter f{ core::Filter::RecipeQueue, core::Filter::Station };
     s_setup_state = SetupState::Started;
 
     cfg::setup();
