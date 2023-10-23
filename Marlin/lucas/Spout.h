@@ -27,15 +27,21 @@ public:
     }
 
     float pour_with_desired_volume_and_wait(millis_t duration, float desired_volume);
-    void pour_with_desired_volume_and_wait(const auto duration, float desired_volume) {
+    float pour_with_desired_volume_and_wait(const auto duration, float desired_volume) {
         const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
-        pour_with_desired_volume_and_wait(ms, desired_volume);
+        return pour_with_desired_volume_and_wait(ms, desired_volume);
     }
 
     void pour_with_digital_signal(millis_t duration, DigitalSignal digital_signal);
     void pour_with_digital_signal(const auto duration, DigitalSignal digital_signal) {
         const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
         pour_with_digital_signal(ms, digital_signal);
+    }
+
+    float pour_with_digital_signal_and_wait(millis_t duration, DigitalSignal digital_signal);
+    float pour_with_digital_signal_and_wait(const auto duration, DigitalSignal digital_signal) {
+        const millis_t ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
+        return pour_with_digital_signal_and_wait(ms, digital_signal);
     }
 
     void end_pour();

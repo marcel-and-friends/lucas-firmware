@@ -81,7 +81,13 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume) {
 
 float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume) {
     pour_with_desired_volume(duration, desired_volume);
-    util::idle_while([] { return Spout::the().pouring(); });
+    util::idle_while([] { return Spout::the().pouring(); }, core::current_filters() & ~core::Filter::Spout);
+    return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+}
+
+float Spout::pour_with_digital_signal_and_wait(millis_t duration, DigitalSignal digital_signal) {
+    pour_with_digital_signal(duration, digital_signal);
+    util::idle_while([] { return Spout::the().pouring(); }, core::current_filters() & ~core::Filter::Spout);
     return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
 }
 
@@ -140,14 +146,12 @@ void Spout::fill_hose(float desired_volume) {
 
     MotionController::the().travel_to_sewer();
 
-    if (desired_volume) {
-        pour_with_desired_volume(TIME_TO_FILL_HOSE, desired_volume);
-    } else {
-        pour_with_digital_signal(TIME_TO_FILL_HOSE, FALLBACK_SIGNAL);
-    }
-
     LOG_IF(LogCalibration, "preenchendo a mangueira com agua - [duracao = ", u32(TIME_TO_FILL_HOSE.count()), "s]");
-    util::idle_for(TIME_TO_FILL_HOSE);
+    if (desired_volume) {
+        pour_with_desired_volume_and_wait(TIME_TO_FILL_HOSE, desired_volume);
+    } else {
+        pour_with_digital_signal_and_wait(TIME_TO_FILL_HOSE, FALLBACK_SIGNAL);
+    }
 }
 
 void Spout::begin_pour(millis_t duration) {
