@@ -16,6 +16,7 @@ void Spout::tick() {
         const auto time_elapsed = [this] {
             return m_begin_pour_timer.elapsed();
         };
+
         if (time_elapsed() >= m_pour_duration) {
             end_pour();
             return;
@@ -176,24 +177,24 @@ void Spout::end_pour() {
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
-void Spout::FlowController::fill_digital_signal_table() {
+void Spout::FlowController::analyze_and_store_flow_data() {
     // accepts normalized values between 0.f and 1.f
     const auto update_progress = [this](float progress) {
         m_calibration_progress = progress;
         inform_progress_to_host();
     };
 
-    const auto update_status = [this](CalibrationStatus status) {
+    const auto update_status = [this](FlowAnalysisStatus status) {
         m_calibration_status = status;
         inform_progress_to_host();
     };
 
     clean_digital_signal_table(RemoveFile::Yes);
-    update_status(CalibrationStatus::Preparing);
+    update_status(FlowAnalysisStatus::Preparing);
     const auto beginning = millis();
 
     if (CFG(GigaMode)) {
-        m_calibration_status = CalibrationStatus::Executing;
+        m_calibration_status = FlowAnalysisStatus::Executing;
 
         for (size_t i = 0; i < 100; i++) {
             update_progress(i / 100.f);
@@ -201,10 +202,10 @@ void Spout::FlowController::fill_digital_signal_table() {
         }
 
         util::idle_for(2s);
-        update_status(CalibrationStatus::Finalizing);
+        update_status(FlowAnalysisStatus::Finalizing);
 
         util::idle_for(2s);
-        update_status(CalibrationStatus::Done);
+        update_status(FlowAnalysisStatus::Done);
     } else {
         // place the spout on the sewer and fill the hose so we avoid silly errors
         MotionController::the().travel_to_sewer();
@@ -217,7 +218,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         auto mod_when_finished = 0;
         auto number_of_occupied_cells = 0;
 
-        m_calibration_status = CalibrationStatus::Executing;
+        m_calibration_status = FlowAnalysisStatus::Executing;
 
         begin_iterative_pour(
             [&,
@@ -282,7 +283,7 @@ void Spout::FlowController::fill_digital_signal_table() {
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
         if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
-            update_status(CalibrationStatus::Finalizing);
+            update_status(FlowAnalysisStatus::Finalizing);
             auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
             save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
         }
@@ -295,7 +296,7 @@ void Spout::FlowController::fill_digital_signal_table() {
         });
 
         // we're done!
-        update_status(CalibrationStatus::Done);
+        update_status(FlowAnalysisStatus::Done);
         Spout::the().end_pour();
         save_digital_signal_table_to_file();
     }
@@ -371,7 +372,7 @@ void Spout::FlowController::clean_digital_signal_table(RemoveFile remove) {
         sd.remove_file(TABLE_FILE_PATH);
 
     m_calibration_progress = 0.f;
-    m_calibration_status = CalibrationStatus::None;
+    m_calibration_status = FlowAnalysisStatus::None;
 }
 
 void Spout::FlowController::save_digital_signal_table_to_file() {
@@ -395,10 +396,10 @@ void Spout::FlowController::fetch_digital_signal_table_from_file() {
 }
 
 void Spout::FlowController::inform_progress_to_host() const {
-    if (m_calibration_status == CalibrationStatus::None)
+    if (m_calibration_status == FlowAnalysisStatus::None)
         return;
 
-    if (m_calibration_status == CalibrationStatus::Executing) {
+    if (m_calibration_status == FlowAnalysisStatus::Executing) {
         info::send(
             info::Event::Calibration,
             [this](JsonObject o) {

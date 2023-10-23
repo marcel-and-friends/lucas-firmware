@@ -53,7 +53,7 @@ public:
         static constexpr auto INVALID_DIGITAL_SIGNAL = 0xF0F0; // UwU
         static inline auto ML_PER_PULSE = 0.5375f;
 
-        void fill_digital_signal_table();
+        void analyze_and_store_flow_data();
 
         enum class RemoveFile {
             Yes,
@@ -159,7 +159,7 @@ public:
         // 		- the cell for the flow '10.3 g/s' is located at 'table[5][3]'
         Table m_digital_signal_table;
 
-        enum class CalibrationStatus {
+        enum class FlowAnalysisStatus {
             Preparing = 0,
             Finalizing,
             Done,
@@ -168,7 +168,7 @@ public:
             None
         };
 
-        CalibrationStatus m_calibration_status = CalibrationStatus::None;
+        FlowAnalysisStatus m_calibration_status = FlowAnalysisStatus::None;
         float m_calibration_progress = 0.f;
     };
 

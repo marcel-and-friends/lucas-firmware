@@ -92,7 +92,7 @@ void calibrate(float target_temperature) {
 
     if (CFG(FillDigitalSignalTableOnCalibration)) {
         s_calibration_phase = CalibrationPhase::FillingDigitalSignalTable;
-        Spout::FlowController::the().fill_digital_signal_table();
+        Spout::FlowController::the().analyze_and_store_flow_data();
     } else {
         if (util::SD::make().file_exists(Spout::FlowController::TABLE_FILE_PATH))
             Spout::FlowController::the().fetch_digital_signal_table_from_file();
