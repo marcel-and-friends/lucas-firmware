@@ -227,19 +227,13 @@ void Spout::FlowController::analyze_and_store_flow_data() {
         begin_iterative_pour(
             [&,
              last_average_flow = 0.f,
-             fixed_bad_delta = false,
-             flow_decreased_counter = 0](FlowInfo info, s32& digital_signal_mod) mutable {
+             fixed_bad_delta = false](FlowInfo info, s32& digital_signal_mod) mutable {
                 if (last_average_flow and info.flow < last_average_flow) {
                     if (digital_signal_mod < 0)
                         digital_signal_mod *= -1;
 
-                    if (++flow_decreased_counter >= 5)
-                        sec::raise_error(sec::Error::PourVolumeMismatch);
-
                     LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
                     return util::Iter::Continue;
-                } else {
-                    flow_decreased_counter = 0;
                 }
 
                 // let's make sure the jump from one iteration to the other respects the maximum delta
