@@ -46,6 +46,8 @@ private:
 
     s32 m_target_temperature = 0;
 
+    bool m_cooling = false;
+
     bool m_reached_target_temperature = false;
 
     util::Timer m_outside_target_range_timer;

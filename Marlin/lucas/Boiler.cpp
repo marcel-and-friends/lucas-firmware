@@ -105,11 +105,10 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
     if (not target)
         return;
 
-    bool cooling = target < old_target ?: temperature();
     if (CFG(GigaMode)) {
-        LOG(cooling ? "resfri" : "esquent", "ando boiler no modo giga...");
+        LOG(m_cooling ? "resfri" : "esquent", "ando boiler no modo giga...");
         util::idle_until([this,
-                          timeout = cooling ? 120s : 60s,
+                          timeout = m_cooling ? 120s : 60s,
                           timer = util::Timer::started()] {
             every(5s) {
                 inform_temperature_to_host();
@@ -119,7 +118,6 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
     } else {
         m_reached_target_temperature = false;
         util::idle_until([this,
-                          cooling,
                           in_range_timer = util::Timer(),
                           last_checked_temperature = temperature()] mutable {
             every(5s) {
@@ -127,7 +125,7 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
             }
 
             const auto temperature = this->temperature();
-            if (not cooling) {
+            if (not m_cooling) {
                 every(2min) {
                     // if the temperature isn't going up let's kill ourselves NOW
                     if (last_checked_temperature > temperature or
@@ -157,9 +155,12 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
 }
 
 void Boiler::set_target_temperature(s32 target) {
+    const auto old_target = m_target_temperature;
     m_target_temperature = target;
     if (not m_target_temperature)
         return;
+
+    m_cooling = target < old_target ?: temperature();
 
     const auto delta = std::abs(target - temperature());
     if (temperature() > target) {
