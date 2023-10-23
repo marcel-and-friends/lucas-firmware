@@ -38,7 +38,7 @@ void MotionController::travel_to_sewer() {
 
     const auto beginning = millis();
     cmd::execute_multiple("G90",
-                          "G0 F5000 Y60 X5",
+                          "G0 F5000 Y60 X0",
                           "G91");
     finish_movements();
     m_current_location = SEWER_LOCATION;
