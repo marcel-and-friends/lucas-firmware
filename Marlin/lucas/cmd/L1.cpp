@@ -83,8 +83,10 @@ void L1() {
     soft_endstop._enabled = true;
     MotionController::the().change_step_ratio(1.f, 1.f);
 
-    if (dip)
+    if (dip) {
+        sync_plan_position();
         return;
+    }
 
     const auto offset = initial_position.x - final_position.x;
     execute_ff("G0 F10000 X%s", offset);

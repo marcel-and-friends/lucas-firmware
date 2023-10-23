@@ -111,8 +111,10 @@ void L0() {
     soft_endstop._enabled = true;
     MotionController::the().change_step_ratio(1.f, 1.f);
 
-    if (dip)
+    if (dip) {
+        sync_plan_position();
         return;
+    }
 
     if (series % 2 != start_on_border) {
         execute_fmt("G0 F10000 X%s", buffer_radius);
