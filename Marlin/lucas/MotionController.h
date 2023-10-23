@@ -7,6 +7,8 @@
 namespace lucas {
 class MotionController : public util::Singleton<MotionController> {
 public:
+    void setup();
+
     void travel_to_station(const Station&, float offset = 0.f);
 
     void travel_to_station(usize, float offset = 0.f);
@@ -20,6 +22,8 @@ public:
     float step_ratio_x() const;
 
     float step_ratio_y() const;
+
+    void change_step_ratio(float ratio_x, float ratio_y) const;
 
     void invalidate_location() { m_current_location = INVALID_LOCATION; }
 

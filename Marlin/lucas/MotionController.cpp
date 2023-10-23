@@ -5,6 +5,10 @@
 #include <src/module/planner.h>
 
 namespace lucas {
+void MotionController::setup() {
+    change_step_ratio(1.f, 1.f);
+}
+
 void MotionController::travel_to_station(const Station& station, float offset) {
     travel_to_station(station.index(), offset);
 }
@@ -58,4 +62,11 @@ float MotionController::step_ratio_x() const {
 float MotionController::step_ratio_y() const {
     return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
 }
+
+void MotionController::change_step_ratio(float x, float y) const {
+    planner.settings.axis_steps_per_mm[X_AXIS] = DEFAULT_STEPS_PER_MM_X * x;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = DEFAULT_STEPS_PER_MM_Y * y;
+    planner.refresh_positioning();
+}
+
 }

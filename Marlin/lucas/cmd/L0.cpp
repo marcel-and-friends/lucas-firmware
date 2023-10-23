@@ -78,9 +78,7 @@ void L0() {
     const auto steps_por_mm_ratio = duration ? MotionController::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
-    planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X * steps_por_mm_ratio;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y * steps_por_mm_ratio;
-    planner.refresh_positioning();
+    MotionController::the().change_step_ratio(steps_por_mm_ratio, steps_por_mm_ratio);
 
     if (should_pour)
         Spout::the().pour_with_desired_volume(duration, volume_of_water);
@@ -111,9 +109,7 @@ void L0() {
     L0_LOG("final_position.x = ", current_position.x);
 
     soft_endstop._enabled = true;
-    planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y;
-    planner.refresh_positioning();
+    MotionController::the().change_step_ratio(1.f, 1.f);
 
     if (dip)
         return;

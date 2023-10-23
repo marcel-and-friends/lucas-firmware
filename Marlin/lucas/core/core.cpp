@@ -22,8 +22,7 @@ static auto s_calibration_phase = CalibrationPhase::None;
 static util::Timer s_time_since_setup = {};
 
 void setup() {
-    planner.settings.axis_steps_per_mm[X_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_X;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = MotionController::DEFAULT_STEPS_PER_MM_Y;
+    MotionController::the().setup();
 
     if (CFG(MaintenanceMode)) {
         Spout::the().setup_pins();
