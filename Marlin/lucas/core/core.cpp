@@ -43,6 +43,10 @@ void setup() {
 }
 
 void tick() {
+    // serial
+    if (not is_filtered(Filter::SerialHooks))
+        serial::hooks();
+
     if (CFG(MaintenanceMode)) {
         // we need this for button press logs
         Station::tick();
@@ -60,10 +64,6 @@ void tick() {
         calibrate(96);
         return;
     }
-
-    // serial
-    if (not is_filtered(Filter::SerialHooks))
-        serial::hooks();
 
     // boiler
     if (not is_filtered(Filter::Boiler))
