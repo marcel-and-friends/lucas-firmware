@@ -28,6 +28,9 @@ constexpr auto SECURITY_FILE_PATH = "/sec.txt";
 constexpr auto RETURN_CONDITIONS = make_default_return_conditions();
 
 void setup() {
+    if (CFG(MaintenanceMode))
+        return;
+
     auto sd = util::SD::make();
     if (sd.file_exists(SECURITY_FILE_PATH)) {
         if (not sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Read))
@@ -43,6 +46,11 @@ void setup() {
 static Error s_active_error = Error::Invalid;
 
 void raise_error(Error reason) {
+    if (CFG(MaintenanceMode)) {
+        LOG_ERR("erro foi levantado no modo calibracao, nao sera tratado");
+        return;
+    }
+
     // alarm was raised! oh no
     // inform the host that something has happened so that the user can be informed too
     s_active_error = reason;
