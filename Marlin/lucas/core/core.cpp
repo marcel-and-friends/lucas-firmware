@@ -54,9 +54,11 @@ void tick() {
     // 30 seconds have past and the app hasn't sent a calibration request
     // we're probably on our own then
     if (s_time_since_setup >= 30s and s_calibration_phase == CalibrationPhase::None) {
+        LOG("calibracao automatica iniciada");
         // FIXME: get the amount of stations from somewhere
         Station::initialize(3);
-        calibrate(93);
+        calibrate(96);
+        return;
     }
 
     // serial
