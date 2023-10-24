@@ -419,16 +419,6 @@ inline void finishSDPrinting() {
 #include <lucas/lucas.h>
 #include <lucas/serial/serial.h>
 inline void manage_inactivity(const bool no_stepper_sleep = false) {
-    if (lucas::setup_state() != lucas::SetupState::NotStarted) {
-        if (not lucas::core::is_filtered(lucas::core::Filter::SerialHooks)) {
-            lucas::serial::hooks();
-        } else {
-            lucas::serial::clean_serial();
-        }
-    } else {
-        lucas::serial::clean_serial();
-    }
-
     const millis_t ms = millis();
 
     // Prevent steppers timing-out

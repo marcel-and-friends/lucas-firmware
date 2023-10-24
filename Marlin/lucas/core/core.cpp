@@ -6,6 +6,7 @@
 #include <lucas/MotionController.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/info/info.h>
+#include <lucas/serial/serial.h>
 #include <lucas/util/SD.h>
 #include <lucas/serial/FirmwareUpdateHook.h>
 #include <src/module/planner.h>
@@ -58,24 +59,28 @@ void tick() {
         calibrate(93);
     }
 
+    // serial
+    if (not is_filtered(Filter::SerialHooks))
+        serial::hooks();
+
     // boiler
-    if (not is_filtered(core::Filter::Boiler))
+    if (not is_filtered(Filter::Boiler))
         Boiler::the().tick();
 
     // queue
-    if (not is_filtered(core::Filter::RecipeQueue))
+    if (not is_filtered(Filter::RecipeQueue))
         RecipeQueue::the().tick();
 
     RecipeQueue::the().remove_finalized_recipes();
 
     // stations
-    if (not is_filtered(core::Filter::Station))
+    if (not is_filtered(Filter::Station))
         Station::tick();
 
     Station::update_leds();
 
     // spout
-    if (not is_filtered(core::Filter::Spout))
+    if (not is_filtered(Filter::Spout))
         Spout::the().tick();
 }
 
