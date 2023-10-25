@@ -182,6 +182,9 @@ void Spout::end_pour() {
 }
 
 void Spout::FlowController::analyze_and_store_flow_data() {
+    constexpr auto ITERATION_STEP = 75;
+    constexpr auto INITIAL_ITERATION_STEP = 200;
+
     // accepts normalized values between 0.f and 1.f
     const auto update_progress = [this](float progress) {
         m_calibration_progress = progress;
@@ -215,7 +218,7 @@ void Spout::FlowController::analyze_and_store_flow_data() {
         MotionController::the().travel_to_sewer();
         Spout::the().fill_hose();
 
-        auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, 200);
+        auto minimum_flow_info = obtain_specific_flow(FLOW_MIN, { 0.f, 0 }, INITIAL_ITERATION_STEP);
         save_flow_info_to_table(minimum_flow_info.flow, minimum_flow_info.digital_signal);
 
         auto info_when_finished = FlowInfo{ 0.f, 0 };
@@ -229,9 +232,7 @@ void Spout::FlowController::analyze_and_store_flow_data() {
              last_average_flow = 0.f,
              fixed_bad_delta = false](FlowInfo info, s32& digital_signal_mod) mutable {
                 if (last_average_flow and info.flow < last_average_flow) {
-                    if (digital_signal_mod < 0)
-                        digital_signal_mod *= -1;
-
+                    digital_signal_mod = ITERATION_STEP;
                     LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
                     return util::Iter::Continue;
                 }
@@ -276,8 +277,8 @@ void Spout::FlowController::analyze_and_store_flow_data() {
 
                 return util::Iter::Continue;
             },
-            minimum_flow_info.digital_signal + 25,
-            25);
+            minimum_flow_info.digital_signal + ITERATION_STEP,
+            ITERATION_STEP);
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
         if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
