@@ -934,11 +934,13 @@ void idle(bool no_stepper_sleep /*=false*/) {
     // Update the LVGL interface
     // TERN_(HAS_TFT_LVGL_UI, LV_TASK_HANDLER());
 
-    if (lucas::setup_state() == lucas::SetupState::NotStarted)
-        lucas::setup();
-
-    if (lucas::setup_state() == lucas::SetupState::Done)
+    if (lucas::setup_state() == lucas::SetupState::Done) {
         lucas::tick();
+    } else {
+        lucas::serial::clean_serial();
+        if (lucas::setup_state() == lucas::SetupState::NotStarted)
+            lucas::setup();
+    }
 
 IDLE_DONE:
     TERN_(MARLIN_DEV_MODE, idle_depth--);
