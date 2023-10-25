@@ -50,10 +50,12 @@ void L5() {
     } break;
     case 4: {
         CFG(LogFlowSensorDataForTesting) = status;
+        cfg::save_options();
         LOG("LOG SENSOR DE FLUXO: ", status ? "ativado" : "desativado");
     } break;
     case 5: {
         CFG(LogTemperatureForTesting) = status;
+        cfg::save_options();
         LOG("LOG SENSOR DE TEMPERATURA: ", status ? "ativado" : "desativado");
     } break;
     case 6: {
