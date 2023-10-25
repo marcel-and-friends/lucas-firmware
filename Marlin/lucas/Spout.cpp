@@ -118,13 +118,13 @@ void Spout::setup_pins() {
     digitalWrite(Pin::EN, LOW);
 
     // flow sensor
-    pinMode(Pin::FlowSensor, INPUT);
+    pinMode(Pin::FlowSensor, INPUT_PULLUP);
     attachInterrupt(
         digitalPinToInterrupt(Pin::FlowSensor),
         +[] {
             ++s_pulse_counter;
         },
-        RISING);
+        FALLING);
 }
 
 void Spout::send_digital_signal_to_driver(DigitalSignal v) {
