@@ -13,7 +13,7 @@ public:
         SV = PA5,
         EN = PA6,
         BRK = PE8,
-        FlowSensor = PE11
+        FlowSensor = Z_MIN_PIN
     };
 
     void tick();
