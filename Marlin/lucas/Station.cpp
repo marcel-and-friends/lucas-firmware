@@ -187,15 +187,14 @@ void Station::set_status(Status status, std::optional<Recipe::Id> receita_id) {
         digitalWrite(m_led_pin, LOW);
         digitalWrite(m_powerled_pin, HIGH);
         return;
+    case Status::ConfirmingScald:
     case Status::Scalding:
+    case Status::ConfirmingAttacks:
     case Status::Attacking:
     case Status::Finalizing:
+    case Status::Ready:
         digitalWrite(m_led_pin, HIGH);
         digitalWrite(m_powerled_pin, LOW);
-        return;
-    default:
-        digitalWrite(m_led_pin, LOW);
-        digitalWrite(m_powerled_pin, HIGH);
         return;
     }
 }
