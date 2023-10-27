@@ -11,18 +11,22 @@ void L4() {
     if (parser.seenval('Z')) {
         switch (parser.value_int()) {
         case 0: {
-            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::RemoveFile::Yes);
-            LOG("tabela foi limpa e salva");
+            cfg::reset_options();
+            LOG("opcoes foram resetadas");
         } break;
         case 1: {
-            cfg::reset_options();
-            LOG("opcoes foram resetadas e salvas");
+            sec::remove_stored_error();
+            LOG("erros foram resetados");
         } break;
         case 2: {
-            sec::remove_stored_error();
-            LOG("erro salvo foi removido");
+            RecipeQueue::the().remove_fixed_recipes();
+            LOG("receitas fixas foram resetadas");
         } break;
         case 3: {
+            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::RemoveFile::Yes);
+            LOG("tabela foi resetada");
+        } break;
+        case 4: {
             if (not parser.seenval('P'))
                 return;
 
@@ -36,7 +40,7 @@ void L4() {
 
             LOG("pino modificado - [pino = ", pin, " | modo = ", mode, " | valor = ", value, "]");
         } break;
-        case 4: {
+        case 5: {
             if (not parser.seenval('P'))
                 return;
 

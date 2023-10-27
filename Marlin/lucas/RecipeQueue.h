@@ -21,6 +21,8 @@ public:
 
     void set_fixed_recipes(JsonObjectConst recipe_json);
 
+    void remove_fixed_recipes();
+
     void map_station_recipe(usize);
 
     void cancel_station_recipe(usize);

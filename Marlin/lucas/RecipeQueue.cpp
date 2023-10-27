@@ -125,10 +125,19 @@ void RecipeQueue::set_fixed_recipes(JsonObjectConst recipe_json) {
     }
 
     auto sd = util::SD::make();
-    if (not sd.open("/fixed_recipes.txt", util::SD::OpenMode::Write))
+    if (not sd.open(FIXED_RECIPES_FILE_PATH, util::SD::OpenMode::Write))
         return;
 
     sd.write_from(m_fixed_recipes);
+}
+
+void RecipeQueue::remove_fixed_recipes() {
+    auto sd = util::SD::make();
+    sd.remove_file(FIXED_RECIPES_FILE_PATH);
+    for (auto info : m_fixed_recipes) {
+        info.recipe.reset();
+        info.active = false;
+    }
 }
 
 void RecipeQueue::map_station_recipe(usize index) {
