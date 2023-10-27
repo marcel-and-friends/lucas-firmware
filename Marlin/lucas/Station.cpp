@@ -72,6 +72,7 @@ void Station::tick() {
 
         // allow one button press per second, this avoids accidental double presses caused by bad electronics
         if (button_clicked and station.m_last_button_press_timer >= 1s) {
+            station.m_last_button_press_timer.restart();
             if (not CFG(MaintenanceMode)) {
                 switch (station.status()) {
                 case Status::Free:
@@ -88,8 +89,6 @@ void Station::tick() {
             } else {
                 LOG("BOTAO #", station.index() + 1, ": apertado");
             }
-
-            station.m_last_button_press_timer.restart();
         }
 
         station.m_button_held_timer.toggle_based_on(button_being_held);
