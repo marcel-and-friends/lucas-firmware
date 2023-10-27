@@ -182,7 +182,7 @@ void Spout::end_pour() {
 }
 
 void Spout::FlowController::analyze_and_store_flow_data() {
-    constexpr auto ITERATION_STEP = 75;
+    constexpr auto ITERATION_STEP = 25;
     constexpr auto INITIAL_ITERATION_STEP = 200;
 
     // accepts normalized values between 0.f and 1.f

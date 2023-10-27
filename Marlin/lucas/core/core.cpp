@@ -61,7 +61,7 @@ void tick() {
         LOG("calibracao automatica iniciada");
         // FIXME: get the amount of stations from somewhere
         Station::initialize(3);
-        calibrate(96);
+        calibrate(94);
         return;
     }
 
