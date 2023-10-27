@@ -112,11 +112,9 @@ void RecipeQueue::set_fixed_recipes(JsonObjectConst recipe_json) {
         auto recipe_obj = recipes_array[i];
         auto& info = m_fixed_recipes[i];
         if (not recipe_obj.isNull()) {
-            if (info.recipe.id() != recipe_obj["id"].as<u64>()) {
-                info.recipe.build_from_json(recipe_obj);
-                info.active = true;
-                LOG_IF(LogQueue, "receita fixa setada - [estacao = ", i, "]");
-            }
+            info.recipe.build_from_json(recipe_obj);
+            info.active = true;
+            LOG_IF(LogQueue, "receita fixa setada - [estacao = ", i, "]");
         } else {
             info.recipe.reset();
             info.active = false;
