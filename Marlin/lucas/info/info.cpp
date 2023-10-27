@@ -66,7 +66,7 @@ enum class Command {
     RequestInfoAllStations,
     FirmwareUpdate,
     RequestInfoFirmware,
-    SetFixedRecipe,
+    SetFixedRecipes,
 
     /* ~comandos de desenvolvimento~ */
     DevScheduleStandardRecipe,
@@ -85,7 +85,7 @@ static Command command_from_string(std::string_view cmd) {
         [usize(Command::RequestInfoAllStations)] = "reqInfoAllStations"sv,
         [usize(Command::FirmwareUpdate)] = "cmdFirmwareUpdate"sv,
         [usize(Command::RequestInfoFirmware)] = "reqInfoFirmware"sv,
-        [usize(Command::SetFixedRecipe)] = "cmdSetFixedRecipe"sv,
+        [usize(Command::SetFixedRecipes)] = "cmdSetFixedRecipes"sv,
         [usize(Command::DevScheduleStandardRecipe)] = "devScheduleStandardRecipe"sv,
         [usize(Command::DevSimulateButtonPress)] = "devSimulateButtonPress"sv,
     });
@@ -195,13 +195,13 @@ void interpret_command_from_host(std::span<char> buffer) {
                     o["version"] = cfg::FIRMWARE_VERSION;
                 });
         } break;
-        case Command::SetFixedRecipe: {
+        case Command::SetFixedRecipes: {
             if (not v.is<JsonObjectConst>()) {
                 LOG_ERR("valor json invalido para envio de uma receita fixa");
                 break;
             }
 
-            RecipeQueue::the().set_fixed_recipe(v.as<JsonObjectConst>());
+            RecipeQueue::the().set_fixed_recipes(v.as<JsonObjectConst>());
         } break;
         /* ~comandos de desenvolvimento~ */
         case Command::DevScheduleStandardRecipe: {

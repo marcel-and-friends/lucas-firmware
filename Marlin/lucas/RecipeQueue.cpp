@@ -101,25 +101,27 @@ void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, usize index) {
     LOG_IF(LogQueue, "receita agendada, aguardando confirmacao - [estacao = ", index, "]");
 }
 
-void RecipeQueue::set_fixed_recipe(JsonObjectConst recipe_json) {
-    if (not recipe_json.containsKey("recipe") or
-        not recipe_json.containsKey("station")) {
+void RecipeQueue::set_fixed_recipes(JsonObjectConst recipe_json) {
+    if (not recipe_json.containsKey("recipes")) {
         LOG_ERR("json da receita nao possui todos os campos obrigatorios");
         return;
     }
 
-    const auto index = recipe_json["station"].as<usize>();
-    const auto recipe_obj = recipe_json["recipe"].as<JsonObjectConst>();
-
-    auto& info = m_fixed_recipes[index];
-    if (not recipe_obj.isNull()) {
-        info.recipe.build_from_json(recipe_obj);
-        info.active = true;
-        LOG_IF(LogQueue, "receita fixa setada - [estacao = ", index, "]");
-    } else {
-        info.recipe.reset();
-        info.active = false;
-        LOG_IF(LogQueue, "receita fixa removida - [estacao = ", index, "]");
+    auto recipes_array = recipe_json["recipes"].as<JsonArrayConst>();
+    for (size_t i = 0; i < recipes_array.size(); i++) {
+        auto recipe_obj = recipes_array[i];
+        auto& info = m_fixed_recipes[i];
+        if (not recipe_obj.isNull()) {
+            if (info.recipe.id() != recipe_obj["id"].as<u64>()) {
+                info.recipe.build_from_json(recipe_obj);
+                info.active = true;
+                LOG_IF(LogQueue, "receita fixa setada - [estacao = ", i, "]");
+            }
+        } else {
+            info.recipe.reset();
+            info.active = false;
+            LOG_IF(LogQueue, "receita fixa removida - [estacao = ", i, "]");
+        }
     }
 
     auto sd = util::SD::make();

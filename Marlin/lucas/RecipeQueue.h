@@ -19,7 +19,7 @@ public:
 
     void schedule_recipe_for_station(Recipe&, usize);
 
-    void set_fixed_recipe(JsonObjectConst recipe_json);
+    void set_fixed_recipes(JsonObjectConst recipe_json);
 
     void map_station_recipe(usize);
 

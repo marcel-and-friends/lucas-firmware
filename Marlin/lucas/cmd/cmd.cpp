@@ -32,7 +32,7 @@ void interpret_gcode_from_host(std::span<char> buffer) {
 #{"devScheduleStandardRecipe":5,"devSimulateButtonPress":[0,1,2,3,4]}#
 #{"cmdCancelRecipe":0}#
 #{"cmdCancelRecipe":[0,1,2,3,4]}#
-#{"cmdSetFixedRecipe":{"station":0,"recipe":{"id":61680,"finalizationTime":60000,"scald":{"duration":6000,"gcode":"L0 D9 N3 R1 T6000 G80"},"attacks":[{"duration":6000,"gcode":"L0 D7 N3 R1 T6000 G60","interval":24000},{"duration":9000,"gcode":"L0 D7 N5 R1 T9000 G90","interval":30000},{"duration":10000,"gcode":"L0 D7 N5 R1 T10000 G100","interval":35000},{"duration":9000,"gcode":"L0 D7 N5 R1 T9000 G100"}]}}}
+#{"cmdSetFixedRecipes":{"recipes":[{"id":61680,"finalizationTime":60000,"scald":{"duration":6000,"gcode":"L0 D9 N3 R1 T6000 G80"},"attacks":[{"duration":6000,"gcode":"L0 D7 N3 R1 T6000 G60","interval":24000},{"duration":9000,"gcode":"L0 D7 N5 R1 T9000 G90","interval":30000},{"duration":10000,"gcode":"L0 D7 N5 R1 T10000 G100","interval":35000},{"duration":9000,"gcode":"L0 D7 N5 R1 T9000 G100"}]},null,null]}}#
 
 ~ rest ~
 #{"reqInfoAllStations":[0,1,2,3,4]}#
