@@ -5,7 +5,7 @@
 #include <span>
 
 namespace lucas::info {
-constexpr usize BUFFER_SIZE = 1024;
+constexpr usize BUFFER_SIZE = 2048;
 using JsonDocument = StaticJsonDocument<BUFFER_SIZE>;
 
 void setup();

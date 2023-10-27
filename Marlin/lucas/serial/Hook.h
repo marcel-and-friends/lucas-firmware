@@ -7,7 +7,7 @@
 namespace lucas::serial {
 class Hook {
 public:
-    static constexpr usize MAX_BUFFER_SIZE = 1024;
+    static constexpr usize MAX_BUFFER_SIZE = 2048;
     static constexpr usize MAX_BUFFER_SLICE = 64;
 
     using Callback = void (*)(std::span<char>);
