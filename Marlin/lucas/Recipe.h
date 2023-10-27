@@ -95,6 +95,8 @@ public:
     }
 
 public:
+    using Id = u64;
+
     bool has_scalding_step() const { return m_has_scalding_step; }
     const Step& scalding_step() const { return m_steps.front(); }
     Step& scalding_step() { return m_steps.front(); }
@@ -104,7 +106,7 @@ public:
     const util::Timer& finalization_timer() const { return m_finalization_timer; }
     util::Timer& finalization_timer() { return m_finalization_timer; }
 
-    u32 id() const { return m_id; }
+    Id id() const { return m_id; }
 
     bool scalded() const { return m_has_scalding_step and m_current_step > 0; }
 
@@ -132,7 +134,7 @@ private:
     Recipe() = default;
     Recipe& operator=(const Recipe&) = default;
 
-    u32 m_id = 0;
+    Id m_id = 0;
 
     chrono::milliseconds m_finalization_duration = {};
     util::Timer m_finalization_timer;

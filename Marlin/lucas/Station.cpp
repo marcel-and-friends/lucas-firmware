@@ -167,7 +167,7 @@ void Station::set_blocked(bool b) {
     LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
 }
 
-void Station::set_status(Status status, std::optional<u32> receita_id) {
+void Station::set_status(Status status, std::optional<Recipe::Id> receita_id) {
     if (m_status == status)
         return;
 

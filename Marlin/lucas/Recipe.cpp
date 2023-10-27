@@ -79,7 +79,7 @@ bool Recipe::Step::collides_with(const Step& other) const {
 void Recipe::build_from_json(JsonObjectConst json) {
     reset();
 
-    m_id = json["id"].as<u32>();
+    m_id = json["id"].as<Id>();
     m_finalization_duration = chrono::milliseconds{ json["finalizationTime"].as<millis_t>() };
 
     // o escaldo é opcional

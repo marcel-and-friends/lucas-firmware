@@ -109,7 +109,7 @@ public:
     void set_blocked(bool);
 
     Status status() const { return m_status; }
-    void set_status(Status, std::optional<u32> receita_id = std::nullopt);
+    void set_status(Status, std::optional<Recipe::Id> receita_id = std::nullopt);
 
 private:
     // initialized out of line porque nesse momento a classe 'Station' é incompleta
