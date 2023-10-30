@@ -40,10 +40,6 @@ void setup() {
 }
 
 void tick() {
-    // serial
-    if (not is_filtered(Filter::SerialHooks))
-        serial::hooks();
-
     if (CFG(MaintenanceMode)) {
         // we need this for button press logs
         Station::tick();

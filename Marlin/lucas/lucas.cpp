@@ -24,10 +24,14 @@ void setup() {
 }
 
 void tick() {
+    if (not core::is_filtered(core::Filter::SerialHooks))
+        serial::hooks();
+
+    if (not core::is_filtered(core::Filter::Info))
+        info::tick();
+
     sec::tick();
     core::tick();
-    if (not is_filtered(core::Filter::Info))
-        info::tick();
 }
 
 SetupState setup_state() {
