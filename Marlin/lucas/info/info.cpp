@@ -3,6 +3,7 @@
 #include <lucas/Station.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/Spout.h>
+#include <lucas/Boiler.h>
 #include <lucas/core/core.h>
 #include <lucas/cmd/cmd.h>
 #include <lucas/sec/sec.h>
@@ -11,12 +12,12 @@
 
 namespace lucas::info {
 void setup() {
-    // Report::make(
-    //     "infoBoiler",
-    //     5'000,
-    //     [](JsonObject obj) {
-    //         obj["temp"] = thermalManager.degBed();
-    //     });
+    Report::make(
+        "infoTemperature",
+        5'000,
+        [](JsonObject obj) {
+            obj["currentTemp"] = Boiler::the().temperature();
+        });
 }
 
 void tick() {

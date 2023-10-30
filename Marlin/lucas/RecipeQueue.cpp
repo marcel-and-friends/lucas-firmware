@@ -241,7 +241,6 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
                 o["station"] = station;
                 o["step"] = step;
                 o["done"] = ending;
-                o["currentTemp"] = Boiler::the().temperature();
 
                 const auto tick = millis();
                 if (tick_has_happened(first_attack_tick, tick))
@@ -278,7 +277,6 @@ void RecipeQueue::execute_current_step(Recipe& recipe, Station& station) {
     if (station.status() == Station::Status::Scalding) {
         station.set_status(Station::Status::ConfirmingAttacks, recipe.id());
     } else if (recipe.finished()) {
-        Boiler::the().inform_temperature_to_host();
         if (recipe.finalization_duration() != 0ms) {
             station.set_status(Station::Status::Finalizing, recipe.id());
             recipe.finalization_timer().start();
