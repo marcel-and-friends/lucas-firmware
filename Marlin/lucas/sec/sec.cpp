@@ -26,6 +26,8 @@ consteval auto make_default_return_conditions() {
 
 constexpr auto SECURITY_FILE_PATH = "/sec.txt";
 constexpr auto RETURN_CONDITIONS = make_default_return_conditions();
+static Error s_active_error = Error::Invalid;
+static Error s_startup_error = Error::Invalid;
 
 void setup() {
     if (CFG(MaintenanceMode))
@@ -39,15 +41,21 @@ void setup() {
         Error reason_for_last_failure;
         sd.read_into(reason_for_last_failure);
 
-        raise_error(reason_for_last_failure);
+        s_startup_error = reason_for_last_failure;
     }
 }
 
-static Error s_active_error = Error::Invalid;
+void tick() {
+    if (s_startup_error != Error::Invalid) {
+        const auto error = s_startup_error;
+        s_startup_error = Error::Invalid;
+        raise_error(error);
+    }
+}
 
 void raise_error(Error reason) {
     if (CFG(MaintenanceMode)) {
-        LOG_ERR("erro foi levantado no modo calibracao, nao sera tratado");
+        LOG_ERR("erro foi levantado no modo manutencao, nao sera tratado");
         return;
     }
 
@@ -74,9 +82,10 @@ void raise_error(Error reason) {
     if (sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Write))
         sd.write_from(reason);
 
-    // Spout's 'tick()' isn't filtered so that the pump's BRK is properly released after 'end_pour()'
-    constexpr auto FILTER = core::Filter::RecipeQueue | core::Filter::Boiler | core::Filter::Info;
-    util::idle_until(RETURN_CONDITIONS[usize(reason)], FILTER);
+    CFG(MaintenanceMode) = true;
+    digitalWrite(Spout::BRK, HIGH);
+    util::idle_until(RETURN_CONDITIONS[usize(reason)]);
+    CFG(MaintenanceMode) = false;
 
     if (sd.is_open())
         sd.remove_file(SECURITY_FILE_PATH);

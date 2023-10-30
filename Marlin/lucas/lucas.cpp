@@ -24,6 +24,7 @@ void setup() {
 }
 
 void tick() {
+    sec::tick();
     core::tick();
     if (not is_filtered(core::Filter::Info))
         info::tick();

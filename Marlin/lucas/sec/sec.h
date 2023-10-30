@@ -5,6 +5,8 @@
 namespace lucas::sec {
 void setup();
 
+void tick();
+
 void raise_error(Error);
 
 bool has_active_error();
