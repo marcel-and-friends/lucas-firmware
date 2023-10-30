@@ -176,6 +176,11 @@ void RecipeQueue::map_station_recipe(usize index) {
 void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
     core::TemporaryFilter f{ core::Filter::Station };
 
+    if (m_heating_hose_after_inactivity) {
+        Spout::the().end_pour();
+        m_heating_hose_after_inactivity = false;
+    }
+
     util::StaticVector<millis_t, Station::MAXIMUM_NUMBER_OF_STATIONS> candidates;
 
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras recipe
@@ -404,28 +409,17 @@ void RecipeQueue::remove_finalized_recipes() {
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
 void RecipeQueue::try_heating_hose_after_inactivity() {
     if (m_inactivity_timer >= 10min) {
+        core::TemporaryFilter f{ core::Filter::RecipeQueue, core::Filter::Station };
+        m_heating_hose_after_inactivity = true;
+        m_inactivity_timer.restart();
+
         LOG_IF(LogQueue, "aquecendo mangueira apos inatividade");
 
         constexpr auto POUR_DURATION = 20s;
         constexpr float POUR_VOLUME = 10.f * POUR_DURATION.count();
+        MotionController::the().home();
         MotionController::the().travel_to_sewer();
         Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME);
-
-        util::idle_while(
-            [this] {
-                // se é recebido um pedido de recipe enquanto a maquina está no processo de aquecimento
-                // o numero de receitas em execucao aumenta, o bico é desligado e a recipe é executada
-                if (number_of_recipes_executing() != 0) {
-                    Spout::the().end_pour();
-                    return false;
-                }
-                return Spout::the().pouring();
-            },
-            core::Filter::RecipeQueue);
-
-        m_inactivity_timer.restart();
-
-        LOG_IF(LogQueue, "aquecimento finalizado");
     }
 }
 

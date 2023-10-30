@@ -148,8 +148,10 @@ private:
     usize number_of_recipes_executing() const;
 
 private:
-    util::Timer m_inactivity_timer;
     usize m_recipe_in_execution = Station::INVALID;
+
+    util::Timer m_inactivity_timer;
+    bool m_heating_hose_after_inactivity = false;
 
     struct RecipeInfo {
         Recipe recipe;
