@@ -27,6 +27,7 @@ void Spout::tick() {
             return;
 
         if (m_correction_timer >= 500ms) {
+            m_correction_timer.restart();
             const auto poured_so_far = [this] {
                 return (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
             };
@@ -56,11 +57,9 @@ void Spout::tick() {
             // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
             const auto ideal_flow = (m_total_desired_volume - poured_so_far()) / (duration_seconds - elapsed_seconds);
             send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
-
-            m_correction_timer.restart();
         } else {
             // BRK is realeased after a little bit to not stress the motor too hard
-            if (m_end_pour_timer >= 2s and READ(Pin::BRK) == LOW)
+            if (m_end_pour_timer >= 2s and digitalRead(Pin::BRK) == LOW)
                 digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
         }
     }
