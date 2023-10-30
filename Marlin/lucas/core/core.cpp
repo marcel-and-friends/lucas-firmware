@@ -37,9 +37,6 @@ void setup() {
     MotionController::the().home();
     MotionController::the().travel_to_sewer();
     RecipeQueue::the().setup();
-
-    inform_calibration_status();
-    s_time_since_setup.start();
 }
 
 void tick() {
@@ -53,6 +50,12 @@ void tick() {
         if (Boiler::the().target_temperature())
             Boiler::the().tick();
         return;
+    }
+
+    if (not s_time_since_setup.is_active()) {
+        inform_calibration_status();
+        s_time_since_setup.start();
+        RecipeQueue::the().reset_inactivity();
     }
 
     // 30 seconds have past and the app hasn't sent a calibration request
