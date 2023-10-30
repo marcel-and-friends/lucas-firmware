@@ -139,6 +139,7 @@ void RecipeQueue::remove_fixed_recipes() {
 }
 
 void RecipeQueue::map_station_recipe(usize index) {
+    core::TemporaryFilter f{ core::Filter::Station };
     auto& station = Station::list().at(index);
     if (not m_queue[index].active) {
         if (m_fixed_recipes[index].active) {
@@ -173,6 +174,8 @@ void RecipeQueue::map_station_recipe(usize index) {
 }
 
 void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
+    core::TemporaryFilter f{ core::Filter::Station };
+
     util::StaticVector<millis_t, Station::MAXIMUM_NUMBER_OF_STATIONS> candidates;
 
     // tentamos encontrar um tick inicial que não causa colisões com nenhuma das outras recipe
