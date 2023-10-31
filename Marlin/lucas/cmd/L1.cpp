@@ -31,7 +31,7 @@ void L1() {
 
     const auto volume_of_water = parser.floatval('G');
     const auto should_pour = duration and volume_of_water;
-    const bool associated_with_station = RecipeQueue::the().executing();
+    const bool associated_with_station = RecipeQueue::the().is_executing_recipe();
     bool dip = false;
 
     const auto initial_position = current_position;
@@ -68,7 +68,7 @@ void L1() {
 
         execute_fmt("G2 F5000 X%s I%s", buffer_diameter, buffer_radius);
 
-        if (associated_with_station and not RecipeQueue::the().executing()) {
+        if (associated_with_station and not RecipeQueue::the().is_executing_recipe()) {
             dip = true;
             break;
         }

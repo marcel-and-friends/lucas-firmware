@@ -436,7 +436,7 @@ void RecipeQueue::recipe_was_cancelled(usize index) {
 // o conceito de uma recipe "em execucao" engloba somente os despejos em sí (escaldo e ataques)
 // estacões que estão aguardando input do usuário ou finalizando não possuem seus passos pendentes mapeados
 // consequentemente, não são consideradas como "em execucao" por mais que estejão na fila
-usize RecipeQueue::number_of_recipes_executing() const {
+usize RecipeQueue::number_of_recipes_being_executed() const {
     usize num = 0;
     for_each_mapped_recipe([&num](const auto&) {
         ++num;

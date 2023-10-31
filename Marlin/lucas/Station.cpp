@@ -93,7 +93,7 @@ void Station::tick() {
 
         station.m_button_held_timer.toggle_based_on(button_being_held);
         if (not CFG(MaintenanceMode)) {
-            if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().executing_recipe_in_station(station.index()))
+            if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().is_executing_recipe_in_station(station.index()))
                 RecipeQueue::the().cancel_station_recipe(station.index());
         }
 

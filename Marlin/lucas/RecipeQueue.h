@@ -35,11 +35,11 @@ public:
 
     void reset_inactivity();
 
-    bool executing_recipe_in_station(size_t index) const {
+    bool is_executing_recipe_in_station(size_t index) const {
         return m_queue[index].active;
     }
 
-    bool executing() const { return m_recipe_in_execution != Station::INVALID; }
+    bool is_executing_recipe() const { return m_recipe_in_execution != Station::INVALID; }
 
     bool is_empty() const { return m_queue_size == 0; }
 
@@ -145,7 +145,7 @@ private:
 
     void recipe_was_cancelled(usize index);
 
-    usize number_of_recipes_executing() const;
+    usize number_of_recipes_being_executed() const;
 
 private:
     usize m_recipe_in_execution = Station::INVALID;
