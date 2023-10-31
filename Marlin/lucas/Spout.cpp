@@ -180,18 +180,18 @@ void Spout::end_pour() {
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
-void Spout::FlowController::analyze_and_store_flow_data() {
+void Spout::FlowController::analyse_and_store_flow_data() {
     constexpr auto ITERATION_STEP = 25;
     constexpr auto INITIAL_ITERATION_STEP = 200;
 
     // accepts normalized values between 0.f and 1.f
     const auto update_progress = [this](float progress) {
-        m_calibration_progress = progress;
+        m_analysis_progress = progress;
         inform_progress_to_host();
     };
 
     const auto update_status = [this](FlowAnalysisStatus status) {
-        m_calibration_status = status;
+        m_analysis_status = status;
         inform_progress_to_host();
     };
 
@@ -200,7 +200,7 @@ void Spout::FlowController::analyze_and_store_flow_data() {
     const auto beginning = millis();
 
     if (CFG(GigaMode)) {
-        m_calibration_status = FlowAnalysisStatus::Executing;
+        m_analysis_status = FlowAnalysisStatus::Executing;
 
         for (size_t i = 0; i < 100; i++) {
             update_progress(i / 100.f);
@@ -224,12 +224,14 @@ void Spout::FlowController::analyze_and_store_flow_data() {
         auto mod_when_finished = 0;
         auto number_of_occupied_cells = 0;
 
-        m_calibration_status = FlowAnalysisStatus::Executing;
+        m_analysis_status = FlowAnalysisStatus::Executing;
 
         begin_iterative_pour(
             [&,
              last_average_flow = 0.f,
              fixed_bad_delta = false](FlowInfo info, s32& digital_signal_mod) mutable {
+                if (m_abort_analysis)
+                    return util::Iter::Break;
                 if (last_average_flow and info.flow < last_average_flow) {
                     digital_signal_mod = ITERATION_STEP;
                     LOG_IF(LogCalibration, "fluxo diminuiu?! aumentando sinal digital - [ultimo = ", last_average_flow, "]");
@@ -280,10 +282,16 @@ void Spout::FlowController::analyze_and_store_flow_data() {
             ITERATION_STEP);
 
         // if we didn't find the maximum flow in the iteration above, try finding it now
-        if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL) {
+        if (m_digital_signal_table.back().back() == INVALID_DIGITAL_SIGNAL and not m_abort_analysis) {
             update_status(FlowAnalysisStatus::Finalizing);
             auto maximum_flow_info = obtain_specific_flow(FLOW_MAX, info_when_finished, mod_when_finished);
             save_flow_info_to_table(maximum_flow_info.flow, maximum_flow_info.digital_signal);
+        }
+
+        Spout::the().end_pour();
+        if (m_abort_analysis) {
+            clean_digital_signal_table(RemoveFile::No);
+            return;
         }
 
         LOG_IF(LogCalibration, "tabela preenchida - [duracao = ", (millis() - beginning) / 60000.f, "min | celulas = ", number_of_occupied_cells, "]");
@@ -295,7 +303,6 @@ void Spout::FlowController::analyze_and_store_flow_data() {
 
         // we're done!
         update_status(FlowAnalysisStatus::Done);
-        Spout::the().end_pour();
         save_digital_signal_table_to_file();
     }
 }
@@ -369,8 +376,8 @@ void Spout::FlowController::clean_digital_signal_table(RemoveFile remove) {
     if (remove == RemoveFile::Yes and sd.file_exists(TABLE_FILE_PATH))
         sd.remove_file(TABLE_FILE_PATH);
 
-    m_calibration_progress = 0.f;
-    m_calibration_status = FlowAnalysisStatus::None;
+    m_analysis_progress = 0.f;
+    m_analysis_status = FlowAnalysisStatus::None;
 }
 
 void Spout::FlowController::save_digital_signal_table_to_file() {
@@ -394,20 +401,20 @@ void Spout::FlowController::fetch_digital_signal_table_from_file() {
 }
 
 void Spout::FlowController::inform_progress_to_host() const {
-    if (m_calibration_status == FlowAnalysisStatus::None)
+    if (m_analysis_status == FlowAnalysisStatus::None)
         return;
 
-    if (m_calibration_status == FlowAnalysisStatus::Executing) {
+    if (m_analysis_status == FlowAnalysisStatus::Executing) {
         info::send(
             info::Event::Calibration,
             [this](JsonObject o) {
-                o["progress"] = m_calibration_progress;
+                o["progress"] = m_analysis_progress;
             });
     } else {
         info::send(
             info::Event::Calibration,
             [this](JsonObject o) {
-                o["status"] = usize(m_calibration_status);
+                o["status"] = usize(m_analysis_status);
             });
     }
 }

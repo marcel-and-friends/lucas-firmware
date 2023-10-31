@@ -1,4 +1,5 @@
 #include "core.h"
+#include <utility>
 #include <lucas/lucas.h>
 #include <lucas/Spout.h>
 #include <lucas/Boiler.h>
@@ -12,14 +13,8 @@
 #include <src/module/planner.h>
 
 namespace lucas::core {
-enum class CalibrationPhase {
-    None,
-    WaitingForTemperatureToStabilize,
-    FillingDigitalSignalTable,
-    Done
-};
-
 static auto s_calibration_phase = CalibrationPhase::None;
+static auto s_scheduled_calibration_temperature = 0;
 static util::Timer s_time_since_setup = {};
 
 void setup() {
@@ -86,27 +81,57 @@ void tick() {
 }
 
 void calibrate(float target_temperature) {
-    // we don't want to interpret button presses and don't want to continue recipes when we start calibrating
-    core::TemporaryFilter f{ core::Filter::Station, core::Filter::RecipeQueue };
+    // if we're already in the middle of calibrating we don't nest calibrations - that would be bad
+    if (s_calibration_phase != CalibrationPhase::None) {
+        switch (s_calibration_phase) {
+        // if we're waiting for the temperature to stabilize we can just change the target temperature and keep waiting
+        case CalibrationPhase::ReachingTargetTemperature:
+            LOG_IF(LogCalibration, "trocando temperatura target");
+            Boiler::the().set_target_temperature(target_temperature);
+        // in the case of flow analysis it gets a bit more complex
+        // we tell the flow controller it should abort and save the new desired temperature for later
+        // "later" in this case is a few lines below, where `s_scheduled_calibration_temperature` is used.
+        // the flow of the code gets really nasty in the current architecture, need to rewrite everything.
+        case CalibrationPhase::AnalysingFlowData:
+            LOG_IF(LogCalibration, "cancelando analise de fluxo");
+            Spout::FlowController::the().set_abort_analysis(true);
+            s_scheduled_calibration_temperature = target_temperature;
+        }
+        return;
+    }
 
     LOG_IF(LogCalibration, "iniciando nivelamento");
 
     if (CFG(SetTargetTemperatureOnCalibration)) {
-        s_calibration_phase = CalibrationPhase::WaitingForTemperatureToStabilize;
+        s_calibration_phase = CalibrationPhase::ReachingTargetTemperature;
         Boiler::the().set_target_temperature_and_wait(target_temperature);
     }
 
     if (CFG(FillDigitalSignalTableOnCalibration)) {
-        s_calibration_phase = CalibrationPhase::FillingDigitalSignalTable;
-        Spout::FlowController::the().analyze_and_store_flow_data();
+        s_calibration_phase = CalibrationPhase::AnalysingFlowData;
+        Spout::FlowController::the().analyse_and_store_flow_data();
     } else {
         if (util::SD::make().file_exists(Spout::FlowController::TABLE_FILE_PATH))
             Spout::FlowController::the().fetch_digital_signal_table_from_file();
     }
 
+    // if we have a scheduled calibration we execute it now
+    // like i said, the flow of the code gets really nasty.
+    if (s_scheduled_calibration_temperature) {
+        LOG_IF(LogCalibration, "executando calibracao agendada");
+        s_calibration_phase = CalibrationPhase::None;
+        Spout::FlowController::the().set_abort_analysis(false);
+        calibrate(std::exchange(s_scheduled_calibration_temperature, 0));
+        return;
+    }
+
     s_calibration_phase = CalibrationPhase::Done;
     tone(BEEPER_PIN, 7000, 1000);
     LOG_IF(LogCalibration, "nivelamento finalizado");
+}
+
+CalibrationPhase calibration_phase() {
+    return s_calibration_phase;
 }
 
 void inform_calibration_status() {
@@ -117,10 +142,10 @@ void inform_calibration_status() {
         });
 
     switch (s_calibration_phase) {
-    case CalibrationPhase::WaitingForTemperatureToStabilize: {
+    case CalibrationPhase::ReachingTargetTemperature: {
         Boiler::the().inform_temperature_to_host();
     } break;
-    case CalibrationPhase::FillingDigitalSignalTable: {
+    case CalibrationPhase::AnalysingFlowData: {
         Spout::FlowController::the().inform_progress_to_host();
     } break;
     default:

@@ -3,6 +3,7 @@
 #include <lucas/Boiler.h>
 #include <lucas/info/info.h>
 #include <lucas/MotionController.h>
+#include <lucas/core/core.h>
 #include <lucas/util/ScopedGuard.h>
 #include <lucas/util/StaticVector.h>
 #include <lucas/util/SD.h>
@@ -139,10 +140,18 @@ void RecipeQueue::remove_fixed_recipes() {
 }
 
 void RecipeQueue::map_station_recipe(usize index) {
-    core::TemporaryFilter f{ core::Filter::Station };
     auto& station = Station::list().at(index);
+    if (station.blocked())
+        return;
+
+    core::TemporaryFilter f{ core::Filter::Station };
     if (not m_queue[index].active) {
         if (m_fixed_recipes[index].active) {
+            // don't execute fixed recipes when calibrating
+            // the only recipe that should be executed during calibration is the cooling recipe
+            if (core::calibration_phase() != core::CalibrationPhase::Done)
+                return;
+
             auto& recipe = m_queue[index].recipe = m_fixed_recipes[index].recipe;
 
             add_recipe(index);
@@ -152,30 +161,28 @@ void RecipeQueue::map_station_recipe(usize index) {
         } else {
             LOG_ERR("estacao nao possui receita na fila - [estacao = ", index, "]");
         }
-        return;
-    }
+    } else {
+        // if the recipe is active then mapping means we must be waiting for some confirmation
+        if (not station.waiting_user_confirmation()) {
+            LOG_ERR("tentando mapear receita de uma station invalida [estacao = ", index, "]");
+            return;
+        }
 
-    if (not station.waiting_user_confirmation() or station.blocked()) {
-        LOG_ERR("tentando mapear receita de uma station invalida [estacao = ", index, "]");
-        return;
-    }
+        auto& recipe = m_queue[index].recipe;
+        if (recipe.remaining_steps_are_mapped()) {
+            LOG_ERR("receita ja esta mapeada - [estacao = ", index, "]");
+            return;
+        }
 
-    auto& recipe = m_queue[index].recipe;
-    if (recipe.remaining_steps_are_mapped()) {
-        LOG_ERR("receita ja esta mapeada - [estacao = ", index, "]");
-        return;
+        // por conta do if acima nesse momento a recipe só pode estar em um de dois estados - 'ConfirmingScald' e 'ConfirmingAttacks'
+        // os próximo estados após esses são 'Scalding' e 'Attacking', respectivamente
+        const auto next_status = s32(station.status()) + 1;
+        station.set_status(Station::Status(next_status), recipe.id());
+        map_recipe(recipe, station);
     }
-
-    // por conta do if acima nesse momento a recipe só pode estar em um de dois estados - 'ConfirmingScald' e 'ConfirmingAttacks'
-    // os próximo estados após esses são 'Scalding' e 'Attacking', respectivamente
-    const auto next_status = s32(station.status()) + 1;
-    station.set_status(Station::Status(next_status), recipe.id());
-    map_recipe(recipe, station);
 }
 
 void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
-    core::TemporaryFilter f{ core::Filter::Station };
-
     if (m_heating_hose_after_inactivity) {
         Spout::the().end_pour();
         m_heating_hose_after_inactivity = false;

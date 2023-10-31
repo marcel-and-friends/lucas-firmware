@@ -59,7 +59,7 @@ public:
         static constexpr auto INVALID_DIGITAL_SIGNAL = 0xF0F0; // UwU
         static inline auto ML_PER_PULSE = 0.5375f;
 
-        void analyze_and_store_flow_data();
+        void analyse_and_store_flow_data();
 
         enum class RemoveFile {
             Yes,
@@ -71,6 +71,9 @@ public:
         void fetch_digital_signal_table_from_file();
 
         void inform_progress_to_host() const;
+
+        void set_abort_analysis(bool b) { m_abort_analysis = b; }
+        bool abort_analysis() const { return m_abort_analysis; }
 
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
@@ -104,6 +107,9 @@ public:
             // can be negative
             s32 digital_signal_mod = starting_mod;
             while (true) {
+                if (m_abort_analysis)
+                    return;
+
                 // let's not fly too close to the sun
                 if (digital_signal >= 4095)
                     break;
@@ -174,8 +180,9 @@ public:
             None
         };
 
-        FlowAnalysisStatus m_calibration_status = FlowAnalysisStatus::None;
-        float m_calibration_progress = 0.f;
+        FlowAnalysisStatus m_analysis_status = FlowAnalysisStatus::None;
+        float m_analysis_progress = 0.f;
+        bool m_abort_analysis = false;
     };
 
 private:
