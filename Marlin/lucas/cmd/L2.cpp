@@ -20,8 +20,10 @@ void L2() {
     const bool associated_with_station = RecipeQueue::the().executing();
     util::idle_while([&] {
         // recipe foi cancelada por meios externos
-        if (associated_with_station and not RecipeQueue::the().executing())
+        if (associated_with_station and not RecipeQueue::the().executing()) {
+            Spout::the().end_pour();
             return false;
+        }
         return Spout::the().pouring();
     });
 }
