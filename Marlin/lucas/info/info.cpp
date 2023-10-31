@@ -130,10 +130,8 @@ void interpret_command_from_host(std::span<char> buffer) {
 
             auto array = v.as<JsonArrayConst>();
             Station::initialize(array.size());
-            Station::for_each([&array](Station& station, usize i) {
-                station.set_blocked(not array[i].as<bool>());
-                return util::Iter::Continue;
-            });
+            for (size_t i = 0; i < array.size(); ++i)
+                Station::list().at(i).set_blocked(not array[i].as<bool>());
         } break;
         case Command::SetBoilerTemperature: {
             if (not v.is<s32>()) {
