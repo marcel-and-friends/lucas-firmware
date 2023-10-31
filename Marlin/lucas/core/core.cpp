@@ -81,24 +81,24 @@ void tick() {
 }
 
 void calibrate(float target_temperature) {
-    // if we're already in the middle of calibrating we don't nest calibrations - that would be bad
-    if (s_calibration_phase != CalibrationPhase::None) {
-        switch (s_calibration_phase) {
-        // if we're waiting for the temperature to stabilize we can just change the target temperature and keep waiting
-        case CalibrationPhase::ReachingTargetTemperature:
-            LOG_IF(LogCalibration, "trocando temperatura target");
-            Boiler::the().set_target_temperature(target_temperature);
-            break;
-        // in the case of flow analysis it gets a bit more complex
-        // we tell the flow controller it should abort and save the new desired temperature for later
-        // "later" in this case is a few lines below, where `s_scheduled_calibration_temperature` is used.
-        // the flow of the code gets really nasty in the current architecture, need to rewrite everything.
-        case CalibrationPhase::AnalysingFlowData:
-            LOG_IF(LogCalibration, "cancelando analise de fluxo");
-            Spout::FlowController::the().set_abort_analysis(true);
-            s_scheduled_calibration_temperature = target_temperature;
-            break;
-        }
+    if (target_temperature == Boiler::the().target_temperature())
+        return;
+
+    // maybe we are already calibrating...
+    switch (s_calibration_phase) {
+    // if we're still just reaching the target temp just update the target temperature and keep waiting
+    case CalibrationPhase::ReachingTargetTemperature:
+        LOG_IF(LogCalibration, "trocando temperatura target");
+        Boiler::the().set_target_temperature(target_temperature);
+        return;
+    // if we're doing flow analysis it gets a bit more complex
+    // we tell the flow controller it should abort, wait for it's loop to be called again and save the new desired temperature for later
+    // "later" in this case is a few lines below, where `s_scheduled_calibration_temperature` is used.
+    // the flow of the code gets really nasty in the current architecture, need to rewrite everything.
+    case CalibrationPhase::AnalysingFlowData:
+        LOG_IF(LogCalibration, "cancelando analise de fluxo");
+        Spout::FlowController::the().set_abort_analysis(true);
+        s_scheduled_calibration_temperature = target_temperature;
         return;
     }
 
