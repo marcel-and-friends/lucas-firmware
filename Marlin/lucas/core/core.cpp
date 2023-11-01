@@ -81,9 +81,14 @@ void tick() {
 }
 
 void calibrate(float target_temperature) {
-    if (target_temperature == Boiler::the().target_temperature())
+    if (target_temperature == Boiler::the().target_temperature()) {
+        info::send(
+            info::Event::Boiler,
+            [](JsonObject o) {
+                o["currentTemp"] = Boiler::the().target_temperature();
+            });
         return;
-
+    }
     // maybe we are already calibrating...
     switch (s_calibration_phase) {
     // if we're still just reaching the target temp just update the target temperature and keep waiting

@@ -937,6 +937,7 @@ void idle(bool no_stepper_sleep /*=false*/) {
     if (lucas::setup_state() == lucas::SetupState::Done) {
         lucas::tick();
     } else {
+        lucas::serial::clean_serial();
         if (lucas::setup_state() == lucas::SetupState::NotStarted)
             lucas::setup();
     }

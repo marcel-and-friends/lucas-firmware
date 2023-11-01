@@ -4,6 +4,7 @@
 #include <lucas/info/info.h>
 #include <lucas/sec/sec.h>
 #include <src/module/temperature.h>
+#include <utility>
 
 namespace lucas {
 static bool s_alarm_triggered = false;
@@ -62,6 +63,10 @@ void Boiler::tick() {
     if (s_alarm_triggered)
         sec::raise_error(sec::Error::WaterLevelAlarm);
 
+    every(5s) {
+        inform_temperature_to_host();
+    }
+
     constexpr auto MAXIMUM_TEMPERATURE = 105.f;
     const auto temperature = this->temperature();
     if (temperature >= MAXIMUM_TEMPERATURE)
@@ -88,42 +93,31 @@ void Boiler::tick() {
 }
 
 float Boiler::temperature() const {
-    return CFG(GigaMode) ? 100 : thermalManager.degBed();
+    return CFG(GigaMode) ? 94 : thermalManager.degBed();
 }
 
 void Boiler::inform_temperature_to_host() {
     info::send(
         info::Event::Boiler,
-        [](JsonObject o) {
-            o["currentTemp"] = Boiler::the().temperature();
+        [this](JsonObject o) {
+            o["reachingTargetTemp"] = m_target_temperature and not m_reached_target_temperature;
+            o["currentTemp"] = temperature();
         });
 }
 
 void Boiler::set_target_temperature_and_wait(s32 target) {
-    const auto old_target = m_target_temperature;
     set_target_temperature(target);
     if (not target)
         return;
 
     if (CFG(GigaMode)) {
         LOG(m_cooling ? "resfri" : "esquent", "ando boiler no modo giga...");
-        util::idle_until([this,
-                          timeout = m_cooling ? 120s : 60s,
-                          timer = util::Timer::started()] {
-            every(5s) {
-                inform_temperature_to_host();
-            }
-            return timer >= timeout;
-        });
+        util::idle_for(m_cooling ? 120s : 60s);
     } else {
         m_reached_target_temperature = false;
         util::idle_until([this,
                           in_range_timer = util::Timer(),
                           last_checked_temperature = temperature()] mutable {
-            every(5s) {
-                inform_temperature_to_host();
-            }
-
             const auto temperature = this->temperature();
             if (not m_cooling) {
                 every(2min) {
@@ -143,24 +137,16 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
         });
     }
 
-    // and we're done! inform the app of our totaly real temperature
-    info::send(
-        info::Event::Boiler,
-        [](JsonObject o) {
-            o["currentTemp"] = Boiler::the().target_temperature();
-        });
-
     m_hysteresis = LOW_HYSTERESIS;
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
 }
 
 void Boiler::set_target_temperature(s32 target) {
-    const auto old_target = m_target_temperature;
-    m_target_temperature = target;
+    const auto old_target_temperature = std::exchange(m_target_temperature, target);
     if (not m_target_temperature)
         return;
 
-    m_cooling = target < old_target ?: temperature();
+    m_cooling = m_target_temperature < (old_target_temperature ?: temperature());
 
     const auto delta = std::abs(target - temperature());
     if (temperature() > target) {
