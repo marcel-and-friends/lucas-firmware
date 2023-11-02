@@ -1,14 +1,13 @@
 #pragma once
 
 #include <lucas/info/Report.h>
+#include <lucas/serial/FirmwareUpdateHook.h>
 #include <lucas/util/util.h>
 #include <span>
 
 namespace lucas::info {
 constexpr usize BUFFER_SIZE = 2048;
 using JsonDocument = StaticJsonDocument<BUFFER_SIZE>;
-
-void setup();
 
 void tick();
 

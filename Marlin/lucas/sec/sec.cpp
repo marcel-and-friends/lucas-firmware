@@ -95,7 +95,7 @@ void raise_error(Error reason) {
     s_active_error = Error::Invalid;
     inform_active_error();
 
-    Boiler::the().set_target_temperature_and_wait(old_temperature);
+    Boiler::the().update_and_reach_target_temperature(old_temperature);
 }
 
 bool has_active_error() {

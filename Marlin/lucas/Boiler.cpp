@@ -48,6 +48,8 @@ void Boiler::setup() {
                 o["filling"] = false;
             });
     }
+
+    reset();
 }
 
 void Boiler::setup_pins() {
@@ -72,23 +74,35 @@ void Boiler::tick() {
     if (temperature >= MAXIMUM_TEMPERATURE)
         sec::raise_error(sec::Error::MaxTemperatureReached);
 
-    if (not m_target_temperature) {
-        control_resistance(false);
+    if (not m_target_temperature)
         return;
-    }
 
     control_resistance(temperature < (m_target_temperature - m_hysteresis));
 
-    if (not CFG(MaintenanceMode)) {
-        { // out of the valid temperature range for too long
-            if (m_reached_target_temperature) {
-                constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
-                const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
-                m_outside_target_range_timer.toggle_based_on(not in_target_range);
-                if (m_outside_target_range_timer >= 5min)
-                    sec::raise_error(sec::Error::TemperatureOutOfRange);
+    if (m_reached_target_temperature) {
+        constexpr auto VALID_TEMPERATURE_RANGE = 5.f;
+        const auto in_target_range = std::abs(m_target_temperature - temperature) <= VALID_TEMPERATURE_RANGE;
+        m_outside_target_range_timer.toggle_based_on(not in_target_range);
+        if (m_outside_target_range_timer >= 5min)
+            sec::raise_error(sec::Error::TemperatureOutOfRange);
+    } else {
+        const auto temperature = this->temperature();
+        if (not m_cooling) {
+            if (m_heating_check_timer >= 2min) {
+                // if the temperature isn't going up let's kill ourselves NOW
+                if (temperature - m_last_checked_heating_temperature < 0.5f)
+                    sec::raise_error(sec::Error::TemperatureNotChanging);
+
+                m_last_checked_heating_temperature = temperature;
+                m_heating_check_timer.restart();
             }
         }
+
+        m_temperature_stabilized_timer.toggle_based_on(std::abs(m_target_temperature - temperature) <= m_hysteresis);
+        // stop when we have staid in the valid range for 5 seconds
+        m_reached_target_temperature = m_temperature_stabilized_timer >= 5s;
+        if (m_reached_target_temperature)
+            m_hysteresis = LOW_HYSTERESIS;
     }
 }
 
@@ -105,8 +119,8 @@ void Boiler::inform_temperature_to_host() {
         });
 }
 
-void Boiler::set_target_temperature_and_wait(s32 target) {
-    set_target_temperature(target);
+void Boiler::update_and_reach_target_temperature(s32 target) {
+    update_target_temperature(target);
     if (not target)
         return;
 
@@ -114,46 +128,44 @@ void Boiler::set_target_temperature_and_wait(s32 target) {
         LOG(m_cooling ? "resfri" : "esquent", "ando boiler no modo giga...");
         util::idle_for(m_cooling ? 120s : 60s);
     } else {
-        m_reached_target_temperature = false;
-        util::idle_until([this,
-                          in_range_timer = util::Timer(),
-                          last_checked_temperature = temperature()] mutable {
-            const auto temperature = this->temperature();
-            if (not m_cooling) {
-                every(2min) {
-                    // if the temperature isn't going up let's kill ourselves NOW
-                    if (last_checked_temperature > temperature or
-                        temperature - last_checked_temperature < 1.f)
-                        sec::raise_error(sec::Error::TemperatureNotChanging);
-
-                    last_checked_temperature = temperature;
-                }
-            }
-
-            in_range_timer.toggle_based_on(std::abs(m_target_temperature - temperature) <= m_hysteresis);
-            // stop when we have staid in the valid range for 5 seconds
-            m_reached_target_temperature = in_range_timer >= 5s;
-            return m_reached_target_temperature;
-        });
+        util::idle_until([this] { return m_reached_target_temperature; });
     }
 
-    m_hysteresis = LOW_HYSTERESIS;
+    inform_temperature_to_host();
+
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
 }
 
-void Boiler::set_target_temperature(s32 target) {
-    const auto old_target_temperature = std::exchange(m_target_temperature, target);
-    if (not m_target_temperature)
+void Boiler::update_target_temperature(s32 target) {
+    if (target == m_target_temperature)
         return;
 
-    m_cooling = m_target_temperature < (old_target_temperature ?: temperature());
+    const auto old_target_temperature = std::exchange(m_target_temperature, target);
+    if (not m_target_temperature) {
+        reset();
+        return;
+    }
 
-    const auto delta = std::abs(target - temperature());
-    if (temperature() > target) {
+    const auto temperature = this->temperature();
+    const auto delta = std::abs(target - temperature);
+    if (temperature > target) {
         m_hysteresis = LOW_HYSTERESIS;
     } else {
         m_hysteresis = delta < HIGH_HYSTERESIS ? LOW_HYSTERESIS : HIGH_HYSTERESIS;
     }
+
+    m_reached_target_temperature = false;
+    m_cooling = m_target_temperature < (old_target_temperature ?: temperature);
+    if (not m_cooling) {
+        m_last_checked_heating_temperature = temperature;
+        m_heating_check_timer.start();
+    } else {
+        m_last_checked_heating_temperature = 0.f;
+        m_heating_check_timer.stop();
+    }
+
+    inform_temperature_to_host();
+
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", target, " | hysteresis = ", m_hysteresis, "]");
 }
 
@@ -162,7 +174,20 @@ void Boiler::control_resistance(bool state) {
 }
 
 void Boiler::turn_off_resistance() {
+    update_target_temperature(0);
+}
+
+void Boiler::reset() {
+    m_hysteresis = 0.f;
+
+    m_cooling = false;
+    m_reached_target_temperature = false;
+    m_last_checked_heating_temperature = 0.f;
+
+    m_outside_target_range_timer.stop();
+    m_temperature_stabilized_timer.stop();
+    m_heating_check_timer.stop();
+
     control_resistance(false);
-    set_target_temperature(0);
 }
 }

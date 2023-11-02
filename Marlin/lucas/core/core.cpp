@@ -81,20 +81,15 @@ void tick() {
 }
 
 void calibrate(float target_temperature) {
-    if (target_temperature == Boiler::the().target_temperature()) {
-        info::send(
-            info::Event::Boiler,
-            [](JsonObject o) {
-                o["currentTemp"] = Boiler::the().target_temperature();
-            });
+    if (target_temperature == Boiler::the().target_temperature())
         return;
-    }
+
     // maybe we are already calibrating...
     switch (s_calibration_phase) {
     // if we're still just reaching the target temp just update the target temperature and keep waiting
     case CalibrationPhase::ReachingTargetTemperature:
         LOG_IF(LogCalibration, "trocando temperatura target");
-        Boiler::the().set_target_temperature(target_temperature);
+        Boiler::the().update_target_temperature(target_temperature);
         return;
     // if we're doing flow analysis it gets a bit more complex
     // we tell the flow controller it should abort, wait for it's loop to be called again and save the new desired temperature for later
@@ -111,7 +106,7 @@ void calibrate(float target_temperature) {
 
     if (CFG(SetTargetTemperatureOnCalibration)) {
         s_calibration_phase = CalibrationPhase::ReachingTargetTemperature;
-        Boiler::the().set_target_temperature_and_wait(target_temperature);
+        Boiler::the().update_and_reach_target_temperature(target_temperature);
     }
 
     if (CFG(FillDigitalSignalTableOnCalibration)) {

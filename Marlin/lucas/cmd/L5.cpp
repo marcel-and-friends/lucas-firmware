@@ -63,7 +63,7 @@ void L5() {
         LOG("BEEPER: ", status ? "ativado" : "desativado");
     } break;
     case 7: {
-        status ? Boiler::the().set_target_temperature(93) : Boiler::the().turn_off_resistance();
+        status ? Boiler::the().update_target_temperature(93) : Boiler::the().turn_off_resistance();
         LOG("BOILER: maquina vai ", status ? "aquecer" : "esfriar");
     } break;
     default:

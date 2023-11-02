@@ -11,15 +11,6 @@
 #include <src/module/temperature.h>
 
 namespace lucas::info {
-void setup() {
-    Report::make(
-        "infoTemperature",
-        5'000,
-        [](JsonObject obj) {
-            obj["currentTemp"] = Boiler::the().temperature();
-        });
-}
-
 void tick() {
     if (CFG(LogTemperatureForTesting)) {
         every(1s) {

@@ -27,8 +27,8 @@ public:
     void inform_temperature_to_host();
 
     s32 target_temperature() const { return m_target_temperature; }
-    void set_target_temperature(s32);
-    void set_target_temperature_and_wait(s32);
+    void update_target_temperature(s32);
+    void update_and_reach_target_temperature(s32);
 
     void control_resistance(bool state);
 
@@ -37,6 +37,8 @@ public:
     bool is_alarm_triggered() const { return s_alarm_triggered; }
 
 private:
+    void reset();
+
     static constexpr auto HIGH_HYSTERESIS = 1.5f;
     static constexpr auto LOW_HYSTERESIS = 0.5f;
 
@@ -51,5 +53,11 @@ private:
     bool m_reached_target_temperature = false;
 
     util::Timer m_outside_target_range_timer;
+
+    util::Timer m_temperature_stabilized_timer;
+
+    util::Timer m_heating_check_timer;
+
+    float m_last_checked_heating_temperature = 0.f;
 };
 }

@@ -289,6 +289,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         }
 
         Spout::the().end_pour();
+        update_status(FlowAnalysisStatus::Done);
         if (m_abort_analysis) {
             clean_digital_signal_table(RemoveFile::No);
             return;
@@ -301,8 +302,6 @@ void Spout::FlowController::analyse_and_store_flow_data() {
             return util::Iter::Continue;
         });
 
-        // we're done!
-        update_status(FlowAnalysisStatus::Done);
         save_digital_signal_table_to_file();
     }
 }

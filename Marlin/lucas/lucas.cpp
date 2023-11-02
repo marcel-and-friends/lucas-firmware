@@ -17,7 +17,6 @@ void setup() {
     cfg::setup();
     serial::setup();
     sec::setup();
-    info::setup();
     core::setup();
 
     s_setup_state = SetupState::Done;
