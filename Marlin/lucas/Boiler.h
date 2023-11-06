@@ -21,10 +21,11 @@ public:
 
     float temperature() const;
 
-    float hysteresis() const { return m_hysteresis; }
-    void set_hysteresis(float f) { m_hysteresis = f; }
-
     void inform_temperature_to_host();
+
+    bool is_in_target_temperature_range() const;
+
+    bool is_heating() const;
 
     s32 target_temperature() const { return m_target_temperature; }
     void update_target_temperature(s32);
@@ -39,16 +40,13 @@ public:
 private:
     void reset();
 
-    static constexpr auto HIGH_HYSTERESIS = 1.5f;
-    static constexpr auto LOW_HYSTERESIS = 0.5f;
+    static constexpr auto HYSTERESIS = 0.5f;
+    static constexpr auto TARGET_TEMPERATURE_RANGE_WHEN_ABOVE_TARGET = 2.0f;
+    static constexpr auto TARGET_TEMPERATURE_RANGE_WHEN_BELOW_TARGET = 1.0f;
 
     static inline bool s_alarm_triggered = false;
 
-    float m_hysteresis = 0.f;
-
-    s32 m_target_temperature = 0;
-
-    bool m_cooling = false;
+    s32 m_target_temperature = -1;
 
     bool m_reached_target_temperature = false;
 
