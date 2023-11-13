@@ -61,27 +61,23 @@ void RecipeQueue::tick() {
 }
 
 void RecipeQueue::schedule_recipe(JsonObjectConst recipe_json) {
-    if (not recipe_json.containsKey("id") or
-        not recipe_json.containsKey("finalizationTime") or
-        not recipe_json.containsKey("attacks")) {
+    if (not recipe_json.containsKey("recipe") or
+        not recipe_json.containsKey("station")) {
         LOG_ERR("json da receita nao possui todos os campos obrigatorios");
         return;
     }
 
-    for (usize i = 0; i < Station::number_of_stations(); i++) {
-        auto& station = Station::list().at(i);
-        if (station.status() != Station::Status::Free or station.blocked())
-            continue;
-
-        auto& info = m_queue[i];
-        if (not info.active) {
-            info.recipe.build_from_json(recipe_json);
-            schedule_recipe_for_station(info.recipe, i);
-            return;
-        }
+    const auto station_index = recipe_json["station"].as<usize>();
+    const auto recipe_obj = recipe_json["recipe"].as<JsonObjectConst>();
+    auto& station = Station::list().at(station_index);
+    if (station.status() != Station::Status::Free or station.blocked()) {
+        LOG_ERR("tentando mapear receita de uma estacao invalida [estacao = ", station_index, "]");
+        return;
     }
 
-    LOG_ERR("nao foi possivel encontrar uma estacao disponivel");
+    auto& info = m_queue[station_index];
+    info.recipe.build_from_json(recipe_obj);
+    schedule_recipe_for_station(info.recipe, station_index);
 }
 
 void RecipeQueue::schedule_recipe_for_station(Recipe& recipe, usize index) {
