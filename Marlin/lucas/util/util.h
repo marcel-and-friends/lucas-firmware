@@ -45,6 +45,16 @@ void idle_for(const auto duration, core::Filter filtros = core::Filter::None) {
         idle();
 }
 
+void idle_for(const auto duration, Fn<void> auto&& callback, core::Filter filtros = core::Filter::None) {
+    core::TemporaryFilter f{ filtros };
+    const auto ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
+    const auto comeco = millis();
+    while (millis() - comeco < ms) {
+        callback();
+        idle();
+    }
+}
+
 template<millis_t INTERVAL>
 bool elapsed(millis_t last) {
     return millis() - last >= INTERVAL;
