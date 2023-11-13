@@ -72,20 +72,18 @@ void Boiler::tick() {
     if (not m_target_temperature)
         return;
 
+    if (CFG(GigaMode)) {
+        every(5s) {
+            inform_temperature_to_host();
+        }
+        return;
+    }
+
     control_resistance(temperature() < (m_target_temperature - HYSTERESIS));
 
     if (not m_reached_target_temperature) {
         m_temperature_stabilized_timer.toggle_based_on(is_in_target_temperature_range());
         m_reached_target_temperature = m_temperature_stabilized_timer >= 5s;
-    } else {
-        constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
-        const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
-        m_outside_target_range_timer.toggle_based_on(not in_target_range);
-        if (m_outside_target_range_timer >= 5min)
-            sec::raise_error(sec::Error::TemperatureOutOfRange);
-    }
-
-    if (not is_in_target_temperature_range()) {
         if (is_heating()) {
             if (not m_heating_check_timer.is_active()) {
                 m_last_checked_heating_temperature = temperature();
@@ -93,7 +91,6 @@ void Boiler::tick() {
             }
 
             if (m_heating_check_timer >= 2min) {
-                // if the temperature isn't going up let's kill ourselves NOW
                 if (temperature() - m_last_checked_heating_temperature < 0.5f)
                     sec::raise_error(sec::Error::TemperatureNotChanging);
 
@@ -101,12 +98,14 @@ void Boiler::tick() {
                 m_heating_check_timer.restart();
             }
         } else {
-            m_last_checked_heating_temperature = 0.f;
             m_heating_check_timer.stop();
         }
     } else {
-        m_last_checked_heating_temperature = 0.f;
-        m_heating_check_timer.stop();
+        constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
+        const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
+        m_outside_target_range_timer.toggle_based_on(not in_target_range);
+        if (m_outside_target_range_timer >= 5min)
+            sec::raise_error(sec::Error::TemperatureOutOfRange);
     }
 
     every(5s) {
@@ -120,9 +119,9 @@ float Boiler::temperature() const {
 
 bool Boiler::is_in_target_temperature_range() const {
     const auto delta = temperature() - m_target_temperature;
-    return delta <= (delta > 0.f
-                         ? TARGET_TEMPERATURE_RANGE_WHEN_ABOVE_TARGET
-                         : TARGET_TEMPERATURE_RANGE_WHEN_BELOW_TARGET);
+    return std::abs(delta) <= (delta > 0.f
+                                   ? TARGET_TEMPERATURE_RANGE_WHEN_ABOVE_TARGET
+                                   : TARGET_TEMPERATURE_RANGE_WHEN_BELOW_TARGET);
 }
 
 bool Boiler::is_heating() const {
@@ -145,6 +144,12 @@ void Boiler::update_and_reach_target_temperature(s32 target) {
         return;
 
     if (CFG(GigaMode)) {
+        LOG("esquentando boiler no modo giga...");
+        util::idle_for(1min);
+        return;
+    }
+
+    if (CFG(GigaMode)) {
         LOG(is_heating() ? "esquent" : "resfri", "ando boiler no modo giga...");
         util::idle_for(is_heating() ? 120s : 60s);
     } else {
@@ -157,7 +162,7 @@ void Boiler::update_and_reach_target_temperature(s32 target) {
 }
 
 void Boiler::update_target_temperature(s32 target) {
-    if (target == m_target_temperature)
+    if (m_target_temperature and target == m_target_temperature)
         return;
 
     m_target_temperature = target;

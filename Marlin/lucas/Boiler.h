@@ -46,7 +46,7 @@ private:
 
     static inline bool s_alarm_triggered = false;
 
-    s32 m_target_temperature = -1;
+    s32 m_target_temperature = 0;
 
     bool m_reached_target_temperature = false;
 
