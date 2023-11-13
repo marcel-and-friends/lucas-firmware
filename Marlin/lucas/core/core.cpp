@@ -161,9 +161,10 @@ static util::SD s_sd;
 constexpr auto FIRMWARE_FILE_PATH = "/Robin_nano_V3.bin";
 
 static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
-    if (not s_sd.write_from(buffer)) {
-        LOG_ERR("falha ao escrever parte do firmware");
-        return;
+    for (auto attempts = 0; attempts <= 5; ++attempts) {
+        if (s_sd.write_from(buffer))
+            break;
+        LOG_ERR("falha ao escrever parte do firmware, tentando novamente...");
     }
 
     s_total_bytes_written += buffer.size();
