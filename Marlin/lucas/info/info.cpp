@@ -49,24 +49,6 @@ void tick() {
 }
 
 // https://www.notion.so/Comandos-enviados-do-app-para-a-m-quina-683dd32fcf93481bbe72d6ca276e7bfb?pvs=4
-enum class Command {
-    RequestInfoCalibration = 0,
-    InitializeStations,
-    SetBoilerTemperature,
-    ScheduleRecipe,
-    CancelRecipe,
-    RequestInfoAllStations,
-    FirmwareUpdate,
-    RequestInfoFirmware,
-    SetFixedRecipes,
-
-    /* ~comandos de desenvolvimento~ */
-    DevScheduleStandardRecipe,
-    DevSimulateButtonPress,
-
-    InvalidCommand,
-};
-
 static Command command_from_string(std::string_view cmd) {
     static constexpr auto map = std::to_array({
         [usize(Command::RequestInfoCalibration)] = "reqInfoCalibration"sv,
@@ -86,6 +68,26 @@ static Command command_from_string(std::string_view cmd) {
     return it == map.end() ? Command::InvalidCommand : Command(std::distance(map.begin(), it));
 }
 
+static std::array<CommandHook, usize(Command::Count)> s_command_hooks = {};
+
+void install_command_hook(Command command, CommandHook hook) {
+    s_command_hooks[usize(command)] = hook;
+}
+
+void uninstall_command_hook(Command command) {
+    s_command_hooks[usize(command)] = nullptr;
+}
+
+info::TemporaryCommandHook::TemporaryCommandHook(Command command, CommandHook hook)
+    : m_command(command)
+    , m_old_hook(s_command_hooks[usize(command)]) {
+    install_command_hook(command, hook);
+}
+
+info::TemporaryCommandHook::~TemporaryCommandHook() {
+    install_command_hook(m_command, m_old_hook);
+}
+
 void interpret_command_from_host(std::span<char> buffer) {
     JsonDocument doc;
     const auto err = deserializeJson(doc, buffer.data(), buffer.size());
@@ -100,18 +102,21 @@ void interpret_command_from_host(std::span<char> buffer) {
             LOG_ERR("chave invalida");
             continue;
         }
-        const auto v = obj.value();
+
         const auto command = command_from_string(obj.key().c_str());
+        const auto v = obj.value();
+
+        if (auto hook = s_command_hooks[usize(command)]) {
+            hook();
+            continue;
+        }
+
         switch (command) {
         case Command::InvalidCommand: {
             LOG_ERR("comando invalido");
         } break;
         case Command::RequestInfoCalibration: {
-            if (sec::has_active_error()) {
-                sec::inform_active_error();
-            } else {
-                core::inform_calibration_status();
-            }
+            core::inform_calibration_status();
         } break;
         case Command::InitializeStations: {
             if (not v.is<JsonArrayConst>()) {
@@ -120,9 +125,11 @@ void interpret_command_from_host(std::span<char> buffer) {
             }
 
             auto array = v.as<JsonArrayConst>();
-            Station::initialize(array.size());
-            for (size_t i = 0; i < array.size(); ++i)
-                Station::list().at(i).set_blocked(not array[i].as<bool>());
+            Station::SharedData<bool> blocked_stations = {};
+            for (usize i = 0; i < array.size(); ++i)
+                blocked_stations[i] = not array[i].as<bool>();
+
+            Station::initialize(array.size(), blocked_stations);
         } break;
         case Command::SetBoilerTemperature: {
             if (not v.is<s32>()) {

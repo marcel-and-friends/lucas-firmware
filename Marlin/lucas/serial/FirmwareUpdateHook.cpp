@@ -1,10 +1,23 @@
 #include "FirmwareUpdateHook.h"
 #include <lucas/lucas.h>
+#include <lucas/info/info.h>
 
 namespace lucas::serial {
 void FirmwareUpdateHook::think() {
-    while (SERIAL_IMPL.available())
+    if (m_receive_timer >= 1s) {
+        info::send(
+            info::Event::Firmware,
+            [](JsonObject o) {
+                o["updateFailedCode"] = 1;
+            });
+
+        deactivate();
+    }
+
+    while (SERIAL_IMPL.available()) {
+        m_receive_timer.start();
         receive_char(SERIAL_IMPL.read());
+    }
 }
 
 void FirmwareUpdateHook::receive_char(char c) {

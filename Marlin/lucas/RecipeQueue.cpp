@@ -6,21 +6,12 @@
 #include <lucas/core/core.h>
 #include <lucas/util/ScopedGuard.h>
 #include <lucas/util/StaticVector.h>
-#include <lucas/util/SD.h>
-#include <src/module/motion.h>
-#include <src/module/planner.h>
-#include <numeric>
-#include <ranges>
 
 namespace lucas {
-constexpr auto FIXED_RECIPES_FILE_PATH = "/fixed_recipes.txt";
-
 void RecipeQueue::setup() {
-    auto sd = util::SD::make();
-    if (not sd.open(FIXED_RECIPES_FILE_PATH, util::SD::OpenMode::Read))
-        return;
-
-    sd.read_into(m_fixed_recipes);
+    m_storage_handle = storage::register_handle_for_entry("recipes", sizeof(m_fixed_recipes));
+    if (auto entry = storage::fetch_entry(m_storage_handle))
+        entry->read_binary_into(m_fixed_recipes);
 }
 
 void RecipeQueue::tick() {
@@ -119,16 +110,12 @@ void RecipeQueue::set_fixed_recipes(JsonObjectConst recipe_json) {
         }
     }
 
-    auto sd = util::SD::make();
-    if (not sd.open(FIXED_RECIPES_FILE_PATH, util::SD::OpenMode::Write))
-        return;
-
-    sd.write_from(m_fixed_recipes);
+    auto entry = storage::fetch_or_create_entry(m_storage_handle);
+    entry.write_binary(m_fixed_recipes);
 }
 
-void RecipeQueue::remove_fixed_recipes() {
-    auto sd = util::SD::make();
-    sd.remove_file(FIXED_RECIPES_FILE_PATH);
+void RecipeQueue::reset_fixed_recipes() {
+    storage::purge_entry(m_storage_handle);
     for (auto info : m_fixed_recipes) {
         info.recipe.reset();
         info.active = false;
@@ -410,7 +397,16 @@ void RecipeQueue::remove_finalized_recipes() {
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
 void RecipeQueue::try_heating_hose_after_inactivity() {
     if (m_inactivity_timer >= 10min) {
-        core::TemporaryFilter f{ core::Filter::RecipeQueue, core::Filter::Station };
+        info::send(
+            info::Event::Other,
+            [](JsonObject o) {
+                o["heatingHose"] = true;
+            });
+
+        core::TemporaryFilter f{
+            core::Filter::RecipeQueue,
+            core::Filter::Station
+        };
         m_heating_hose_after_inactivity = true;
         m_inactivity_timer.restart();
 
@@ -418,8 +414,10 @@ void RecipeQueue::try_heating_hose_after_inactivity() {
 
         constexpr auto POUR_DURATION = 20s;
         constexpr float POUR_VOLUME = 10.f * POUR_DURATION.count();
+
         MotionController::the().home();
         MotionController::the().travel_to_sewer();
+
         Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME);
     }
 }
@@ -455,6 +453,7 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
                     LOG_ERR("index invalido para requisicao - [index = ", index, "]");
                     continue;
                 }
+
                 const auto& station = Station::list().at(index);
                 if (station.blocked())
                     continue;

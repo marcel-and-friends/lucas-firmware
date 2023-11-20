@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lucas/serial/Hook.h>
+#include <lucas/util/Timer.h>
 #include <lucas/util/Singleton.h>
 
 namespace lucas::serial {
@@ -13,6 +14,14 @@ public:
         m_bytes_received = 0;
     }
 
+    void deactivate() {
+        m_active = false;
+        m_callback = nullptr;
+        m_bytes_to_receive = 0;
+        m_bytes_received = 0;
+        m_receive_timer.stop();
+    }
+
     bool active() const { return m_active; }
 
     void think();
@@ -21,7 +30,11 @@ public:
 
 private:
     bool m_active = false;
+
     usize m_bytes_to_receive = 0;
+
     usize m_bytes_received = 0;
+
+    util::Timer m_receive_timer;
 };
 }

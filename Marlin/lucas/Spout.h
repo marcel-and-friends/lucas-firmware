@@ -1,6 +1,8 @@
 #pragma once
 
-#include <src/MarlinCore.h>
+#include <lucas/util/util.h>
+#include <lucas/core/core.h>
+#include <lucas/storage/storage.h>
 #include <lucas/lucas.h>
 #include <lucas/util/Timer.h>
 #include <lucas/util/Singleton.h>
@@ -59,16 +61,23 @@ public:
         static constexpr auto INVALID_DIGITAL_SIGNAL = 0xF0F0; // UwU
         static inline auto ML_PER_PULSE = 0.5375f;
 
+        void setup();
+
         void analyse_and_store_flow_data();
 
-        enum class RemoveFile {
+        enum class PurgeStorageEntry {
             Yes,
             No
         };
 
-        void clean_digital_signal_table(RemoveFile salvar);
+        void clean_digital_signal_table(PurgeStorageEntry salvar);
         void save_digital_signal_table_to_file();
         void fetch_digital_signal_table_from_file();
+
+        static void inform_flow_analysis_status() {
+            core::inform_calibration_status();
+            the().inform_progress_to_host();
+        }
 
         void inform_progress_to_host() const;
 
@@ -81,16 +90,16 @@ public:
         static constexpr auto FLOW_MAX = 15;
         static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
         static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;
+        // TODO: turn this into a single-dimensional array
         using Table = std::array<std::array<DigitalSignal, 10>, FLOW_RANGE>;
 
         static_assert(sizeof(Table) == sizeof(DigitalSignal) * NUMBER_OF_CELLS, "unexpected table size");
-        static constexpr auto TABLE_FILE_PATH = "/table.txt";
 
     private:
         friend class util::Singleton<FlowController>;
 
         FlowController() {
-            clean_digital_signal_table(RemoveFile::No);
+            clean_digital_signal_table(PurgeStorageEntry::No);
         }
 
         struct FlowInfo {
@@ -181,8 +190,12 @@ public:
         };
 
         FlowAnalysisStatus m_analysis_status = FlowAnalysisStatus::None;
+
         float m_analysis_progress = 0.f;
+
         bool m_abort_analysis = false;
+
+        storage::Handle m_storage_handle;
     };
 
 private:

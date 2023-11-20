@@ -1,13 +1,14 @@
 #pragma once
 
 #include <lucas/types.h>
+#include <optional>
 
 namespace lucas::core {
 void setup();
 
 void tick();
 
-void calibrate(float target_temperature);
+void calibrate(std::optional<s32> target_temperature);
 
 enum class CalibrationPhase {
     None,

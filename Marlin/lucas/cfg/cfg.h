@@ -4,8 +4,8 @@
 #include <lucas/types.h>
 
 namespace lucas::cfg {
-struct Option {
-    static constexpr char ID_DEFAULT = 0x47;
+struct [[gnu::packed]] Option {
+    static constexpr char ID_DEFAULT = 0x2B;
 
     char id = ID_DEFAULT;
     bool active = false;
@@ -42,8 +42,6 @@ constexpr auto FIRMWARE_VERSION = "0.0.1";
 void setup();
 
 void save_options();
-
-void reset_options();
 
 Option& get(Options option);
 

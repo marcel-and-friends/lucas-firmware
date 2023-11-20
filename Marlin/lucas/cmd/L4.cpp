@@ -8,60 +8,18 @@
 
 namespace lucas::cmd {
 void L4() {
-    if (parser.seenval('Z')) {
-        switch (parser.value_int()) {
-        case 0: {
-            cfg::reset_options();
-            LOG("opcoes foram resetadas");
-        } break;
-        case 1: {
-            sec::remove_stored_error();
-            LOG("erros foram resetados");
-        } break;
-        case 2: {
-            RecipeQueue::the().remove_fixed_recipes();
-            LOG("receitas fixas foram resetadas");
-        } break;
-        case 3: {
-            Spout::FlowController::the().clean_digital_signal_table(Spout::FlowController::RemoveFile::Yes);
-            LOG("tabela foi resetada");
-        } break;
-        case 4: {
-            if (not parser.seenval('P'))
-                return;
-
-            const auto pin = parser.value_int();
-            const auto mode = parser.intval('M', OUTPUT);
-            const auto value = parser.longval('V', -1);
-
-            pinMode(pin, mode);
-            if (value != -1)
-                analogWrite(pin, value);
-
-            LOG("pino modificado - [pino = ", pin, " | modo = ", mode, " | valor = ", value, "]");
-        } break;
-        case 5: {
-            if (not parser.seenval('P'))
-                return;
-
-            const auto pin = parser.value_int();
-            const auto p = digitalPinToPinName(pin);
-            if (pin_in_pinmap(p, PinMap_ADC)) {
-                LOG("pino #", pin, " (ADC) valor = ", analogRead(pin));
-            } else {
-                LOG("pino #", pin, " valor = ", digitalRead(pin));
-            }
-        } break;
-        }
-        return;
-    }
-
     bool updated = false;
     for (auto& option : cfg::options()) {
-        if (option.id != cfg::Option::ID_DEFAULT and parser.seen(option.id)) {
-            option.active = not option.active;
-            LOG("option \'", AS_CHAR(option.id), "\' foi ", not option.active ? "des" : "", "ativada");
-            updated = true;
+        if (option.id == cfg::Option::ID_DEFAULT)
+            continue;
+
+        if (parser.seen(option.id)) {
+            bool value = parser.value_bool();
+            if (option.active != value) {
+                option.active = value;
+                LOG("option \'", AS_CHAR(option.id), "\' was ", option.active ? "" : "un", "set");
+                updated = true;
+            }
         }
     }
 

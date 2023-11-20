@@ -370,8 +370,8 @@ void startOrResumeJob() {
 #if ENABLED(SDSUPPORT)
 
 inline void abortSDPrinting() {
-    IF_DISABLED(NO_SD_AUTOSTART, card.autofile_cancel());
-    card.abortFilePrintNow(TERN_(SD_RESORT, true));
+    // IF_DISABLED(NO_SD_AUTOSTART, card.autofile_cancel());
+    // card.abortFilePrintNow(TERN_(SD_RESORT, true));
 
     queue.clear();
     quickstop_stepper();
@@ -880,10 +880,10 @@ void idle(bool no_stepper_sleep /*=false*/) {
 #endif
 
     // Handle SD Card insert / remove
-    TERN_(SDSUPPORT, card.manage_media());
+    // TERN_(SDSUPPORT, card.manage_media());
 
     // Handle USB Flash Drive insert / remove
-    TERN_(USB_FLASH_DRIVE_SUPPORT, card.diskIODriver()->idle());
+    // TERN_(USB_FLASH_DRIVE_SUPPORT, card.diskIODriver()->idle());
 
     // Announce Host Keepalive state (if any)
     TERN_(HOST_KEEPALIVE_FEATURE, gcode.host_keepalive());
@@ -1697,10 +1697,10 @@ void setup() {
 
 #if HAS_TFT_LVGL_UI
     #if ENABLED(SDSUPPORT)
-    if (!card.isMounted())
-        SETUP_RUN(card.mount()); // Mount SD to load graphics and fonts
+    // if (!card.isMounted())
+    //     SETUP_RUN(card.mount()); // Mount SD to load graphics and fonts
     #endif
-        // SETUP_RUN(tft_lvgl_init());
+    // SETUP_RUN(tft_lvgl_init());
     #if ENABLED(MKS_WIFI_MODULE)
     mks_esp_wifi_init();
     mks_wifi_firmware_update();

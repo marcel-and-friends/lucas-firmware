@@ -1,11 +1,11 @@
 #pragma once
 
 #include <lucas/Station.h>
+#include <lucas/storage/storage.h>
 #include <lucas/Recipe.h>
 #include <lucas/util/Timer.h>
 #include <lucas/util/Singleton.h>
 #include <ArduinoJson.h>
-#include <unordered_map>
 #include <vector>
 
 namespace lucas {
@@ -21,7 +21,7 @@ public:
 
     void set_fixed_recipes(JsonObjectConst recipe_json);
 
-    void remove_fixed_recipes();
+    void reset_fixed_recipes();
 
     void map_station_recipe(usize);
 
@@ -157,6 +157,8 @@ private:
         Recipe recipe;
         bool active = false;
     };
+
+    storage::Handle m_storage_handle;
 
     // o mapeamento de index -> recipe é o mesmo de index -> estação
     // ou seja, a recipe na posição 0 da fila pertence à estação 0

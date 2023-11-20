@@ -1,8 +1,9 @@
 #include "cfg.h"
+#include <lucas/storage/storage.h>
 #include <lucas/lucas.h>
-#include <lucas/util/SD.h>
 
 namespace lucas::cfg {
+namespace detail {
 // clang-format off
 constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [LogPour] = { .id = 'D', .active = true },
@@ -37,41 +38,32 @@ consteval bool doesnt_have_duplicated_ids(const OptionList& opcoes) {
     return true;
 }
 
-static_assert(DEFAULT_OPTIONS.size() == Options::Count, "tamanho errado irmao");
-static_assert(doesnt_have_duplicated_ids(DEFAULT_OPTIONS), "opcoes duplicadas irmao");
+static_assert(DEFAULT_OPTIONS.size() == Options::Count, "weird size");
+static_assert(doesnt_have_duplicated_ids(DEFAULT_OPTIONS), "no duplicated ids");
+}
 
-// vai ser propriamente inicializado na 'setup()'
+// gets properly initialized on setup()
 static OptionList s_options = {};
-constexpr auto CFG_FILE_PATH = "cfg.txt";
+static storage::Handle s_storage_handle;
 
 void setup() {
-    auto sd = util::SD::make();
-    if (not sd.file_exists(CFG_FILE_PATH)) {
-        s_options = DEFAULT_OPTIONS;
-        if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write))
-            return;
+    s_storage_handle = storage::register_handle_for_entry("cfg", sizeof(OptionList));
 
-        sd.write_from(s_options);
-        LOG("nao tem cfg salva, salvou a default");
+    auto entry = storage::fetch_entry(s_storage_handle);
+    if (not entry) {
+        LOG("setting up default options");
+        s_options = detail::DEFAULT_OPTIONS;
+
+        entry.emplace(storage::create_entry(s_storage_handle));
+        entry->write_binary(s_options);
     } else {
-        if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Read))
-            return;
-
-        sd.read_into(s_options);
-        LOG("cfg lida do cartao");
+        entry->read_binary_into(s_options);
     }
 }
 
 void save_options() {
-    auto sd = util::SD::make();
-    if (not sd.open(CFG_FILE_PATH, util::SD::OpenMode::Write))
-        return;
-    sd.write_from(s_options);
-}
-
-void reset_options() {
-    s_options = DEFAULT_OPTIONS;
-    util::SD::make().remove_file(CFG_FILE_PATH);
+    auto entry = storage::fetch_or_create_entry(s_storage_handle);
+    entry.write_binary(s_options);
 }
 
 Option& get(Options option) {

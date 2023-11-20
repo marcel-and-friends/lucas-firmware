@@ -42,4 +42,6 @@ void L2();
 void L3();
 void L4();
 void L5();
+void L6();
+void L7();
 }

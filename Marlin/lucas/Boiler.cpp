@@ -1,68 +1,68 @@
 #include "Boiler.h"
-#include <lucas/lucas.h>
-#include <lucas/RecipeQueue.h>
+#include <lucas/core/core.h>
 #include <lucas/info/info.h>
 #include <lucas/sec/sec.h>
+#include <lucas/RecipeQueue.h>
 #include <src/module/temperature.h>
 #include <utility>
 
 namespace lucas {
-static bool s_alarm_triggered = false;
-
 void Boiler::setup() {
     setup_pins();
-    /* go back to this when everything is setup
-    s_alarm_triggered = digitalRead(Pin::WaterLevelAlarm);
-    attachInterrupt(
-        digitalPinToInterrupt(Pin::WaterLevelAlarm),
-        +[] {
-            s_alarm_triggered = digitalRead(Pin::WaterLevelAlarm);
-        },
-        CHANGE);
-    attachInterrupt(
-        digitalPinToInterrupt(Pin::WaterLevelAlarm),
-        +[] {
-            s_alarm_triggered = not s_alarm_triggered;
-        },
-        FALLING);
-    */
-
     turn_off_resistance();
-
-    if (s_alarm_triggered) {
-        info::send(
-            info::Event::Boiler,
-            [](JsonObject o) {
-                o["filling"] = true;
-            });
-
-        util::idle_while(
-            [timeout = util::Timer::started()] {
-                if (timeout >= 25min)
-                    sec::raise_error(sec::Error::WaterLevelAlarm);
-
-                return s_alarm_triggered;
-            });
-
-        info::send(
-            info::Event::Boiler,
-            [](JsonObject o) {
-                o["filling"] = false;
-            });
-    }
+    m_wait_for_boiler_to_fill = is_alarm_triggered();
+    m_storage_handle = storage::register_handle_for_entry("temp", sizeof(m_target_temperature));
 }
 
 void Boiler::setup_pins() {
     pinMode(Pin::Resistance, OUTPUT);
     digitalWrite(Boiler::Pin::Resistance, LOW);
 
-    pinMode(Pin::WaterLevelAlarm, OUTPUT);
-    analogWrite(Boiler::Pin::WaterLevelAlarm, LOW);
-    pinMode(Pin::WaterLevelAlarm, INPUT);
+    pinMode(Pin::WaterLevelAlarm, INPUT_PULLUP);
+}
+
+static void filling_event(bool b) {
+    info::send(
+        info::Event::Boiler,
+        [b](JsonObject o) {
+            o["filling"] = b;
+        });
+}
+
+static void filling_event() {
+    filling_event(true);
 }
 
 void Boiler::tick() {
-    if (s_alarm_triggered)
+    if (m_wait_for_boiler_to_fill) {
+        m_wait_for_boiler_to_fill = false;
+
+        info::TemporaryCommandHook hook{
+            info::Command::RequestInfoCalibration,
+            &filling_event
+        };
+
+        filling_event(true);
+
+        util::maintenance_idle_while(
+            [timeout = util::Timer::started()] {
+                if (timeout >= 15min)
+                    sec::raise_error(sec::Error::WaterLevelAlarm);
+
+                return Boiler::the().is_alarm_triggered();
+            });
+
+        filling_event(false);
+    }
+
+    if (CFG(GigaMode)) {
+        every(5s) {
+            inform_temperature_to_host();
+        }
+        return;
+    }
+
+    if (is_alarm_triggered())
         sec::raise_error(sec::Error::WaterLevelAlarm);
 
     constexpr auto MAXIMUM_TEMPERATURE = 105.f;
@@ -71,13 +71,6 @@ void Boiler::tick() {
 
     if (not m_target_temperature)
         return;
-
-    if (CFG(GigaMode)) {
-        every(5s) {
-            inform_temperature_to_host();
-        }
-        return;
-    }
 
     control_resistance(temperature() < (m_target_temperature - HYSTERESIS));
 
@@ -138,9 +131,9 @@ void Boiler::inform_temperature_to_host() {
         });
 }
 
-void Boiler::update_and_reach_target_temperature(s32 target) {
+void Boiler::update_and_reach_target_temperature(std::optional<s32> target) {
     update_target_temperature(target);
-    if (not target)
+    if (not m_target_temperature)
         return;
 
     if (CFG(GigaMode)) {
@@ -149,33 +142,28 @@ void Boiler::update_and_reach_target_temperature(s32 target) {
         return;
     }
 
-    if (CFG(GigaMode)) {
-        LOG(is_heating() ? "esquent" : "resfri", "ando boiler no modo giga...");
-        util::idle_for(is_heating() ? 120s : 60s);
-    } else {
-        util::idle_until([this] { return m_reached_target_temperature; });
-    }
+    util::idle_until([this] { return m_reached_target_temperature; });
 
     inform_temperature_to_host();
 
     LOG_IF(LogCalibration, "temperatura desejada foi atingida");
 }
 
-void Boiler::update_target_temperature(s32 target) {
-    if (m_target_temperature and target == m_target_temperature)
+void Boiler::update_target_temperature(std::optional<s32> target) {
+    if (target == m_target_temperature)
         return;
 
-    m_target_temperature = target;
     reset();
 
-    if (not m_target_temperature) {
+    if (target == 0) {
+        m_target_temperature = 0;
         control_resistance(false);
-        return;
+    } else {
+        m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
+        inform_temperature_to_host();
     }
 
-    inform_temperature_to_host();
-
-    LOG_IF(LogCalibration, "temperatura target setada - [target = ", target, " | hysteresis = ", HYSTERESIS, "]");
+    LOG_IF(LogCalibration, "temperatura target setada - [target = ", m_target_temperature, "]");
 }
 
 void Boiler::control_resistance(bool state) {
@@ -184,6 +172,10 @@ void Boiler::control_resistance(bool state) {
 
 void Boiler::turn_off_resistance() {
     update_target_temperature(0);
+}
+
+bool Boiler::is_alarm_triggered() const {
+    return not digitalRead(Pin::WaterLevelAlarm);
 }
 
 void Boiler::reset() {

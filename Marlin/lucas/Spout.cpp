@@ -5,7 +5,7 @@
 #include <lucas/MotionController.h>
 #include <lucas/RecipeQueue.h>
 #include <lucas/info/info.h>
-#include <lucas/util/SD.h>
+
 #include <lucas/sec/sec.h>
 #include <src/module/temperature.h>
 #include <src/module/planner.h>
@@ -102,6 +102,7 @@ void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_si
 
 void Spout::setup() {
     setup_pins();
+    FlowController::the().setup();
 }
 
 void Spout::setup_pins() {
@@ -180,6 +181,10 @@ void Spout::end_pour() {
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
+void Spout::FlowController::setup() {
+    m_storage_handle = storage::register_handle_for_entry("flow", sizeof(m_digital_signal_table));
+}
+
 void Spout::FlowController::analyse_and_store_flow_data() {
     constexpr auto ITERATION_STEP = 25;
     constexpr auto INITIAL_ITERATION_STEP = 200;
@@ -195,7 +200,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         inform_progress_to_host();
     };
 
-    clean_digital_signal_table(RemoveFile::Yes);
+    clean_digital_signal_table(PurgeStorageEntry::Yes);
     update_status(FlowAnalysisStatus::Preparing);
     const auto beginning = millis();
 
@@ -291,7 +296,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         Spout::the().end_pour();
         update_status(FlowAnalysisStatus::Done);
         if (m_abort_analysis) {
-            clean_digital_signal_table(RemoveFile::No);
+            clean_digital_signal_table(PurgeStorageEntry::No);
             return;
         }
 
@@ -367,36 +372,25 @@ Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flo
     return DigitalSignal(std::round(interpolated));
 }
 
-void Spout::FlowController::clean_digital_signal_table(RemoveFile remove) {
+void Spout::FlowController::clean_digital_signal_table(PurgeStorageEntry remove) {
     for (auto& t : m_digital_signal_table)
         std::fill(t.begin(), t.end(), INVALID_DIGITAL_SIGNAL);
 
-    auto sd = util::SD::make();
-    if (remove == RemoveFile::Yes and sd.file_exists(TABLE_FILE_PATH))
-        sd.remove_file(TABLE_FILE_PATH);
+    if (remove == PurgeStorageEntry::Yes)
+        storage::purge_entry(m_storage_handle);
 
     m_analysis_progress = 0.f;
     m_analysis_status = FlowAnalysisStatus::None;
 }
 
 void Spout::FlowController::save_digital_signal_table_to_file() {
-    auto sd = util::SD::make();
-    if (not sd.open(TABLE_FILE_PATH, util::SD::OpenMode::Write)) {
-        LOG_ERR("falha ao abrir arquivo da tabela");
-        return;
-    }
-    if (not sd.write_from(m_digital_signal_table))
-        LOG_ERR("falha ao escrever tabela no cartao");
+    auto entry = storage::fetch_or_create_entry(m_storage_handle);
+    entry.write_binary(m_digital_signal_table);
 }
 
 void Spout::FlowController::fetch_digital_signal_table_from_file() {
-    auto sd = util::SD::make();
-    if (not sd.open(TABLE_FILE_PATH, util::SD::OpenMode::Read)) {
-        LOG_ERR("falha ao abrir arquivo da tabela");
-        return;
-    }
-    if (not sd.read_into(m_digital_signal_table))
-        LOG_ERR("falha ao ler tabela do cartao");
+    if (auto entry = storage::fetch_entry(m_storage_handle))
+        entry->read_binary_into(m_digital_signal_table);
 }
 
 void Spout::FlowController::inform_progress_to_host() const {

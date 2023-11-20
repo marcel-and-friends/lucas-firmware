@@ -1,11 +1,10 @@
 #pragma once
 
-#include <string>
-#include <optional>
 #include <lucas/lucas.h>
 #include <lucas/Recipe.h>
 #include <lucas/util/Timer.h>
-#include <ArduinoJson.h>
+#include <lucas/storage/storage.h>
+#include <optional>
 
 namespace lucas {
 class Station {
@@ -13,9 +12,17 @@ public:
     static constexpr usize INVALID = static_cast<usize>(-1);
 
     static constexpr usize MAXIMUM_NUMBER_OF_STATIONS = 5;
-    using List = std::array<Station, MAXIMUM_NUMBER_OF_STATIONS>;
 
-    static void initialize(usize num);
+    template<typename T>
+    using SharedData = std::array<T, MAXIMUM_NUMBER_OF_STATIONS>;
+
+    using List = SharedData<Station>;
+
+    static void setup();
+
+    static void setup_pins(usize num);
+
+    static void initialize(std::optional<usize> num, std::optional<SharedData<bool>> blocked_stations);
 
     static void for_each(util::IterFn<Station&> auto&& callback) {
         if (s_list_size == 0)
@@ -23,7 +30,7 @@ public:
 
         for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
-            if (station.m_blocked)
+            if (station.blocked())
                 continue;
             if (std::invoke(FWD(callback), station) == util::Iter::Break)
                 break;
@@ -36,7 +43,7 @@ public:
 
         for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
-            if (station.m_blocked)
+            if (station.blocked())
                 continue;
             if (std::invoke(FWD(callback), station, i) == util::Iter::Break)
                 break;
@@ -49,7 +56,7 @@ public:
 
         for (usize i = 0; i < s_list_size; ++i) {
             auto& station = s_list[i];
-            if (station.m_blocked)
+            if (station.blocked())
                 continue;
             if (std::invoke(FWD(condition), station)) {
                 if (std::invoke(FWD(callback), station) == util::Iter::Break)
@@ -74,15 +81,6 @@ public:
     Station& operator=(Station&&) = delete;
 
 public:
-    // muito importante manter esse enum em sincronia com o app
-    // FREE = 0,
-    // WAITING_START,
-    // SCALDING,
-    // INITIALIZE_COFFEE,
-    // MAKING_COFFEE,
-    // NOTIFICATION_TIME,
-    // IS_READY
-
     enum class Status {
         Free = 0,
         ConfirmingScald,
@@ -105,7 +103,7 @@ public:
     pin_t led() const { return m_led_pin; }
     pin_t powerled() const { return m_powerled_pin; }
 
-    bool blocked() const { return m_blocked; }
+    bool blocked() const { return s_blocked_stations[index()]; }
     void set_blocked(bool);
 
     Status status() const { return m_status; }
@@ -114,12 +112,17 @@ public:
 private:
     // initialized out of line porque nesse momento a classe 'Station' é incompleta
     static List s_list;
-
     static inline usize s_list_size = 0;
+    static inline storage::Handle s_list_size_storage_handle;
+
+    static inline SharedData<bool> s_blocked_stations = {};
+    static inline storage::Handle s_blocked_stations_storage_handle;
 
     void set_button(pin_t pin);
     void set_led(pin_t pin);
     void set_powerled(pin_t pin);
+
+    static void update_blocked_stations_storage();
 
 private:
     Station() = default;
@@ -136,7 +139,5 @@ private:
 
     // this begins as 'started' so that the first button press is not ignored
     util::Timer m_last_button_press_timer = util::Timer::started();
-
-    bool m_blocked = false;
 };
 }

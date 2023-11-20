@@ -1,68 +1,73 @@
 #include "sec.h"
-
 #include <lucas/util/util.h>
 #include <lucas/info/info.h>
-#include <lucas/util/SD.h>
+#include <lucas/storage/storage.h>
+#include <lucas/core/core.h>
 #include <lucas/Boiler.h>
 #include <lucas/Spout.h>
 #include <lucas/RecipeQueue.h>
+#include <utility>
 
 namespace lucas::sec {
-consteval auto make_default_return_conditions() {
-    std::array<bool (*)(), usize(Error::Count)> conditions;
+namespace detail {
+using ConditionList = std::array<bool (*)(), usize(Error::Count)>;
+consteval ConditionList make_default_return_conditions() {
+    ConditionList result;
     // most of them are no return
     std::fill(
-        conditions.begin(),
-        conditions.end(),
-        +[] {
-            return false;
-        });
+        result.begin(),
+        result.end(),
+        +[] { return false; });
+
     // except the water level one
-    conditions[usize(Error::WaterLevelAlarm)] = +[] {
+    result[usize(Error::WaterLevelAlarm)] = +[] {
         return not Boiler::the().is_alarm_triggered();
     };
-    return conditions;
+
+    return result;
+}
 }
 
-constexpr auto SECURITY_FILE_PATH = "/sec.txt";
-constexpr auto RETURN_CONDITIONS = make_default_return_conditions();
-static Error s_active_error = Error::Invalid;
-static Error s_startup_error = Error::Invalid;
+constexpr auto RETURN_CONDITIONS = detail::make_default_return_conditions();
+
+static auto s_active_error = Error::Invalid;
+static auto s_startup_error = Error::Invalid;
+static storage::Handle s_storage_handle;
 
 void setup() {
-    if (CFG(MaintenanceMode))
+    s_storage_handle = storage::register_handle_for_entry("error", sizeof(Error));
+
+    auto entry = storage::fetch_entry(s_storage_handle);
+    if (not entry)
         return;
 
-    auto sd = util::SD::make();
-    if (sd.file_exists(SECURITY_FILE_PATH)) {
-        if (not sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Read))
-            return;
-
-        Error reason_for_last_failure;
-        sd.read_into(reason_for_last_failure);
-
-        s_startup_error = reason_for_last_failure;
-    }
+    s_startup_error = entry->read_binary<Error>();
 }
 
 void tick() {
-    if (s_startup_error != Error::Invalid) {
-        const auto error = s_startup_error;
-        s_startup_error = Error::Invalid;
-        raise_error(error);
-    }
+    if (s_startup_error != Error::Invalid)
+        raise_error(std::exchange(s_startup_error, Error::Invalid));
+}
+
+static void inform_active_error() {
+    info::send(
+        info::Event::Security,
+        [](JsonObject o) {
+            o["reason"] = s32(s_active_error);
+            o["active"] = s_active_error != Error::Invalid;
+            if (s_active_error == Error::WaterLevelAlarm)
+                o["currentTemp"] = Boiler::the().temperature();
+        });
+}
+
+static void update_and_inform_active_error(Error error) {
+    s_active_error = error;
+    inform_active_error();
 }
 
 void raise_error(Error reason) {
-    if (CFG(MaintenanceMode)) {
-        LOG_ERR("erro foi levantado no modo manutencao, nao sera tratado");
-        return;
-    }
-
-    // alarm was raised! oh no
     // inform the host that something has happened so that the user can be informed too
-    s_active_error = reason;
-    inform_active_error();
+    update_and_inform_active_error(reason);
 
     // store the temperature we were at when the alarm was triggered
     // this way we can (potentially) go back to it
@@ -71,51 +76,39 @@ void raise_error(Error reason) {
     Boiler::the().turn_off_resistance();
 
     // disable the motor and pump
-    if (Spout::the().pouring())
-        Spout::the().end_pour();
+    Spout::the().end_pour();
 
     // cancel all recipes that are in queue
-    if (not RecipeQueue::the().is_empty())
-        RecipeQueue::the().cancel_all_recipes();
+    RecipeQueue::the().cancel_all_recipes();
 
-    auto sd = util::SD::make();
-    if (sd.open(SECURITY_FILE_PATH, util::SD::OpenMode::Write))
-        sd.write_from(reason);
+    // the water level alarm is a special case since, at startup, it is dealt with by the boiler
+    if (reason != Error::WaterLevelAlarm) {
+        // save the reason for when we next start up
+        auto entry = storage::fetch_or_create_entry(s_storage_handle);
+        entry.write_binary(reason);
+    }
 
-    CFG(MaintenanceMode) = true;
+    // free the motor so we don't put unnecessary pressure on it
     digitalWrite(Spout::BRK, HIGH);
-    util::idle_until(RETURN_CONDITIONS[usize(reason)]);
-    CFG(MaintenanceMode) = false;
 
-    if (sd.is_open())
-        sd.remove_file(SECURITY_FILE_PATH);
+    {
+        info::TemporaryCommandHook hook{
+            info::Command::RequestInfoCalibration,
+            &inform_active_error
+        };
 
-    // if this is reached then the security threat has been successfully dealt with
-    // let the host know it is no longer active and go back to our old temperature
-    s_active_error = Error::Invalid;
-    inform_active_error();
+        util::maintenance_idle_until(RETURN_CONDITIONS[usize(reason)]);
+    }
 
-    Boiler::the().update_and_reach_target_temperature(old_temperature);
-}
+    storage::purge_entry(s_storage_handle);
 
-bool has_active_error() {
-    return s_active_error != Error::Invalid;
-}
+    // if we reach this point that means the error has been dealt with somehow
 
-void inform_active_error() {
-    info::send(
-        info::Event::Security,
-        [](JsonObject o) {
-            o["reason"] = s32(s_active_error);
-            o["active"] = has_active_error();
-            if (s_active_error == Error::WaterLevelAlarm)
-                o["currentTemp"] = Boiler::the().temperature();
-        });
-}
+    update_and_inform_active_error(Error::Invalid);
 
-void remove_stored_error() {
-    auto sd = util::SD::make();
-    if (sd.file_exists(SECURITY_FILE_PATH))
-        sd.remove_file(SECURITY_FILE_PATH);
+    // go back to our old temperature
+    Boiler::the().update_target_temperature(old_temperature);
+
+    core::inform_calibration_status();
 }
 }

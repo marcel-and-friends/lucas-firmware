@@ -11,7 +11,12 @@
 namespace lucas {
 Station::List Station::s_list = {};
 
-void Station::initialize(usize num) {
+void Station::setup() {
+    s_list_size_storage_handle = storage::register_handle_for_entry("stations", sizeof(s_list_size));
+    s_blocked_stations_storage_handle = storage::register_handle_for_entry("blocked", sizeof(s_blocked_stations));
+}
+
+void Station::initialize(std::optional<usize> num, std::optional<SharedData<bool>> blocked_stations) {
     if (num > MAXIMUM_NUMBER_OF_STATIONS) {
         LOG_ERR("numero de estacoes invalido - [max = ", MAXIMUM_NUMBER_OF_STATIONS, "]");
         return;
@@ -22,29 +27,33 @@ void Station::initialize(usize num) {
         return;
     }
 
-    s_list_size = num;
+    s_list_size = storage::create_or_update_entry(s_list_size_storage_handle, num, 3uz);
+    s_blocked_stations = storage::create_or_update_entry(s_blocked_stations_storage_handle, blocked_stations, { false, false, false, false, false });
 
-    struct PinSetup {
-        pin_t button_pin;
-        pin_t led_pin;
-        pin_t powerled_pin;
-    };
+    setup_pins(s_list_size);
 
-    // PIN_WILSON
+    for_each([](Station& station) {
+        station.set_status(Status::Free);
+        return util::Iter::Continue;
+    });
+
+    LOG_IF(LogStations, "maquina vai usar ", s_list_size, " estacoes");
+}
+
+struct PinData {
+    pin_t button_pin;
+    pin_t led_pin;
+    pin_t powerled_pin;
+};
+
+void Station::setup_pins(usize num) {
     constexpr auto PIN_DATA = std::array{
-        PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
-        PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
-        PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
-        PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
-        PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
+        PinData{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
+        PinData{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
+        PinData{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
+        PinData{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
+        PinData{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
     };
-    // constexpr auto PIN_DATA = std::array{
-    //     PinSetup{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PE14},
-    //     PinSetup{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE12},
-    //     PinSetup{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PE10},
-    //     PinSetup{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PE15},
-    //     PinSetup{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PC6 }
-    // };
 
     for (usize i = 0; i < s_list_size; i++) {
         auto& pin_data = PIN_DATA.at(i);
@@ -53,11 +62,7 @@ void Station::initialize(usize num) {
         station.set_button(pin_data.button_pin);
         station.set_led(pin_data.led_pin);
         station.set_powerled(pin_data.powerled_pin);
-
-        station.set_status(Status::Free);
     }
-
-    LOG_IF(LogStations, "maquina vai usar ", s_list_size, " estacoes");
 }
 
 void Station::tick() {
@@ -102,9 +107,9 @@ void Station::tick() {
 }
 
 void Station::update_leds() {
-    // é necessario manter um estado geral para que as leds pisquem juntas.
-    // poderiamos simplificar essa funcao substituindo o 'WRITE(station.led(), ultimo_estado)' por 'TOGGLE(station.led())'
-    // porém como cada estado dependeria do seu valor individual anterior as leds podem (e vão) sair de sincronia.
+    // its necessary to maintain a general state so that the LEDs blink together.
+    // we could simplify this function by replacing 'WRITE(station.led(), last_state)' with 'TOGGLE(station.led())',
+    // but since each state depends on its individual previous value, the LEDs can (and will) go out of sync.
     every(500ms) {
         static bool s_last_led_state = true;
         s_last_led_state = not s_last_led_state;
@@ -157,13 +162,22 @@ void Station::set_button(pin_t pin) {
 }
 
 void Station::set_blocked(bool b) {
-    if (m_blocked == b)
+    auto& blocked = s_blocked_stations[index()];
+    if (blocked == b)
         return;
 
-    m_blocked = b;
-    if (m_blocked)
+    blocked = b;
+    if (blocked)
         digitalWrite(m_led_pin, LOW);
-    LOG_IF(LogStations, "estacao foi ", m_blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
+
+    update_blocked_stations_storage();
+
+    LOG_IF(LogStations, "estacao foi ", blocked ? "" : "des", "bloqueada - [index = ", AS_DIGIT(index()), "]");
+}
+
+void Station::update_blocked_stations_storage() {
+    auto entry = storage::fetch_or_create_entry(s_blocked_stations_storage_handle);
+    entry.write_binary(s_blocked_stations);
 }
 
 void Station::set_status(Status status, std::optional<Recipe::Id> receita_id) {

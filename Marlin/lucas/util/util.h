@@ -1,7 +1,9 @@
 #pragma once
 
 #include <lucas/core/TemporaryFilter.h>
+#include <lucas/cfg/cfg.h>
 #include <src/MarlinCore.h>
+#include <utility>
 #include <chrono>
 #include <string_view>
 #include <concepts>
@@ -68,6 +70,18 @@ inline void idle_while(Fn<bool> auto&& callback, core::Filter filters = core::Fi
 
 inline void idle_until(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
     idle_while(std::not_fn(FWD(callback)), filters);
+}
+
+inline void maintenance_idle_while(Fn<bool> auto&& callback) {
+    const auto old = CFG(MaintenanceMode);
+
+    CFG(MaintenanceMode) = true;
+    idle_while(FWD(callback));
+    CFG(MaintenanceMode) = old;
+}
+
+inline void maintenance_idle_until(Fn<bool> auto&& callback) {
+    maintenance_idle_while(std::not_fn(FWD(callback)));
 }
 
 #define LOG SERIAL_ECHOLNPGM

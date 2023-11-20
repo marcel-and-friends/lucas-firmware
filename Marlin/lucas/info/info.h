@@ -11,9 +11,9 @@ using JsonDocument = StaticJsonDocument<BUFFER_SIZE>;
 
 void tick();
 
-void interpret_command_from_host(std::span<char> buffer);
-
 void print_json(const JsonDocument& doc);
+
+void interpret_command_from_host(std::span<char>);
 
 // https://www.notion.so/Eventos-informa-es-enviadas-da-m-quina-para-o-app-93dca4c7c1984aa38ffd5bddbe2c22a2?pvs=4
 enum class Event {
@@ -24,7 +24,7 @@ enum class Event {
     Security,
     Calibration,
     Firmware,
-    Other,
+    Other
 };
 
 void send(Event type, util::Fn<void, JsonObject> auto&& callback) {
@@ -43,4 +43,41 @@ void send(Event type, util::Fn<void, JsonObject> auto&& callback) {
     std::invoke(FWD(callback), doc.createNestedObject(EVENT_NAMES[usize(type)]));
     print_json(doc);
 }
+
+enum class Command {
+    RequestInfoCalibration = 0,
+    InitializeStations,
+    SetBoilerTemperature,
+    ScheduleRecipe,
+    CancelRecipe,
+    RequestInfoAllStations,
+    FirmwareUpdate,
+    RequestInfoFirmware,
+    SetFixedRecipes,
+
+    /* ~comandos de desenvolvimento~ */
+    DevScheduleStandardRecipe,
+    DevSimulateButtonPress,
+
+    InvalidCommand,
+
+    Count
+};
+
+using CommandHook = void (*)();
+
+void install_command_hook(Event, CommandHook);
+
+void uninstall_command_hook(Event);
+
+class TemporaryCommandHook {
+public:
+    TemporaryCommandHook(Command command, CommandHook hook);
+
+    ~TemporaryCommandHook();
+
+private:
+    Command m_command;
+    CommandHook m_old_hook;
+};
 }

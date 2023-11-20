@@ -381,6 +381,12 @@ void GcodeSuite::process_parsed_command(const bool no_ok /*=false*/) {
         case 5:
             lucas::cmd::L5();
             break;
+        case 6:
+            lucas::cmd::L6();
+            break;
+        case 7:
+            lucas::cmd::L7();
+            break;
         default:
             parser.unknown_command_warning();
             break;
