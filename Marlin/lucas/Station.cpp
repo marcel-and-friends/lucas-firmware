@@ -46,7 +46,7 @@ struct PinData {
     pin_t powerled_pin;
 };
 
-void Station::setup_pins(usize num) {
+void Station::setup_pins(usize number_of_stations) {
     constexpr auto PIN_DATA = std::array{
         PinData{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
         PinData{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
@@ -55,7 +55,7 @@ void Station::setup_pins(usize num) {
         PinData{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
     };
 
-    for (usize i = 0; i < s_list_size; i++) {
+    for (usize i = 0; i < number_of_stations; i++) {
         auto& pin_data = PIN_DATA.at(i);
         auto& station = s_list.at(i);
 
@@ -180,7 +180,7 @@ void Station::update_blocked_stations_storage() {
     entry.write_binary(s_blocked_stations);
 }
 
-void Station::set_status(Status status, std::optional<Recipe::Id> receita_id) {
+void Station::set_status(Status status, std::optional<Recipe::Id> recipe_id) {
     if (m_status == status)
         return;
 
@@ -188,12 +188,12 @@ void Station::set_status(Status status, std::optional<Recipe::Id> receita_id) {
 
     info::send(
         info::Event::Station,
-        [this, &receita_id](JsonObject o) {
+        [this, &recipe_id](JsonObject o) {
             o["station"] = index();
             o["status"] = s32(m_status);
             o["currentTemp"] = Boiler::the().temperature();
-            if (receita_id)
-                o["recipeId"] = *receita_id;
+            if (recipe_id)
+                o["recipeId"] = *recipe_id;
         });
 
     switch (m_status) {

@@ -107,10 +107,10 @@ public:
     void set_blocked(bool);
 
     Status status() const { return m_status; }
-    void set_status(Status, std::optional<Recipe::Id> receita_id = std::nullopt);
+    void set_status(Status, std::optional<Recipe::Id> recipe_id = std::nullopt);
 
 private:
-    // initialized out of line porque nesse momento a classe 'Station' é incompleta
+    // initialized out of line because `Station` is an incomplete class at this point
     static List s_list;
     static inline usize s_list_size = 0;
     static inline storage::Handle s_list_size_storage_handle;
