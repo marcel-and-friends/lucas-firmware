@@ -44,7 +44,7 @@ void L5() {
         auto& state = s_powerleds_state[value];
         digitalWrite(Station::list().at(value).powerled(), state);
 
-        LOG("POWERLED #", value + 1, ": ", state ? "ligou" : "desligou");
+        LOG("POWERLED #", value + 1, ": ", not state ? "ligou" : "desligou");
 
         state = not state;
     } break;
