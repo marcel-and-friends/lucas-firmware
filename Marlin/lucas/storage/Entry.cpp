@@ -3,12 +3,13 @@
 
 namespace lucas::storage {
 std::optional<Entry> Entry::fetch(Id& id) {
-    Entry result(id);
     // TODO: initialize and retrieve nvm storage
+
+    Entry result(id);
     result.m_file = sd::Card::the().open_file(result.m_id.name, O_RDWR | O_SYNC);
     if (result.m_file) {
+        // empty file for some reason
         if (result.m_file->file_size() == 0) {
-            // empty file for some reason
             purge(id);
             return std::nullopt;
         }
