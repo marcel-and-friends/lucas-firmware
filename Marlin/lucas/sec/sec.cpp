@@ -9,27 +9,6 @@
 #include <utility>
 
 namespace lucas::sec {
-namespace detail {
-using ConditionList = std::array<bool (*)(), usize(Error::Count)>;
-consteval ConditionList make_default_return_conditions() {
-    ConditionList result;
-    // most of them are no return
-    std::fill(
-        result.begin(),
-        result.end(),
-        +[] { return false; });
-
-    // except the water level one
-    result[usize(Error::WaterLevelAlarm)] = +[] {
-        return not Boiler::the().is_alarm_triggered();
-    };
-
-    return result;
-}
-}
-
-constexpr auto RETURN_CONDITIONS = detail::make_default_return_conditions();
-
 static auto s_active_error = Error::Invalid;
 static auto s_startup_error = Error::Invalid;
 static storage::Handle s_storage_handle;
@@ -81,23 +60,29 @@ void raise_error(Error reason) {
     // cancel all recipes that are in queue
     RecipeQueue::the().cancel_all_recipes();
 
+    // save the reason for when we next start up
     // the water level alarm is a special case since, at startup, it is dealt with by the boiler
     if (reason != Error::WaterLevelAlarm) {
-        // save the reason for when we next start up
         auto entry = storage::fetch_or_create_entry(s_storage_handle);
         entry.write_binary(reason);
     }
 
     // free the motor so we don't put unnecessary pressure on it
     digitalWrite(Spout::BRK, HIGH);
-
     {
         info::TemporaryCommandHook hook{
             info::Command::RequestInfoCalibration,
             &inform_active_error
         };
 
-        util::maintenance_idle_until(RETURN_CONDITIONS[usize(reason)]);
+        // clang-format off
+        auto idle_while =
+            reason == Error::WaterLevelAlarm
+                ? [] { return Boiler::the().is_alarm_triggered(); }
+                : [] { return true; };
+        // clang-format on
+
+        util::maintenance_idle_while(idle_while);
     }
 
     storage::purge_entry(s_storage_handle);
