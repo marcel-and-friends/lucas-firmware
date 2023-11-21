@@ -2,7 +2,7 @@
 #include <lucas/storage/sd/Card.h>
 
 namespace lucas::storage {
-std::optional<Entry> Entry::fetch(Id& id) {
+std::optional<Entry> Entry::fetch(Id id) {
     // TODO: initialize and retrieve nvm storage
 
     Entry result(id);
@@ -19,14 +19,13 @@ std::optional<Entry> Entry::fetch(Id& id) {
     return std::nullopt;
 }
 
-Entry Entry::fetch_or_create(Id& id) {
+Entry Entry::fetch_or_create(Id id) {
     Entry result(id);
     result.m_file = sd::Card::the().open_file(result.m_id.name, O_RDWR | O_SYNC | O_CREAT | O_TRUNC);
     return result;
 }
 
-void Entry::purge(Id& id) {
+void Entry::purge(Id id) {
     sd::Card::the().delete_file(id.name);
 }
-
 }

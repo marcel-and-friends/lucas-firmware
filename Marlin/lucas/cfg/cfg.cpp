@@ -54,7 +54,7 @@ void setup() {
         LOG("setting up default options");
         s_options = detail::DEFAULT_OPTIONS;
 
-        entry.emplace(storage::create_entry(s_storage_handle));
+        entry = storage::create_entry(s_storage_handle);
         entry->write_binary(s_options);
     } else {
         entry->read_binary_into(s_options);

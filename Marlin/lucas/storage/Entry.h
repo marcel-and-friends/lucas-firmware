@@ -12,10 +12,10 @@ public:
         usize size = 0;
     };
 
-    static std::optional<Entry> fetch(Id&);
-    static Entry fetch_or_create(Id&);
+    static std::optional<Entry> fetch(Id);
+    static Entry fetch_or_create(Id);
 
-    static void purge(Id&);
+    static void purge(Id);
     void purge() { purge(m_id); }
 
     // TODO: write a `storage::Buffer` class that takes ranges or objects and gives you a data() ptr and size()
@@ -46,11 +46,11 @@ public:
     }
 
 private:
-    Entry(Id& id)
+    Entry(Id id)
         : m_id(id) {
     }
 
-    Id& m_id;
+    Id m_id;
 
     std::optional<sd::File> m_file;
     // TODO:
