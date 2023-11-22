@@ -96,6 +96,8 @@ void L0() {
         if (associated_with_station and not RecipeQueue::the().is_executing_recipe()) {
             L0_LOG("receita foi cancelada, abortando");
             dip = true;
+            if (should_pour)
+                Spout::the().end_pour();
             break;
         }
     }

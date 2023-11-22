@@ -70,6 +70,8 @@ void L1() {
 
         if (associated_with_station and not RecipeQueue::the().is_executing_recipe()) {
             dip = true;
+            if (should_pour)
+                Spout::the().end_pour();
             break;
         }
     }
