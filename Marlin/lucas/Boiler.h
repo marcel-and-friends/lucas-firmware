@@ -53,7 +53,7 @@ private:
 
     storage::Handle m_storage_handle;
 
-    bool m_wait_for_boiler_to_fill = false;
+    bool m_should_wait_for_boiler_to_fill = false;
 
     bool m_reached_target_temperature = false;
 

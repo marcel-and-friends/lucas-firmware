@@ -10,7 +10,7 @@ namespace lucas {
 void Boiler::setup() {
     setup_pins();
     turn_off_resistance();
-    m_wait_for_boiler_to_fill = is_alarm_triggered();
+    m_should_wait_for_boiler_to_fill = is_alarm_triggered();
     m_storage_handle = storage::register_handle_for_entry("temp", sizeof(m_target_temperature));
 }
 
@@ -33,26 +33,29 @@ static void filling_event() {
     filling_event(true);
 }
 
+static void wait_for_boiler_to_fill() {
+    info::TemporaryCommandHook hook{
+        info::Command::RequestInfoCalibration,
+        &filling_event
+    };
+
+    filling_event(true);
+
+    util::maintenance_idle_while(
+        [timeout = util::Timer::started()] {
+            if (timeout >= 15min)
+                sec::raise_error(sec::Error::WaterLevelAlarm);
+
+            return Boiler::the().is_alarm_triggered();
+        });
+
+    filling_event(false);
+}
+
 void Boiler::tick() {
-    if (m_wait_for_boiler_to_fill) {
-        m_wait_for_boiler_to_fill = false;
-
-        info::TemporaryCommandHook hook{
-            info::Command::RequestInfoCalibration,
-            &filling_event
-        };
-
-        filling_event(true);
-
-        util::maintenance_idle_while(
-            [timeout = util::Timer::started()] {
-                if (timeout >= 15min)
-                    sec::raise_error(sec::Error::WaterLevelAlarm);
-
-                return Boiler::the().is_alarm_triggered();
-            });
-
-        filling_event(false);
+    if (m_should_wait_for_boiler_to_fill) {
+        m_should_wait_for_boiler_to_fill = false;
+        wait_for_boiler_to_fill();
     }
 
     if (CFG(GigaMode)) {
