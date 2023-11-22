@@ -100,9 +100,6 @@ void L0() {
         }
     }
 
-    if (should_pour)
-        Spout::the().end_pour();
-
     MotionController::the().finish_movements();
 
     current_position = final_position;
