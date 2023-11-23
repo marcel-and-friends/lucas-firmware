@@ -9,7 +9,6 @@ enum class Error : u8 {
     TemperatureOutOfRange,
     WaterLevelAlarm,
     PourVolumeMismatch,
-    NoSDCard,
     Count,
     Invalid
 };
