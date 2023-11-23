@@ -23,7 +23,9 @@ public:
 
     float step_ratio_y() const;
 
-    void change_step_ratio(float ratio_x, float ratio_y) const;
+    void change_step_ratio(f32 ratio) const;
+
+    void change_max_acceleration(f32 accel) const;
 
     void invalidate_location() { m_current_location = INVALID_LOCATION; }
 

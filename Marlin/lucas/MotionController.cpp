@@ -6,7 +6,8 @@
 
 namespace lucas {
 void MotionController::setup() {
-    change_step_ratio(1.f, 1.f);
+    change_step_ratio(1.f);
+    change_max_acceleration(5000);
 }
 
 void MotionController::travel_to_station(const Station& station, float offset) {
@@ -64,10 +65,15 @@ float MotionController::step_ratio_y() const {
     return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
 }
 
-void MotionController::change_step_ratio(float x, float y) const {
-    planner.settings.axis_steps_per_mm[X_AXIS] = DEFAULT_STEPS_PER_MM_X * x;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = DEFAULT_STEPS_PER_MM_Y * y;
+void MotionController::change_step_ratio(float ratio) const {
+    planner.settings.axis_steps_per_mm[X_AXIS] = DEFAULT_STEPS_PER_MM_X * ratio;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = DEFAULT_STEPS_PER_MM_Y * ratio;
     planner.refresh_positioning();
 }
 
+void MotionController::change_max_acceleration(f32 accel) const {
+    planner.set_max_acceleration(X_AXIS, accel);
+    planner.set_max_acceleration(Y_AXIS, accel);
+    planner.settings.travel_acceleration = planner.settings.acceleration = planner.settings.retract_acceleration = accel;
+}
 }

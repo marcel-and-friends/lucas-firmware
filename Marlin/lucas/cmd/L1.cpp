@@ -44,7 +44,7 @@ void L1() {
     const float steps_por_mm_ratio = duration ? MotionController::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
-    MotionController::the().change_step_ratio(steps_por_mm_ratio, steps_por_mm_ratio);
+    MotionController::the().change_step_ratio(steps_por_mm_ratio);
 
     if (should_pour)
         Spout::the().pour_with_desired_volume(duration, volume_of_water);
@@ -80,7 +80,7 @@ void L1() {
 
     current_position = final_position;
     soft_endstop._enabled = true;
-    MotionController::the().change_step_ratio(1.f, 1.f);
+    MotionController::the().change_step_ratio(1.f);
 
     if (dip) {
         sync_plan_position();
