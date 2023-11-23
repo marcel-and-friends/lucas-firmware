@@ -23,20 +23,20 @@ void Spout::tick() {
         }
 
         // without a desired volume we can't correct the flow
+        // and we only start correcting after 1 full second of pouring, to give the motor enough time to spin-up
         if (not m_total_desired_volume or time_elapsed() <= 1s)
             return;
 
-        if (m_correction_timer >= 500ms) {
+        constexpr auto CORRECTION_INTERVAL = 500ms;
+        if (m_correction_timer >= CORRECTION_INTERVAL) {
             m_correction_timer.restart();
-            const auto poured_so_far = [this] {
-                return (s_pulse_counter - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
-            };
+
             // reached the goal too son
-            if (poured_so_far() >= m_total_desired_volume) {
+            if (volume_poured_so_far() >= m_total_desired_volume) {
                 end_pour();
                 return;
-            } else if (poured_so_far() == 0.f) {
-                // no water? bad motor? bad sensor? bad pump? who knows!
+            } else if (volume_poured_so_far() == 0.f) {
+                // no water!? - bad motor? bad sensor? bad pump? who knows!
                 sec::raise_error(sec::Error::PourVolumeMismatch);
             }
 
@@ -47,17 +47,21 @@ void Spout::tick() {
             if (time_elapsed() >= 2s) {
                 const auto ideal_flow = m_total_desired_volume / duration_seconds;
                 const auto expected_volume = ideal_flow * elapsed_seconds;
-                const auto ratio = poured_so_far() / expected_volume;
+                const auto ratio = volume_poured_so_far() / expected_volume;
                 // 50% is a pretty generous margin, could try to go lower
                 constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
                 if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
                     sec::raise_error(sec::Error::PourVolumeMismatch);
             }
 
-            // looks like nothing has gone wrong, calculate the ideal flow and fetch our best guess for it
-            const auto ideal_flow = (m_total_desired_volume - poured_so_far()) / (duration_seconds - elapsed_seconds);
-            send_digital_signal_to_driver(FlowController::the().hit_me_with_your_best_shot(ideal_flow));
+            // calculate the ideal flow and fetch our best guess for it
+            const auto ideal_flow = (m_total_desired_volume - volume_poured_so_far()) / (duration_seconds - elapsed_seconds);
+
+            // fetch the digital signal and send it!
+            const auto best_digital_signal = FlowController::the().hit_me_with_your_best_shot(ideal_flow);
+            send_digital_signal_to_driver(best_digital_signal);
         } else {
+
             // BRK is realeased after a little bit to not stress the motor too hard
             if (m_end_pour_timer >= 2s and digitalRead(Pin::BRK) == LOW)
                 digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
@@ -70,10 +74,16 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume) {
         return;
 
     begin_pour(duration);
-    auto digital_signal = FlowController::the().hit_me_with_your_best_shot(desired_volume / (duration / 1000));
+
+    const auto flow = desired_volume / (duration / 1000);
+    const auto digital_signal = FlowController::the().hit_me_with_your_best_shot(flow);
     send_digital_signal_to_driver(digital_signal);
+
     m_total_desired_volume = desired_volume;
     m_correction_timer.start();
+
+    FlowController::the().update_flow_hint_for_pulse_calculation(flow);
+
     if (digital_signal != FlowController::INVALID_DIGITAL_SIGNAL)
         LOG_IF(LogPour, "despejo iniciado - [volume = ", desired_volume, " | sinal = ", m_digital_signal, "]");
 }
@@ -81,13 +91,13 @@ void Spout::pour_with_desired_volume(millis_t duration, float desired_volume) {
 float Spout::pour_with_desired_volume_and_wait(millis_t duration, float desired_volume) {
     pour_with_desired_volume(duration, desired_volume);
     util::idle_while([] { return Spout::the().pouring(); }, core::current_filters() & ~core::Filter::Spout);
-    return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+    return FlowController::the().pulses_to_volume(m_pulses_at_end_of_pour - m_pulses_at_start_of_pour);
 }
 
 float Spout::pour_with_digital_signal_and_wait(millis_t duration, DigitalSignal digital_signal) {
     pour_with_digital_signal(duration, digital_signal);
     util::idle_while([] { return Spout::the().pouring(); }, core::current_filters() & ~core::Filter::Spout);
-    return (m_pulses_at_end_of_pour - m_pulses_at_start_of_pour) * FlowController::ML_PER_PULSE;
+    return FlowController::the().pulses_to_volume(m_pulses_at_end_of_pour - m_pulses_at_start_of_pour);
 }
 
 void Spout::pour_with_digital_signal(millis_t duration, DigitalSignal digital_signal) {
@@ -154,6 +164,10 @@ void Spout::fill_hose(float desired_volume) {
     }
 }
 
+f32 Spout::volume_poured_so_far() const {
+    return FlowController::the().pulses_to_volume(s_pulse_counter - m_pulses_at_start_of_pour);
+}
+
 void Spout::begin_pour(millis_t duration) {
     m_pouring = true;
     m_begin_pour_timer.start();
@@ -177,7 +191,7 @@ void Spout::end_pour() {
     m_pulses_at_end_of_pour = s_pulse_counter;
 
     const auto pulses = m_pulses_at_end_of_pour - m_pulses_at_start_of_pour;
-    const auto poured_volume = pulses * FlowController::ML_PER_PULSE;
+    const auto poured_volume = FlowController::the().pulses_to_volume(pulses);
     LOG_IF(LogPour, "despejo finalizado - [duracao = ", u32(duration.count()), "ms | volume = ", poured_volume, " | pulsos = ", pulses, "]");
 }
 
@@ -372,11 +386,30 @@ Spout::DigitalSignal Spout::FlowController::hit_me_with_your_best_shot(float flo
     return DigitalSignal(std::round(interpolated));
 }
 
-void Spout::FlowController::clean_digital_signal_table(PurgeStorageEntry remove) {
+void Spout::FlowController::update_flow_hint_for_pulse_calculation(f32 volume_hint) {
+    const auto norm = util::normalize(
+        // functions like `obtain_specific_flow` may generate pours that fall out of this range
+        // and since this funciton gets called on every analysis iteratin we have to account for those cases
+        std::clamp(volume_hint, f32(FLOW_MIN), f32(FLOW_MAX)),
+        FLOW_MIN,
+        FLOW_MAX);
+
+    constexpr auto MIN_ML_PER_PULSE = 0.5475f;
+    constexpr auto MAX_ML_PER_PULSE = 0.5f;
+
+    m_pulse_weight = std::lerp(MIN_ML_PER_PULSE, MAX_ML_PER_PULSE, norm);
+    LOG_IF(LogCalibration, "atualizando peso do pulso - [volume = ", volume_hint, " - peso = ", m_pulse_weight, "]");
+}
+
+f32 Spout::FlowController::pulses_to_volume(u32 pulses) const {
+    return pulses * m_pulse_weight;
+}
+
+void Spout::FlowController::clean_digital_signal_table(PurgeStorageEntry purge) {
     for (auto& t : m_digital_signal_table)
         std::fill(t.begin(), t.end(), INVALID_DIGITAL_SIGNAL);
 
-    if (remove == PurgeStorageEntry::Yes)
+    if (purge == PurgeStorageEntry::Yes)
         storage::purge_entry(m_storage_handle);
 
     m_analysis_progress = 0.f;

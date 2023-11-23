@@ -59,7 +59,6 @@ public:
     class FlowController : public util::Singleton<FlowController> {
     public:
         static constexpr auto INVALID_DIGITAL_SIGNAL = 0xF0F0; // UwU
-        static inline auto ML_PER_PULSE = 0.5375f;
 
         void setup();
 
@@ -70,7 +69,7 @@ public:
             No
         };
 
-        void clean_digital_signal_table(PurgeStorageEntry salvar);
+        void clean_digital_signal_table(PurgeStorageEntry);
         void save_digital_signal_table_to_file();
         void fetch_digital_signal_table_from_file();
 
@@ -85,6 +84,10 @@ public:
         bool abort_analysis() const { return m_abort_analysis; }
 
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
+
+        void update_flow_hint_for_pulse_calculation(f32 volume_hint);
+
+        f32 pulses_to_volume(u32 pulses) const;
 
         static constexpr auto FLOW_MIN = 5;
         static constexpr auto FLOW_MAX = 15;
@@ -131,7 +134,8 @@ public:
                 util::idle_for(TIME_TO_ANALISE_POUR);
 
                 const auto pulses = s_pulse_counter - starting_pulses;
-                const auto average_flow = (pulses * ML_PER_PULSE) / TIME_TO_ANALISE_POUR.count();
+                const auto average_flow = pulses_to_volume(pulses) / TIME_TO_ANALISE_POUR.count();
+                update_flow_hint_for_pulse_calculation(average_flow);
 
                 LOG_IF(LogCalibration, "fluxo estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
 
@@ -196,6 +200,8 @@ public:
         bool m_abort_analysis = false;
 
         storage::Handle m_storage_handle;
+
+        f32 m_pulse_weight = 0.f;
     };
 
 private:
@@ -204,6 +210,8 @@ private:
     void begin_pour(millis_t duration);
 
     void fill_hose(float desired_volume = 0.f);
+
+    f32 volume_poured_so_far() const;
 
     u32 m_pulses_at_start_of_pour = 0;
     u32 m_pulses_at_end_of_pour = 0;
