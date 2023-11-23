@@ -24,7 +24,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [MaintenanceMode] = { .id = 'K', .active = false},
 
     [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
-    [FillDigitalSignalTableOnCalibration] = { .id = 'X', .active = true },
+    [ForceFlowAnalysis] = { .id = 'X', .active = false },
 });
 // clang-format on
 

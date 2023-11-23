@@ -61,7 +61,6 @@ void Spout::tick() {
             const auto best_digital_signal = FlowController::the().hit_me_with_your_best_shot(ideal_flow);
             send_digital_signal_to_driver(best_digital_signal);
         } else {
-
             // BRK is realeased after a little bit to not stress the motor too hard
             if (m_end_pour_timer >= 2s and digitalRead(Pin::BRK) == LOW)
                 digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
@@ -214,7 +213,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         inform_progress_to_host();
     };
 
-    clean_digital_signal_table(PurgeStorageEntry::Yes);
+    clean_digital_signal_table(PurgeStorageEntry::No);
     update_status(FlowAnalysisStatus::Preparing);
     const auto beginning = millis();
 
@@ -419,6 +418,8 @@ void Spout::FlowController::clean_digital_signal_table(PurgeStorageEntry purge) 
 void Spout::FlowController::save_digital_signal_table_to_file() {
     auto entry = storage::fetch_or_create_entry(m_storage_handle);
     entry.write_binary(m_digital_signal_table);
+
+    m_target_temperature_for_last_analysis = Boiler::the().target_temperature();
 }
 
 void Spout::FlowController::fetch_digital_signal_table_from_file() {

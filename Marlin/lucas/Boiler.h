@@ -21,6 +21,8 @@ public:
 
     float temperature() const;
 
+    std::optional<s32> stored_target_temperature() const;
+
     static void inform_temperature_status() {
         core::inform_calibration_status();
         the().inform_temperature_to_host();

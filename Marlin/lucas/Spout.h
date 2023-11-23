@@ -83,6 +83,8 @@ public:
         void set_abort_analysis(bool b) { m_abort_analysis = b; }
         bool abort_analysis() const { return m_abort_analysis; }
 
+        s32 last_analysis_target_temperature() const { return m_target_temperature_for_last_analysis; }
+
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
         void update_flow_hint_for_pulse_calculation(f32 volume_hint);
@@ -202,6 +204,8 @@ public:
         storage::Handle m_storage_handle;
 
         f32 m_pulse_weight = 0.f;
+
+        s32 m_target_temperature_for_last_analysis = 0;
     };
 
 private:

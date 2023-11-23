@@ -30,7 +30,7 @@ enum Options {
     MaintenanceMode,
 
     SetTargetTemperatureOnCalibration,
-    FillDigitalSignalTableOnCalibration,
+    ForceFlowAnalysis,
 
     Count
 };

@@ -113,6 +113,13 @@ float Boiler::temperature() const {
     return CFG(GigaMode) ? 94 : thermalManager.degBed();
 }
 
+std::optional<s32> Boiler::stored_target_temperature() const {
+    if (auto entry = storage::fetch_entry(m_storage_handle))
+        return entry->read_binary<s32>();
+
+    return std::nullopt;
+}
+
 bool Boiler::is_in_target_temperature_range() const {
     const auto delta = temperature() - m_target_temperature;
     return std::abs(delta) <= (delta > 0.f
