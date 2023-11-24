@@ -396,6 +396,9 @@ void RecipeQueue::remove_finalized_recipes() {
 // se a fila fica um certo periodo inativa o bico é enviado para o esgoto e despeja agua por alguns segundos
 // com a finalidade de esquentar a mangueira e aliviar imprecisoes na hora de comecar um café
 void RecipeQueue::try_heating_hose_after_inactivity() {
+    if (core::calibration_phase() != core::CalibrationPhase::Done)
+        return;
+
     if (m_inactivity_timer >= 10min) {
         info::send(
             info::Event::Other,
