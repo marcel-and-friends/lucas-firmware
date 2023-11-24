@@ -213,7 +213,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         inform_progress_to_host();
     };
 
-    clean_digital_signal_table(PurgeStorageEntry::No);
+    clean_digital_signal_table();
     update_status(FlowAnalysisStatus::Preparing);
     const auto beginning = millis();
 
@@ -309,7 +309,7 @@ void Spout::FlowController::analyse_and_store_flow_data() {
         Spout::the().end_pour();
         update_status(FlowAnalysisStatus::Done);
         if (m_abort_analysis) {
-            clean_digital_signal_table(PurgeStorageEntry::No);
+            clean_digital_signal_table();
             return;
         }
 
@@ -404,12 +404,9 @@ f32 Spout::FlowController::pulses_to_volume(u32 pulses) const {
     return pulses * m_pulse_weight;
 }
 
-void Spout::FlowController::clean_digital_signal_table(PurgeStorageEntry purge) {
+void Spout::FlowController::clean_digital_signal_table() {
     for (auto& t : m_digital_signal_table)
         std::fill(t.begin(), t.end(), INVALID_DIGITAL_SIGNAL);
-
-    if (purge == PurgeStorageEntry::Yes)
-        storage::purge_entry(m_storage_handle);
 
     m_analysis_progress = 0.f;
     m_analysis_status = FlowAnalysisStatus::None;

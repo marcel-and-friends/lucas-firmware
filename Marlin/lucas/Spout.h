@@ -64,12 +64,7 @@ public:
 
         void analyse_and_store_flow_data();
 
-        enum class PurgeStorageEntry {
-            Yes,
-            No
-        };
-
-        void clean_digital_signal_table(PurgeStorageEntry);
+        void clean_digital_signal_table();
         void save_digital_signal_table_to_file();
         void fetch_digital_signal_table_from_file();
 
@@ -104,7 +99,7 @@ public:
         friend class util::Singleton<FlowController>;
 
         FlowController() {
-            clean_digital_signal_table(PurgeStorageEntry::No);
+            clean_digital_signal_table();
         }
 
         struct FlowInfo {
