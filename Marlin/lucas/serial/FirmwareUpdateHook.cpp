@@ -15,7 +15,7 @@ void FirmwareUpdateHook::think() {
     }
 
     while (SERIAL_IMPL.available()) {
-        m_receive_timer.start();
+        m_receive_timer.restart();
         receive_char(SERIAL_IMPL.read());
     }
 }

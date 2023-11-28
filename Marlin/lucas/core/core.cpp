@@ -33,10 +33,11 @@ void setup() {
 
     Boiler::the().setup();
     Spout::the().setup();
-    MotionController::the().home();
-    MotionController::the().travel_to_sewer();
     RecipeQueue::the().setup();
     Station::setup();
+
+    MotionController::the().home();
+    MotionController::the().travel_to_sewer();
 
     s_startup_temperature = Boiler::the().temperature();
     s_last_session_target_temperature = Boiler::the().stored_target_temperature();

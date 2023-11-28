@@ -132,7 +132,8 @@ void RecipeQueue::map_station_recipe(usize index) {
         if (m_fixed_recipes[index].active) {
             // don't execute fixed recipes when calibrating
             // the only recipe that should be executed during calibration is the cooling recipe
-            if (core::calibration_phase() != core::CalibrationPhase::Done)
+            if (core::calibration_phase() != core::CalibrationPhase::Done or
+                not Boiler::the().is_in_coffee_making_temperature_range())
                 return;
 
             auto& recipe = m_queue[index].recipe = m_fixed_recipes[index].recipe;

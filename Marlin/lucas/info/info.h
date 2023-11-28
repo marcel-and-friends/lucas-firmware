@@ -59,9 +59,9 @@ enum class Command {
     DevScheduleStandardRecipe,
     DevSimulateButtonPress,
 
-    InvalidCommand,
+    Count,
 
-    Count
+    InvalidCommand
 };
 
 using CommandHook = void (*)();
@@ -77,7 +77,7 @@ public:
     ~TemporaryCommandHook();
 
 private:
-    Command m_command;
-    CommandHook m_old_hook;
+    Command m_command = Command::InvalidCommand;
+    CommandHook m_old_hook = nullptr;
 };
 }

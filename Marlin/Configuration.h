@@ -783,13 +783,13 @@
     #define MPC_AMBIENT_XFER_COEFF \
         {                          \
             0.068f                 \
-        } // (W/K) Heat transfer coefficients from heat block to room air with fan
+        } // (W/K) Heat transfer coefficients from heat block to room air with
           // off.
     #if ENABLED(MPC_INCLUDE_FAN)
         #define MPC_AMBIENT_XFER_COEFF_FAN255 \
             {                                 \
                 0.097f                        \
-            } // (W/K) Heat transfer coefficients from heat block to room air with fan on
+            } // (W/K) Heat transfer coefficients from heat block to room air with  on
               // full.
     #endif
 

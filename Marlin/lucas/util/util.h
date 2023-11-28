@@ -84,6 +84,11 @@ inline void maintenance_idle_until(Fn<bool> auto&& callback) {
     maintenance_idle_while(std::not_fn(FWD(callback)));
 }
 
+template<typename T>
+inline bool is_within(T value, T min, T max) {
+    return value >= min and value <= max;
+}
+
 #define LOG SERIAL_ECHOLNPGM
 #define LOG_ERR(...) LOG("", "ERRO: ", __VA_ARGS__);
 

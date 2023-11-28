@@ -16,7 +16,11 @@ void Boiler::setup() {
 
 void Boiler::setup_pins() {
     pinMode(Pin::Resistance, OUTPUT);
-    digitalWrite(Boiler::Pin::Resistance, LOW);
+    control_resistance(0.f);
+
+    // FAN2
+    pinMode(PC14, OUTPUT);
+    digitalWrite(PC14, LOW);
 
     pinMode(Pin::WaterLevelAlarm, INPUT_PULLUP);
 }
@@ -58,54 +62,15 @@ void Boiler::tick() {
         wait_for_boiler_to_fill();
     }
 
-    if (CFG(GigaMode)) {
+    if (not CFG(GigaMode)) {
+        control_temperature();
+        security_checks();
+    }
+
+    if (m_target_temperature) {
         every(5s) {
             inform_temperature_to_host();
         }
-        return;
-    }
-
-    if (is_alarm_triggered())
-        sec::raise_error(sec::Error::WaterLevelAlarm);
-
-    constexpr auto MAXIMUM_TEMPERATURE = 105.f;
-    if (temperature() >= MAXIMUM_TEMPERATURE)
-        sec::raise_error(sec::Error::MaxTemperatureReached);
-
-    if (not m_target_temperature)
-        return;
-
-    control_resistance(temperature() < (m_target_temperature - HYSTERESIS));
-
-    if (not m_reached_target_temperature) {
-        m_temperature_stabilized_timer.toggle_based_on(is_in_target_temperature_range());
-        m_reached_target_temperature = m_temperature_stabilized_timer >= 5s;
-        if (is_heating()) {
-            if (not m_heating_check_timer.is_active()) {
-                m_last_checked_heating_temperature = temperature();
-                m_heating_check_timer.start();
-            }
-
-            if (m_heating_check_timer >= 2min) {
-                if (temperature() - m_last_checked_heating_temperature < 0.5f)
-                    sec::raise_error(sec::Error::TemperatureNotChanging);
-
-                m_last_checked_heating_temperature = temperature();
-                m_heating_check_timer.restart();
-            }
-        } else {
-            m_heating_check_timer.stop();
-        }
-    } else {
-        constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
-        const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
-        m_outside_target_range_timer.toggle_based_on(not in_target_range);
-        if (m_outside_target_range_timer >= 5min)
-            sec::raise_error(sec::Error::TemperatureOutOfRange);
-    }
-
-    every(5s) {
-        inform_temperature_to_host();
     }
 }
 
@@ -120,22 +85,17 @@ std::optional<s32> Boiler::stored_target_temperature() const {
     return std::nullopt;
 }
 
-bool Boiler::is_in_target_temperature_range() const {
-    const auto delta = temperature() - m_target_temperature;
-    return std::abs(delta) <= (delta > 0.f
-                                   ? TARGET_TEMPERATURE_RANGE_WHEN_ABOVE_TARGET
-                                   : TARGET_TEMPERATURE_RANGE_WHEN_BELOW_TARGET);
-}
-
-bool Boiler::is_heating() const {
-    return temperature() < m_target_temperature;
+bool Boiler::is_in_coffee_making_temperature_range() const {
+    const auto range_below = m_target_temperature - (m_state == State::Heating ? 0.5f : 0.f);
+    const auto range_above = m_target_temperature + (m_state == State::Heating ? 1.5f : 1.0f);
+    return util::is_within(temperature(), range_below, range_above);
 }
 
 void Boiler::inform_temperature_to_host() {
     info::send(
         info::Event::Boiler,
         [this](JsonObject o) {
-            o["reachingTargetTemp"] = not is_in_target_temperature_range();
+            o["reachingTargetTemp"] = not is_in_coffee_making_temperature_range();
             o["heating"] = temperature() < m_target_temperature;
             o["currentTemp"] = temperature();
         });
@@ -152,7 +112,7 @@ void Boiler::update_and_reach_target_temperature(std::optional<s32> target) {
         return;
     }
 
-    util::idle_until([this] { return m_reached_target_temperature; });
+    util::idle_until([this] { return is_in_coffee_making_temperature_range(); });
 
     inform_temperature_to_host();
 
@@ -167,17 +127,110 @@ void Boiler::update_target_temperature(std::optional<s32> target) {
 
     if (target == 0) {
         m_target_temperature = 0;
-        control_resistance(false);
+        control_resistance(0.f);
     } else {
         m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
         inform_temperature_to_host();
     }
 
+    m_state = temperature() < m_target_temperature ? State::Heating : State::Stabilizing;
+
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", m_target_temperature, "]");
 }
 
-void Boiler::control_resistance(bool state) {
-    digitalWrite(Pin::Resistance, state);
+void Boiler::control_temperature() {
+    if (not m_target_temperature) {
+        control_resistance(0.f);
+        return;
+    }
+
+    constexpr auto HEATING_TARGET_RANGE_BEGIN = 3.f;
+    switch (m_state) {
+    case State::Stabilizing:
+        modulate_resistance({ .target_range_begin = 0.f,
+                              .target_range_end = 0.5f,
+                              .max_strength = 0.5f,
+                              .min_strength = 0.f });
+
+        if (temperature() <= m_target_temperature - HEATING_TARGET_RANGE_BEGIN)
+            m_state = State::Heating;
+
+        break;
+    case State::Heating:
+        modulate_resistance({ .target_range_begin = HEATING_TARGET_RANGE_BEGIN,
+                              .target_range_end = 0.f,
+                              .max_strength = 1.f,
+                              .min_strength = 0.5f });
+
+        if (temperature() >= m_target_temperature)
+            m_state = State::Stabilizing;
+
+        break;
+    }
+}
+
+void Boiler::security_checks() {
+    if (is_alarm_triggered())
+        sec::raise_error(sec::Error::WaterLevelAlarm);
+
+    constexpr auto MAXIMUM_TEMPERATURE = 105.f;
+    if (temperature() >= MAXIMUM_TEMPERATURE)
+        sec::raise_error(sec::Error::MaxTemperatureReached);
+
+    if (not m_target_temperature)
+        return;
+
+    if (not is_in_coffee_making_temperature_range()) {
+        if (m_state == State::Heating) {
+            if (not m_heating_check_timer.is_active()) {
+                m_last_checked_heating_temperature = temperature();
+                m_heating_check_timer.start();
+            }
+
+            if (m_heating_check_timer >= 2min) {
+                if (temperature() - m_last_checked_heating_temperature < 0.5f)
+                    sec::raise_error(sec::Error::TemperatureNotChanging);
+
+                m_last_checked_heating_temperature = temperature();
+                m_heating_check_timer.restart();
+            }
+        } else {
+            m_last_checked_heating_temperature = 0.f;
+            m_heating_check_timer.stop();
+        }
+    } else {
+        constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
+        const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
+        m_outside_target_range_timer.toggle_based_on(not in_target_range);
+        if (m_outside_target_range_timer >= 5min)
+            sec::raise_error(sec::Error::TemperatureOutOfRange);
+    }
+}
+
+void Boiler::control_resistance(f32 force) {
+    const auto digital_value = std::clamp(static_cast<s32>(force * 255.f), 0, 255);
+
+    analogWriteResolution(8);
+    analogWrite(Pin::Resistance, digital_value);
+    analogWriteResolution(12);
+}
+
+void Boiler::modulate_resistance(ModulateResistanceParams params) {
+    const auto range_below = m_target_temperature - params.target_range_begin;
+    const auto range_above = m_target_temperature + params.target_range_end;
+    auto strength = 0.f;
+    if (util::is_within(temperature(), range_below, range_above)) {
+        const auto norm = util::normalize(temperature(), range_below, range_above);
+        strength = std::lerp(params.max_strength, params.min_strength, norm);
+    } else {
+        strength = temperature() < m_target_temperature;
+    }
+
+    every(5s) {
+        LOG("resistance strength: ", strength);
+    }
+
+    control_resistance(strength);
 }
 
 void Boiler::turn_off_resistance() {
@@ -189,12 +242,9 @@ bool Boiler::is_alarm_triggered() const {
 }
 
 void Boiler::reset() {
-    m_reached_target_temperature = false;
-
-    m_outside_target_range_timer.stop();
-    m_temperature_stabilized_timer.stop();
+    m_last_checked_heating_temperature = 0.f;
     m_heating_check_timer.stop();
 
-    m_last_checked_heating_temperature = 0.f;
+    m_outside_target_range_timer.stop();
 }
 }
