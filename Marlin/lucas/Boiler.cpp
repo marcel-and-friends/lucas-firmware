@@ -63,8 +63,8 @@ void Boiler::tick() {
     }
 
     if (not CFG(GigaMode)) {
-        control_temperature();
-        security_checks();
+        // control_temperature();
+        // security_checks();
     }
 
     if (m_target_temperature) {
@@ -75,7 +75,7 @@ void Boiler::tick() {
 }
 
 float Boiler::temperature() const {
-    return CFG(GigaMode) ? 94 : thermalManager.degBed();
+    return CFG(GigaMode) ? 94 : thermalManager.degHotend(0);
 }
 
 std::optional<s32> Boiler::stored_target_temperature() const {
@@ -86,8 +86,8 @@ std::optional<s32> Boiler::stored_target_temperature() const {
 }
 
 bool Boiler::is_in_coffee_making_temperature_range() const {
-    const auto range_below = m_target_temperature - (m_state == State::Heating ? 0.5f : 0.f);
-    const auto range_above = m_target_temperature + (m_state == State::Heating ? 1.5f : 1.0f);
+    const auto range_below = m_target_temperature - 3.0f;
+    const auto range_above = m_target_temperature + 1.5f;
     return util::is_within(temperature(), range_below, range_above);
 }
 
@@ -112,6 +112,10 @@ void Boiler::update_and_reach_target_temperature(std::optional<s32> target) {
         return;
     }
 
+    thermalManager.wait_for_hotend(0, false);
+    inform_temperature_to_host();
+    return;
+
     util::idle_until([this] { return is_in_coffee_making_temperature_range(); });
 
     inform_temperature_to_host();
@@ -132,6 +136,8 @@ void Boiler::update_target_temperature(std::optional<s32> target) {
         m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
         inform_temperature_to_host();
     }
+
+    thermalManager.setTargetHotend(m_target_temperature, 0);
 
     m_state = temperature() < m_target_temperature ? State::Heating : State::Stabilizing;
 

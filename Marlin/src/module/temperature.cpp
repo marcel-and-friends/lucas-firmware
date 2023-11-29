@@ -460,7 +460,7 @@ void Temperature::set_fans_paused(const bool p) {
             }
         else
             FANS_LOOP(i)
-            fan_speed[i] = saved_fan_speed[i];
+        fan_speed[i] = saved_fan_speed[i];
     }
 }
 
@@ -1420,17 +1420,13 @@ public:
         : tempinfo(t) {}
 
     float get_pid_output() {
-    #if ENABLED(PID_OPENLOOP)
-
-        return constrain(tempinfo.target, 0, MAX_POW);
-
-    #else // !PID_OPENLOOP
-
         const float pid_error = tempinfo.target - tempinfo.celsius;
-        if (!tempinfo.target || pid_error < -(PID_FUNCTIONAL_RANGE)) {
+        if (!tempinfo.target || pid_error < 0) { // WILSON 5
+            // desliga a resistencia quando a temperatura passa do target
             pid_reset = true;
             return 0;
-        } else if (pid_error > PID_FUNCTIONAL_RANGE) {
+        } else if (pid_error > 4) { // WILSON 4
+            // liga a resistencia no máximo quando a temperature está 4 graus abaixo do target
             pid_reset = true;
             return MAX_POW;
         }
@@ -1441,18 +1437,20 @@ public:
             work_pid.Kd = 0.0;
         }
 
+        // MAX_POW = 255
+        // MIN_POW = 0
         const float max_power_over_i_gain = float(MAX_POW) / tempinfo.pid.Ki - float(MIN_POW);
         temp_iState = constrain(temp_iState + pid_error, 0, max_power_over_i_gain);
 
         work_pid.Kp = tempinfo.pid.Kp * pid_error;
         work_pid.Ki = tempinfo.pid.Ki * temp_iState;
+        // PID_K2 = 0.05
         work_pid.Kd = work_pid.Kd + PID_K2 * (tempinfo.pid.Kd * (temp_dState - tempinfo.celsius) - work_pid.Kd);
 
         temp_dState = tempinfo.celsius;
 
+        // retorna um valor entre MIN_POW e MAX_POW que é constantemente enviado como PWM para a resistência
         return constrain(work_pid.Kp + work_pid.Ki + work_pid.Kd + float(MIN_POW), 0, MAX_POW);
-
-    #endif // !PID_OPENLOOP
     }
 
     FORCE_INLINE void debug(const_celsius_float_t c, const_float_t pid_out, FSTR_P const name = nullptr, const int8_t index = -1) {
@@ -1710,12 +1708,12 @@ void Temperature::manage_heated_bed(const millis_t& ms) {
             // Check if temperature is within the correct band
             if (WITHIN(temp_bed.celsius, BED_MINTEMP, BED_MAXTEMP)) {
         #if ENABLED(BED_LIMIT_SWITCHING)
-				// if (temp_bed.target) {
-                // 	const auto ideal = static_cast<float>(temp_bed.target) - lucas::Boiler::the().hysteresis();
-                // 	temp_bed.soft_pwm_amount = temp_bed.celsius >= ideal ? 0 : MAX_BED_POWER >> 1;
-				// } else {
-				// 	temp_bed.soft_pwm_amount = 0;
-				// }
+                        // if (temp_bed.target) {
+                        // 	const auto ideal = static_cast<float>(temp_bed.target) - lucas::Boiler::the().hysteresis();
+                        // 	temp_bed.soft_pwm_amount = temp_bed.celsius >= ideal ? 0 : MAX_BED_POWER >> 1;
+                        // } else {
+                        // 	temp_bed.soft_pwm_amount = 0;
+                        // }
         #else // !PIDTEMPBED && !BED_LIMIT_SWITCHING
                 temp_bed.soft_pwm_amount = temp_bed.is_below_target() ? MAX_BED_POWER >> 1 : 0;
         #endif
@@ -2008,8 +2006,9 @@ void Temperature::task() {
     TERN_(FILAMENT_WIDTH_SENSOR, filwidth.update_volumetric());
 
     // Handle Bed Temp Errors, Heating Watch, etc.
-	// we on our own!! gangasta asf!
-    // TERN_(HAS_HEATED_BED, manage_heated_bed(ms));
+    // we on our own!! gangasta asf!
+    // we're just normal men. we're just innocent men.
+    TERN_(HAS_HEATED_BED, manage_heated_bed(ms));
 
     // Handle Heated Chamber Temp Errors, Heating Watch, etc.
     TERN_(HAS_HEATED_CHAMBER, manage_heated_chamber(ms));
@@ -3096,7 +3095,8 @@ void Temperature::disable_all_heaters() {
 bool Temperature::auto_job_over_threshold() {
     #if HAS_HOTEND
     HOTEND_LOOP()
-    if (degTargetHotend(e) > (EXTRUDE_MINTEMP) / 2) return true;
+    if (degTargetHotend(e) > (EXTRUDE_MINTEMP) / 2)
+        return true;
     #endif
     return TERN0(HAS_HEATED_BED, degTargetBed() > BED_MINTEMP) || TERN0(HAS_HEATED_CHAMBER, degTargetChamber() > CHAMBER_MINTEMP);
 }
@@ -3573,7 +3573,7 @@ void Temperature::isr() {
             } while (0)
 
         #if HAS_FAN0
-         _FAN_PWM(0);
+        _FAN_PWM(0);
         #endif
         #if HAS_FAN1
         _FAN_PWM(1);
