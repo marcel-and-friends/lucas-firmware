@@ -1425,7 +1425,7 @@ public:
             // desliga a resistencia quando a temperatura passa do target
             pid_reset = true;
             return 0;
-        } else if (pid_error > 4) { // WILSON 4
+        } else if (pid_error > 1) { // WILSON 4
             // liga a resistencia no máximo quando a temperature está 4 graus abaixo do target
             pid_reset = true;
             return MAX_POW;
@@ -2297,7 +2297,13 @@ celsius_float_t Temperature::analog_to_celsius_hotend(const raw_adc_t raw, const
     #if HAS_HOTEND_THERMISTOR
     // Thermistor with conversion table?
     const temp_entry_t(*tt)[] = (temp_entry_t(*)[])(heater_ttbl_map[e]);
-    SCAN_THERMISTOR_TABLE((*tt), heater_ttbllen_map[e]);
+
+    // TEMPFIX
+    auto temp = [&] -> celsius_float_t {
+        SCAN_THERMISTOR_TABLE((*tt), heater_ttbllen_map[e]);
+    }();
+    return temp - 1.1f;
+
     #endif
 
     return 0;

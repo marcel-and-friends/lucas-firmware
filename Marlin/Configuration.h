@@ -747,8 +747,8 @@
         #define DEFAULT_Kd_LIST \
             { 114.00, 114.00 }
     #else
-        #define DEFAULT_Kp 20.0  // WILSON 1
-        #define DEFAULT_Ki 0.023 // WILSON 2
+        #define DEFAULT_Kp 40.0  // WILSON 1
+        #define DEFAULT_Ki 0.46  // WILSON 2
         #define DEFAULT_Kd 600.0 // WILSON 3
     #endif
 #endif
