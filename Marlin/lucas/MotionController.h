@@ -25,13 +25,16 @@ public:
 
     void change_step_ratio(f32 ratio) const;
 
+    void change_step_ratio(f32 ratio_x, f32 ratio_y) const;
+
     void change_max_acceleration(f32 accel) const;
 
     void invalidate_location() { m_current_location = INVALID_LOCATION; }
 
-    static constexpr float MS_PER_MM = 12.41f;
-    static constexpr float DEFAULT_STEPS_PER_MM_X = 44.5f;
-    static constexpr float DEFAULT_STEPS_PER_MM_Y = 22.5f;
+    static inline float MS_PER_MM = 12.41f;
+    static constexpr float DEFAULT_STEPS_PER_MM_X = 45.0f;
+    static constexpr float DEFAULT_STEPS_PER_MM_Y = 25.0f;
+    static constexpr float ANGLE_FIX = 1.2f;
 
 private:
     static constexpr auto INVALID_LOCATION = static_cast<usize>(-1);

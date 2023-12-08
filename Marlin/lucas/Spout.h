@@ -78,7 +78,7 @@ public:
         void set_abort_analysis(bool b) { m_abort_analysis = b; }
         bool abort_analysis() const { return m_abort_analysis; }
 
-        s32 last_analysis_target_temperature() const { return m_target_temperature_for_last_analysis; }
+        std::optional<s32> last_analysis_target_temperature() const;
 
         DigitalSignal hit_me_with_your_best_shot(float flow) const;
 
@@ -86,8 +86,11 @@ public:
 
         f32 pulses_to_volume(u32 pulses) const;
 
-        static constexpr auto FLOW_MIN = 5;
-        static constexpr auto FLOW_MAX = 15;
+        static inline auto MIN_ML_PER_PULSE = 0.54794520547f;
+        static inline auto MAX_ML_PER_PULSE = 0.49497293116f;
+
+        static constexpr auto FLOW_MIN = 4;
+        static constexpr auto FLOW_MAX = 16;
         static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
         static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;
         // TODO: turn this into a single-dimensional array
@@ -134,6 +137,11 @@ public:
                 const auto average_flow = pulses_to_volume(pulses) / TIME_TO_ANALISE_POUR.count();
                 update_flow_hint_for_pulse_calculation(average_flow);
 
+                if (digital_signal >= 2000 and pulses == 0) {
+                    m_abort_analysis = true;
+                    return;
+                }
+
                 LOG_IF(LogCalibration, "fluxo estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
 
                 if (std::invoke(FWD(callback), FlowInfo{ average_flow, digital_signal }, digital_signal_mod) == util::Iter::Break)
@@ -158,7 +166,7 @@ public:
         void save_flow_info_to_table(float flow, DigitalSignal signal) {
             auto [rounded_flow, decimal] = decompose_flow(flow);
             m_digital_signal_table[rounded_flow - FLOW_MIN][decimal] = signal;
-            LOG_IF(LogCalibration, "fluxo info salva - [sinal = ", signal, "]");
+            LOG_IF(LogCalibration, "fluxo info salva - [sinal = ", signal, ", index1 = ", rounded_flow - FLOW_MIN, ", index2 = ", decimal, "]");
         }
 
         void for_each_occupied_cell(util::IterFn<DigitalSignal, usize, usize> auto&& callback) const {
@@ -196,11 +204,11 @@ public:
 
         bool m_abort_analysis = false;
 
-        storage::Handle m_storage_handle;
+        storage::Handle m_flow_analysis_storage_handle;
+
+        storage::Handle m_target_temperature_on_last_analysis_handle;
 
         f32 m_pulse_weight = 0.f;
-
-        s32 m_target_temperature_for_last_analysis = 0;
     };
 
 private:

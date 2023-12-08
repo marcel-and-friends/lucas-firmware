@@ -4329,6 +4329,7 @@ bool Temperature::wait_for_hotend(const uint8_t target_extruder, const bool no_w
         if (target_temp != degTargetHotend(target_extruder)) {
             wants_to_cool = isCoolingHotend(target_extruder);
             target_temp = degTargetHotend(target_extruder);
+            residency_start_ms = 0;
 
             // Exit if S<lower>, continue if S<higher>, R<lower>, or R<higher>
             if (no_wait_for_cooling && wants_to_cool)

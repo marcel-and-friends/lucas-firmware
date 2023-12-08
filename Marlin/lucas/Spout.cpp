@@ -35,23 +35,29 @@ void Spout::tick() {
             if (volume_poured_so_far() >= m_total_desired_volume) {
                 end_pour();
                 return;
-            } else if (volume_poured_so_far() == 0.f) {
-                // no water!? - bad motor? bad sensor? bad pump? who knows!
-                sec::raise_error(sec::Error::PourVolumeMismatch);
             }
 
             const auto elapsed_seconds = time_elapsed().count() / 1000.f;
             const auto duration_seconds = m_pour_duration.count() / 1000.f;
+
             // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
             // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
             if (time_elapsed() >= 2s) {
+                if (volume_poured_so_far() == 0.f) {
+                    // no water!? - bad motor? bad sensor? bad pump? who knows!
+                    sec::raise_error(sec::Error::PourVolumeMismatch);
+                    return;
+                }
+
                 const auto ideal_flow = m_total_desired_volume / duration_seconds;
                 const auto expected_volume = ideal_flow * elapsed_seconds;
                 const auto ratio = volume_poured_so_far() / expected_volume;
                 // 50% is a pretty generous margin, could try to go lower
                 constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
-                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR)
+                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR) {
                     sec::raise_error(sec::Error::PourVolumeMismatch);
+                    return;
+                }
             }
 
             // calculate the ideal flow and fetch our best guess for it
@@ -150,7 +156,7 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
 }
 
 void Spout::fill_hose(float desired_volume) {
-    constexpr auto FALLBACK_SIGNAL = 1400; // radomly picked this
+    constexpr auto FALLBACK_SIGNAL = 2200; // radomly picked this
     constexpr auto TIME_TO_FILL_HOSE = 20s;
 
     MotionController::the().travel_to_sewer();
@@ -195,7 +201,8 @@ void Spout::end_pour() {
 }
 
 void Spout::FlowController::setup() {
-    m_storage_handle = storage::register_handle_for_entry("flow", sizeof(m_digital_signal_table));
+    m_flow_analysis_storage_handle = storage::register_handle_for_entry("flow", sizeof(m_digital_signal_table));
+    m_target_temperature_on_last_analysis_handle = storage::register_handle_for_entry("flowtemp", sizeof(s32));
 }
 
 void Spout::FlowController::analyse_and_store_flow_data() {
@@ -393,9 +400,6 @@ void Spout::FlowController::update_flow_hint_for_pulse_calculation(f32 volume_hi
         FLOW_MIN,
         FLOW_MAX);
 
-    constexpr auto MIN_ML_PER_PULSE = 0.5475f;
-    constexpr auto MAX_ML_PER_PULSE = 0.5f;
-
     m_pulse_weight = std::lerp(MIN_ML_PER_PULSE, MAX_ML_PER_PULSE, norm);
     LOG_IF(LogCalibration, "atualizando peso do pulso - [volume = ", volume_hint, " - peso = ", m_pulse_weight, "]");
 }
@@ -413,14 +417,15 @@ void Spout::FlowController::clean_digital_signal_table() {
 }
 
 void Spout::FlowController::save_digital_signal_table_to_file() {
-    auto entry = storage::fetch_or_create_entry(m_storage_handle);
+    auto entry = storage::fetch_or_create_entry(m_flow_analysis_storage_handle);
     entry.write_binary(m_digital_signal_table);
 
-    m_target_temperature_for_last_analysis = Boiler::the().target_temperature();
+    entry = storage::fetch_or_create_entry(m_target_temperature_on_last_analysis_handle);
+    entry.write_binary(Boiler::the().target_temperature());
 }
 
 void Spout::FlowController::fetch_digital_signal_table_from_file() {
-    if (auto entry = storage::fetch_entry(m_storage_handle))
+    if (auto entry = storage::fetch_entry(m_flow_analysis_storage_handle))
         entry->read_binary_into(m_digital_signal_table);
 }
 
@@ -441,6 +446,13 @@ void Spout::FlowController::inform_progress_to_host() const {
                 o["status"] = usize(m_analysis_status);
             });
     }
+}
+
+std::optional<s32> Spout::FlowController::last_analysis_target_temperature() const {
+    if (auto entry = storage::fetch_entry(m_target_temperature_on_last_analysis_handle))
+        return entry->read_binary<s32>();
+
+    return std::nullopt;
 }
 
 Spout::FlowController::FlowInfo Spout::FlowController::first_flow_info_below_flow(s32 flow_index, s32 decimal) const {

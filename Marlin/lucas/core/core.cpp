@@ -122,14 +122,9 @@ void calibrate(std::optional<s32> target_temperature) {
     }
 
     const auto restarted_not_long_ago = s_startup_temperature >= 60.f; // water is still warm
-    const auto same_target_as_last_session = s_last_session_target_temperature == boiler.target_temperature();
+    const auto same_target_as_last_analysis = flow_controller.last_analysis_target_temperature() == boiler.target_temperature();
 
-    // `last_analysis_target_temperature` is maintened between sessions, so having it saved means we've done at least one analysis in this session
-    const auto last_complete_analysis_was_recent = flow_controller.last_analysis_target_temperature() == boiler.target_temperature();
-
-    const auto should_reuse_flow_analysis_data = (restarted_not_long_ago and same_target_as_last_session) or
-                                                 last_complete_analysis_was_recent;
-
+    const auto should_reuse_flow_analysis_data = restarted_not_long_ago and same_target_as_last_analysis;
     if (should_reuse_flow_analysis_data and not CFG(ForceFlowAnalysis)) {
         LOG_IF(LogCalibration, "reutilizando dados de analise de fluxo");
         flow_controller.fetch_digital_signal_table_from_file();

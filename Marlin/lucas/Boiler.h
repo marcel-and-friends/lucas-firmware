@@ -72,6 +72,8 @@ private:
 
     storage::Handle m_storage_handle;
 
+    bool m_reaching_target_temp = false;
+
     bool m_should_wait_for_boiler_to_fill = false;
 
     float m_last_checked_heating_temperature = 0.f;

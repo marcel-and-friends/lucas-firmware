@@ -21,7 +21,7 @@ void MotionController::travel_to_station(usize index, float offset) {
     LOG_IF(LogTravel, "viajando - [estacao = ", index, " | offset = ", offset, "]");
 
     const auto beginning = millis();
-    const auto gcode = util::ff("G0 F25000 Y64 X%s", Station::absolute_position(index) + offset);
+    const auto gcode = util::ff("G0 F25000 Y60 X%s", Station::absolute_position(index) + offset);
     cmd::execute_multiple("G90",
                           gcode,
                           "G91");
@@ -39,7 +39,7 @@ void MotionController::travel_to_sewer() {
 
     const auto beginning = millis();
     cmd::execute_multiple("G90",
-                          "G0 F5000 Y64 X0",
+                          "G0 F5000 Y60 X0",
                           "G91");
     finish_movements();
     m_current_location = SEWER_LOCATION;
@@ -65,10 +65,14 @@ float MotionController::step_ratio_y() const {
     return planner.settings.axis_steps_per_mm[Y_AXIS] / DEFAULT_STEPS_PER_MM_Y;
 }
 
-void MotionController::change_step_ratio(float ratio) const {
-    planner.settings.axis_steps_per_mm[X_AXIS] = DEFAULT_STEPS_PER_MM_X * ratio;
-    planner.settings.axis_steps_per_mm[Y_AXIS] = DEFAULT_STEPS_PER_MM_Y * ratio;
+void MotionController::change_step_ratio(f32 ratio_x, f32 ratio_y) const {
+    planner.settings.axis_steps_per_mm[X_AXIS] = DEFAULT_STEPS_PER_MM_X * ratio_x;
+    planner.settings.axis_steps_per_mm[Y_AXIS] = DEFAULT_STEPS_PER_MM_Y * ratio_y;
     planner.refresh_positioning();
+}
+
+void MotionController::change_step_ratio(float ratio) const {
+    change_step_ratio(ratio, ratio);
 }
 
 void MotionController::change_max_acceleration(f32 accel) const {

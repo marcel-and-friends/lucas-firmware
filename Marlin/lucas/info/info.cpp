@@ -8,13 +8,12 @@
 #include <lucas/cmd/cmd.h>
 #include <lucas/sec/sec.h>
 #include <lucas/serial/serial.h>
-#include <src/module/temperature.h>
 
 namespace lucas::info {
 void tick() {
     if (CFG(LogTemperatureForTesting)) {
         every(1s) {
-            LOG("TEMPERATURA: ", thermalManager.degBed());
+            LOG("TEMPERATURA: ", Boiler::the().temperature());
         }
     }
 

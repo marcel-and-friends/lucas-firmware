@@ -59,7 +59,8 @@ static void wait_for_boiler_to_fill() {
 void Boiler::tick() {
     if (m_should_wait_for_boiler_to_fill) {
         m_should_wait_for_boiler_to_fill = false;
-        wait_for_boiler_to_fill();
+        if (is_alarm_triggered())
+            wait_for_boiler_to_fill();
     }
 
     if (not CFG(GigaMode)) {
@@ -95,7 +96,7 @@ void Boiler::inform_temperature_to_host() {
     info::send(
         info::Event::Boiler,
         [this](JsonObject o) {
-            o["reachingTargetTemp"] = not is_in_coffee_making_temperature_range();
+            o["reachingTargetTemp"] = m_reaching_target_temp ?: not is_in_coffee_making_temperature_range();
             o["heating"] = temperature() < m_target_temperature;
             o["currentTemp"] = temperature();
         });
@@ -112,7 +113,12 @@ void Boiler::update_and_reach_target_temperature(std::optional<s32> target) {
         return;
     }
 
+    m_reaching_target_temp = true;
+
     thermalManager.wait_for_hotend(0, false);
+
+    m_reaching_target_temp = false;
+
     inform_temperature_to_host();
     return;
 
@@ -176,12 +182,16 @@ void Boiler::control_temperature() {
 }
 
 void Boiler::security_checks() {
-    if (is_alarm_triggered())
+    if (is_alarm_triggered()) {
         sec::raise_error(sec::Error::WaterLevelAlarm);
+        return;
+    }
 
     constexpr auto MAXIMUM_TEMPERATURE = 105.f;
-    if (temperature() >= MAXIMUM_TEMPERATURE)
+    if (temperature() >= MAXIMUM_TEMPERATURE) {
         sec::raise_error(sec::Error::MaxTemperatureReached);
+        return;
+    }
 
     if (not m_target_temperature)
         return;
@@ -194,8 +204,10 @@ void Boiler::security_checks() {
             }
 
             if (m_heating_check_timer >= 2min) {
-                if (temperature() - m_last_checked_heating_temperature < 0.5f)
+                if (temperature() - m_last_checked_heating_temperature < 0.5f) {
                     sec::raise_error(sec::Error::TemperatureNotChanging);
+                    return;
+                }
 
                 m_last_checked_heating_temperature = temperature();
                 m_heating_check_timer.restart();
@@ -208,8 +220,10 @@ void Boiler::security_checks() {
         constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
         const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
         m_outside_target_range_timer.toggle_based_on(not in_target_range);
-        if (m_outside_target_range_timer >= 5min)
+        if (m_outside_target_range_timer >= 5min) {
             sec::raise_error(sec::Error::TemperatureOutOfRange);
+            return;
+        }
     }
 }
 

@@ -44,10 +44,19 @@ void L1() {
     const float steps_por_mm_ratio = duration ? MotionController::MS_PER_MM / (duration / total_to_move) : 1.f;
 
     soft_endstop._enabled = false;
-    MotionController::the().change_step_ratio(steps_por_mm_ratio);
+    MotionController::the().change_step_ratio(steps_por_mm_ratio,
+                                              steps_por_mm_ratio * MotionController::ANGLE_FIX);
 
-    if (should_pour)
+    if (should_pour) {
         Spout::the().pour_with_desired_volume(duration, volume_of_water);
+
+        // wait for the water to actually start pouring
+        const auto flow = volume_of_water / (duration / 1000.f);
+        const auto norm = util::normalize(flow, Spout::FlowController::FLOW_MIN, Spout::FlowController::FLOW_MAX);
+        const auto lerp = chrono::duration<float, std::milli>(std::lerp(300.f, 100.f, norm));
+
+        util::idle_for(lerp);
+    }
 
     for (s32 i = 0; i < number_of_arcs; i++) {
         float diameter = circle_diameter;
@@ -58,13 +67,11 @@ void L1() {
 
         final_position.x = initial_position.x + radius;
 
-        diameter /= steps_por_mm_ratio;
-        radius /= steps_por_mm_ratio;
-
         char buffer_diameter[16] = {};
-        dtostrf(diameter, 0, 2, buffer_diameter);
+        dtostrf(diameter / steps_por_mm_ratio, 0, 2, buffer_diameter);
+
         char buffer_radius[16] = {};
-        dtostrf(radius, 0, 2, buffer_radius);
+        dtostrf(radius / steps_por_mm_ratio, 0, 2, buffer_radius);
 
         execute_fmt("G2 F5000 X%s I%s", buffer_diameter, buffer_radius);
 
@@ -93,5 +100,8 @@ void L1() {
 
     current_position = initial_position;
     sync_plan_position();
+
+    if (should_pour)
+        util::idle_while([] { return Spout::the().pouring(); });
 }
 }

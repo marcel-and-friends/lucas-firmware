@@ -121,7 +121,7 @@ void Station::update_leds() {
 }
 
 float Station::absolute_position(usize index) {
-    const auto first_station_abs_pos = 86.f / MotionController::the().step_ratio_x();
+    const auto first_station_abs_pos = 85.f / MotionController::the().step_ratio_x();
     const auto distance_between_each_station = 160.f / MotionController::the().step_ratio_x();
     return first_station_abs_pos + index * distance_between_each_station;
 }
