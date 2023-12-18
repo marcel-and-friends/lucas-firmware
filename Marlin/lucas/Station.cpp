@@ -66,19 +66,31 @@ void Station::setup_pins(usize number_of_stations) {
 }
 
 void Station::tick() {
-    for_each([](Station& station) {
-        constexpr auto TIME_TO_CANCEL_RECIPE = 3s;
+    if (CFG(MaintenanceMode)) {
+        for (auto& station : s_list) {
+            const auto button_being_held = util::is_button_held(station.button());
+            const auto button_clicked = not button_being_held and
+                                        station.m_button_held_timer.is_active();
 
-        const auto button_being_held = util::is_button_held(station.button());
-        const auto button_clicked = not button_being_held and
-                                    station.m_button_held_timer.is_active() and
-                                    // check if the button has not just been released after canceling the recipe
-                                    station.m_button_held_timer < TIME_TO_CANCEL_RECIPE;
+            station.m_button_held_timer.toggle_based_on(button_being_held);
 
-        // allow one button press per second, this avoids accidental double presses caused by bad electronics
-        if (button_clicked and station.m_last_button_press_timer >= 1s) {
-            station.m_last_button_press_timer.restart();
-            if (not CFG(MaintenanceMode)) {
+            if (button_clicked) {
+                LOG("BOTAO #", station.index() + 1, ": apertado");
+            }
+        }
+    } else {
+        for_each([](Station& station) {
+            constexpr auto TIME_TO_CANCEL_RECIPE = 3s;
+
+            const auto button_being_held = util::is_button_held(station.button());
+            const auto button_clicked = not button_being_held and
+                                        station.m_button_held_timer.is_active() and
+                                        // check if the button has not just been released after canceling the recipe
+                                        station.m_button_held_timer < TIME_TO_CANCEL_RECIPE;
+
+            // allow one button press per second, this avoids accidental double presses caused by bad electronics
+            if (button_clicked and station.m_last_button_press_timer >= 1s) {
+                station.m_last_button_press_timer.restart();
                 switch (station.status()) {
                 case Status::Free:
                 case Status::ConfirmingScald:
@@ -91,19 +103,15 @@ void Station::tick() {
                 default:
                     break;
                 }
-            } else {
-                LOG("BOTAO #", station.index() + 1, ": apertado");
             }
-        }
 
-        station.m_button_held_timer.toggle_based_on(button_being_held);
-        if (not CFG(MaintenanceMode)) {
+            station.m_button_held_timer.toggle_based_on(button_being_held);
             if (station.m_button_held_timer >= TIME_TO_CANCEL_RECIPE and RecipeQueue::the().is_executing_recipe_in_station(station.index()))
                 RecipeQueue::the().cancel_station_recipe(station.index());
-        }
 
-        return util::Iter::Continue;
-    });
+            return util::Iter::Continue;
+        });
+    }
 }
 
 void Station::update_leds() {
