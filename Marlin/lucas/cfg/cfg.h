@@ -37,7 +37,7 @@ enum Options {
 
 using OptionList = std::array<Option, usize(Options::Count)>;
 
-constexpr auto FIRMWARE_VERSION = "0.0.1";
+constexpr auto FIRMWARE_VERSION = "1.0.39";
 
 void setup();
 
