@@ -54,24 +54,24 @@ JsonObjectConst Recipe::standard() {
     return doc.as<JsonObjectConst>();
 }
 
-bool Recipe::Step::collides_with(const Step& other) const {
-    // dois ataques colidem se:
-
-    // 1. um comeca dentro do outro
-    if (this->starting_tick >= other.starting_tick and this->starting_tick <= other.ending_tick())
+bool Recipe::Step::collides_with(const Step& that) const {
+    if (this->starting_tick == that.starting_tick or
+        this->ending_tick() == that.ending_tick())
         return true;
 
-    // 2. um termina dentro do outro
-    if (this->ending_tick() >= other.starting_tick and this->ending_tick() <= other.ending_tick())
-        return true;
+    if (this->starting_tick < that.starting_tick) {
+        if (this->ending_tick() >= that.starting_tick)
+            return true;
 
-    // 3. a distancia entre o comeco de um e o fim do outro é menor que o tempo de viagem de uma station à outra
-    if (this->starting_tick > other.ending_tick() and this->starting_tick - other.ending_tick() < util::TRAVEL_MARGIN)
-        return true;
+        if (that.starting_tick - this->starting_tick < util::TRAVEL_MARGIN)
+            return true;
+    } else {
+        if (this->starting_tick <= that.ending_tick())
+            return true;
 
-    // 4. a distancia entre o fim de um e o comeco do outro é menor que o tempo de viagem de uma station à outra
-    if (this->ending_tick() < other.starting_tick and other.starting_tick - this->ending_tick() < util::TRAVEL_MARGIN)
-        return true;
+        if (this->ending_tick() - that.ending_tick() < util::TRAVEL_MARGIN)
+            return true;
+    }
 
     return false;
 }

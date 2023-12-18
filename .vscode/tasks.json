@@ -1,77 +1,74 @@
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"label": "build",
-			"command": "platformio",
-			"args": [
-				"run"
-			],
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"presentation": {
-				"echo": false,
-				"reveal": "always",
-				"focus": true,
-				"panel": "shared",
-				"showReuseMessage": false,
-				"clear": true
-			}
-		},
-		{
-			"label": "copy to sd card",
-			"type": "shell",
-			"windows": {
-				"command": "Copy-Item",
-				"args": [
-					"-Path",
-					".pio\\build\\mks_robin_nano_v3_1\\Robin_nano_v3.bin",
-					"-Destination",
-					"F:\\"
-				]
-			},
-			"osx": {
-				"command": "cp",
-				"args": [
-					".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
-					"/Volumes/SD"
-				]
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "copy to tester",
-			"type": "shell",
-			"osx": {
-				"command": "cp",
-				"args": [
-					".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
-					"/Users/opalateste/src/build-lucas_tester-Qt_6_4_3_for_macOS-Release/LucasTester.app/Contents/MacOS"
-				]
-			},
-			"problemMatcher": []
-		},
-		{
-			"label": "build + copy to sd card",
-			"type": "shell",
-			"dependsOn": [
-				"build",
-				"copy to sd card"
-			],
-			"dependsOrder": "sequence",
-			"problemMatcher": []
-		},
-		{
-			"label": "build + copy to tester",
-			"type": "shell",
-			"dependsOn": [
-				"build",
-				"copy to tester"
-			],
-			"dependsOrder": "sequence",
-			"problemMatcher": []
-		}
-	]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build",
+      "command": "platformio",
+      "args": ["run"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "options": {
+        "env": {
+          "PATH": "/Users/opalateste/.platformio/penv/bin/:${env:PATH}"
+        }
+      },
+      "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": true,
+        "panel": "shared",
+        "showReuseMessage": false,
+        "clear": true
+      }
+    },
+    {
+      "label": "copy to sd card",
+      "type": "shell",
+      "windows": {
+        "command": "Copy-Item",
+        "args": [
+          "-Path",
+          ".pio\\build\\mks_robin_nano_v3_1\\Robin_nano_v3.bin",
+          "-Destination",
+          "F:\\"
+        ]
+      },
+      "osx": {
+        "command": "cp",
+        "args": [
+          ".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
+          "/Volumes/SD"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "copy to tester",
+      "type": "shell",
+      "osx": {
+        "command": "cp",
+        "args": [
+          ".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
+          "/Users/opalateste/src/build-lucas_tester-Qt_6_4_3_for_macOS-Release/LucasTester.app/Contents/MacOS"
+        ]
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "build + copy to sd card",
+      "type": "shell",
+      "dependsOn": ["build", "copy to sd card"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "build + copy to tester",
+      "type": "shell",
+      "dependsOn": ["build", "copy to tester"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ]
 }

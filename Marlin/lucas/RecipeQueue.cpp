@@ -179,13 +179,16 @@ void RecipeQueue::map_recipe(Recipe& recipe, Station& station) {
     for_each_mapped_recipe(
         [&](const Recipe& mapped_recipe) {
             mapped_recipe.for_each_remaining_step([&](const Recipe::Step& step) {
+                if (step.interval and step.interval < util::TRAVEL_MARGIN)
+                    return util::Iter::Continue;
+
                 // temos que sempre levar a margem de viagem em consideração quando procuramos pelo tick magico
                 for (auto interval_offset = util::TRAVEL_MARGIN; interval_offset <= step.interval - util::TRAVEL_MARGIN; interval_offset += util::TRAVEL_MARGIN) {
                     const auto starting_tick = step.ending_tick() + interval_offset;
                     recipe.map_remaining_steps(starting_tick);
                     if (not collides_with_other_recipes(recipe)) {
                         // deu boa, adicionamos o tick inicial na list de candidates
-                        candidates.emplace_back(starting_tick);
+                        candidates.push_back(starting_tick);
                         // poderiamos parar o loop exterior aqui mas continuamos procurando em outras receitas
                         // pois talvez exista um tick inicial melhor
                         return util::Iter::Break;
@@ -331,10 +334,10 @@ void RecipeQueue::remap_recipes_after_changes_in_queue() {
 // é verificado se qualquer um dos passos da recipe nova colide com qualquer um dos passos de qualquer uma das receitas já mapeada
 bool RecipeQueue::collides_with_other_recipes(const Recipe& new_recipe) const {
     bool colides = false;
-    new_recipe.for_each_remaining_step([&](const Recipe::Step& new_step) {
+    new_recipe.for_each_remaining_step([&](const Recipe::Step& new_step, usize new_step_index) {
         for_each_mapped_recipe(
-            [&](const Recipe& mapped_recipe) {
-                mapped_recipe.for_each_remaining_step([&](const Recipe::Step& mapped_step) {
+            [&](const Recipe& mapped_recipe, usize mapped_recipe_index) {
+                mapped_recipe.for_each_remaining_step([&](const Recipe::Step& mapped_step, usize mapped_step_index) {
                     // se o passo comeca antes do nosso comecar uma colisao é impossivel
                     if (mapped_step.starting_tick > (new_step.ending_tick() + util::TRAVEL_MARGIN)) {
                         // como todos os passos sao feitos em sequencia linear podemos parar de procurar nessa recipe

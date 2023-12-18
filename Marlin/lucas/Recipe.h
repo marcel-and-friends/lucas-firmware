@@ -63,7 +63,7 @@ public:
 
     void for_each_remaining_step(util::IterFn<Step&, usize> auto&& callback) {
         if (m_has_scalding_step and not scalded()) {
-            std::invoke(FWD(callback), m_steps.front());
+            std::invoke(FWD(callback), m_steps.front(), 0);
             return;
         }
 
@@ -85,7 +85,7 @@ public:
 
     void for_each_remaining_step(util::IterFn<const Step&, usize> auto&& callback) const {
         if (m_has_scalding_step and not scalded()) {
-            std::invoke(FWD(callback), m_steps.front());
+            std::invoke(FWD(callback), m_steps.front(), 0);
             return;
         }
 
