@@ -9,18 +9,14 @@
 namespace lucas {
 void Boiler::setup() {
     setup_pins();
-    turn_off_resistance();
+    // turn_off_resistance();
     m_should_wait_for_boiler_to_fill = is_alarm_triggered();
     m_storage_handle = storage::register_handle_for_entry("temp", sizeof(m_target_temperature));
 }
 
 void Boiler::setup_pins() {
-    pinMode(Pin::Resistance, OUTPUT);
-    control_resistance(0.f);
-
-    // FAN2
-    pinMode(PC14, OUTPUT);
-    digitalWrite(PC14, LOW);
+    // pinMode(Pin::Resistance, OUTPUT);
+    // control_resistance(0.f);
 
     pinMode(Pin::WaterLevelAlarm, INPUT_PULLUP);
 }
