@@ -10,7 +10,7 @@ class Boiler : public util::Singleton<Boiler> {
 public:
     enum Pin {
         WaterLevelAlarm = PC4,
-        Resistance = PB1
+        Resistance = HEATER_0_PIN
     };
 
     void setup();
