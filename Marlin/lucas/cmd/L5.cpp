@@ -28,11 +28,12 @@ void L5() {
             digitalWrite(Spout::Pin::BRK, LOW);
             digitalWrite(Spout::Pin::EN, LOW);
         }
-        LOG("DESPEJO: ", status ? "iniciou" : "terminou");
+
+        LOG("DESPEJO(", Spout::Pin::SV, ", ", Spout::Pin::BRK, ", ", Spout::Pin::EN, "): ", status ? "iniciou" : "terminou");
     } break;
     case 1: {
-        digitalWrite(Boiler::Pin::Resistance, status);
-        LOG("RESISTENCIA: ", status ? "ligou" : "desligou");
+        analogWrite(Boiler::Pin::Resistance, status * 255);
+        LOG("RESISTENCIA(", Boiler::Pin::Resistance, "): ", status ? "ligou" : "desligou");
     } break;
     case 2: {
         static bool s_leds_state[Station::MAXIMUM_NUMBER_OF_STATIONS] = { HIGH, HIGH, HIGH, HIGH, HIGH };
@@ -40,7 +41,7 @@ void L5() {
         auto& state = s_leds_state[value];
         digitalWrite(Station::list().at(value).led(), state);
 
-        LOG("LED #", value + 1, ": ", state ? "ligou" : "desligou");
+        LOG("LED #", value + 1, "(", Station::list().at(value).led(), "): ", state ? "ligou" : "desligou");
 
         state = not state;
     } break;
@@ -66,7 +67,7 @@ void L5() {
     } break;
     case 6: {
         status ? tone(BEEPER_PIN, value, 10000) : noTone(BEEPER_PIN, true);
-        LOG("BEEPER: ", status ? "ativado" : "desativado");
+        LOG("BEEPER(", BEEPER_PIN, "): ", status ? "ativado" : "desativado");
     } break;
     case 7: {
         status ? Boiler::the().update_target_temperature(93) : Boiler::the().turn_off_resistance();
