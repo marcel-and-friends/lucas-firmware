@@ -99,30 +99,27 @@ void Boiler::inform_temperature_to_host() {
 }
 
 void Boiler::update_and_reach_target_temperature(std::optional<s32> target) {
-    update_target_temperature(target);
-    if (not m_target_temperature)
+    if (target == m_target_temperature)
         return;
+
+    m_reaching_target_temp = true;
+
+    update_target_temperature(target);
+    if (not m_target_temperature) {
+        m_reaching_target_temp = false;
+        return;
+    }
 
     if (CFG(GigaMode)) {
         LOG("esquentando boiler no modo giga...");
         util::idle_for(1min);
-        return;
+    } else {
+        thermalManager.wait_for_hotend(0, false);
     }
-
-    m_reaching_target_temp = true;
-
-    thermalManager.wait_for_hotend(0, false);
 
     m_reaching_target_temp = false;
 
     inform_temperature_to_host();
-    return;
-
-    util::idle_until([this] { return is_in_coffee_making_temperature_range(); });
-
-    inform_temperature_to_host();
-
-    LOG_IF(LogCalibration, "temperatura desejada foi atingida");
 }
 
 void Boiler::update_target_temperature(std::optional<s32> target) {
@@ -131,17 +128,12 @@ void Boiler::update_target_temperature(std::optional<s32> target) {
 
     reset();
 
-    if (target == 0) {
-        m_target_temperature = 0;
-        control_resistance(0.f);
-    } else {
-        m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
-        inform_temperature_to_host();
-    }
-
+    m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
     thermalManager.setTargetHotend(m_target_temperature, 0);
 
     m_state = temperature() < m_target_temperature ? State::Heating : State::Stabilizing;
+
+    inform_temperature_to_host();
 
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", m_target_temperature, "]");
 }
