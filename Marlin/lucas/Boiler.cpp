@@ -217,10 +217,7 @@ void Boiler::security_checks() {
 
 void Boiler::control_resistance(f32 force) {
     const auto digital_value = std::clamp(static_cast<s32>(force * 255.f), 0, 255);
-
-    analogWriteResolution(8);
     analogWrite(Pin::Resistance, digital_value);
-    analogWriteResolution(12);
 }
 
 void Boiler::modulate_resistance(ModulateResistanceParams params) {

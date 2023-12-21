@@ -121,9 +121,6 @@ void Spout::setup() {
 }
 
 void Spout::setup_pins() {
-    // driver setup
-    analogWriteResolution(12);
-
     pinMode(Pin::SV, OUTPUT);
     pinMode(Pin::BRK, OUTPUT);
     pinMode(Pin::EN, OUTPUT);
@@ -151,7 +148,11 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
 
     m_digital_signal = v;
     digitalWrite(Pin::BRK, m_digital_signal);
+
+    analogWriteResolution(12);
     analogWrite(Pin::SV, m_digital_signal);
+    analogWriteResolution(8);
+
     RecipeQueue::the().reset_inactivity();
 }
 
