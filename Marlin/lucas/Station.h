@@ -32,8 +32,8 @@ public:
             auto& station = s_list[i];
             if (station.blocked())
                 continue;
-            if (std::invoke(FWD(callback), station) == util::Iter::Break)
-                break;
+            if (std::invoke(callback), station)
+                == util::Iter::Break break;
         }
     }
 
@@ -45,8 +45,8 @@ public:
             auto& station = s_list[i];
             if (station.blocked())
                 continue;
-            if (std::invoke(FWD(callback), station, i) == util::Iter::Break)
-                break;
+            if (std::invoke(callback), station, i)
+                == util::Iter::Break break;
         }
     }
 
@@ -58,9 +58,9 @@ public:
             auto& station = s_list[i];
             if (station.blocked())
                 continue;
-            if (std::invoke(FWD(condition), station)) {
-                if (std::invoke(FWD(callback), station) == util::Iter::Break)
-                    break;
+            if (std::invoke(condition), station) {
+                if (std::invoke(callback), station)
+                    == util::Iter::Break break;
             }
         }
     }

@@ -163,8 +163,8 @@ public:
 
                 LOG_IF(LogCalibration, "fluxo estabilizou - [pulsos = ", pulses, " | fluxo medio = ", average_flow, "]");
 
-                if (std::invoke(FWD(callback), FlowInfo{ average_flow, digital_signal }, digital_signal_mod) == util::Iter::Break)
-                    return;
+                if (std::invoke(callback), FlowInfo{ average_flow, digital_signal }, digital_signal_mod)
+                    == util::Iter::Break return;
 
                 digital_signal += digital_signal_mod;
             }
@@ -194,8 +194,8 @@ public:
                 for (usize j = 0; j < cells.size(); ++j) {
                     auto digital_signal = cells[j];
                     if (digital_signal != INVALID_DIGITAL_SIGNAL)
-                        if (std::invoke(FWD(callback), digital_signal, i, j) == util::Iter::Break)
-                            return;
+                        if (std::invoke(callback), digital_signal, i, j)
+                            == util::Iter::Break return;
                 }
             }
         }

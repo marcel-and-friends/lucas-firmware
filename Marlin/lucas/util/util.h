@@ -64,24 +64,24 @@ bool elapsed(millis_t last) {
 
 inline void idle_while(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
     core::TemporaryFilter f{ filters };
-    while (std::invoke(FWD(callback)))
+    while (std::invoke(callback))
         idle();
 }
 
 inline void idle_until(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
-    idle_while(std::not_fn(FWD(callback)), filters);
+    idle_while(std::not_fn(callback)), filters;
 }
 
 inline void maintenance_idle_while(Fn<bool> auto&& callback) {
     const auto old = CFG(MaintenanceMode);
 
     CFG(MaintenanceMode) = true;
-    idle_while(FWD(callback));
+    idle_while(callback);
     CFG(MaintenanceMode) = old;
 }
 
 inline void maintenance_idle_until(Fn<bool> auto&& callback) {
-    maintenance_idle_while(std::not_fn(FWD(callback)));
+    maintenance_idle_while(std::not_fn(callback));
 }
 
 template<typename T>

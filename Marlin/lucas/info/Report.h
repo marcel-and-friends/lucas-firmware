@@ -23,8 +23,8 @@ struct Report {
             return;
 
         for (usize i = 0; i < s_num_reports; ++i)
-            if (std::invoke(FWD(callback), s_reports[i]) == util::Iter::Break)
-                break;
+            if (std::invoke(callback), s_reports[i])
+                == util::Iter::Break break;
     }
 
     millis_t delta(millis_t tick) const;
