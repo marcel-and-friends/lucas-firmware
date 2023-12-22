@@ -22,22 +22,23 @@ void Station::initialize(std::optional<usize> num, std::optional<SharedData<bool
         return;
     }
 
-    if (s_list_size != 0) {
-        LOG_IF(LogStations, "estacoes ja foram inicializadas");
-        return;
+    if (s_list_size == 0) {
+        s_list_size = storage::create_or_update_entry(s_list_size_storage_handle, num, 3uz);
+        s_blocked_stations = storage::create_or_update_entry(s_blocked_stations_storage_handle, blocked_stations, { false, false, false, false, false });
+        setup_pins(s_list_size);
+
+        for_each([](Station& station) {
+            station.set_status(Status::Free);
+            return util::Iter::Continue;
+        });
+
+        LOG_IF(LogStations, "maquina vai usar ", s_list_size, " estacoes");
+    } else {
+        if (blocked_stations) {
+            s_blocked_stations = *blocked_stations;
+            update_blocked_stations_storage();
+        }
     }
-
-    s_list_size = storage::create_or_update_entry(s_list_size_storage_handle, num, 3uz);
-    s_blocked_stations = storage::create_or_update_entry(s_blocked_stations_storage_handle, blocked_stations, { false, false, false, false, false });
-
-    setup_pins(s_list_size);
-
-    for_each([](Station& station) {
-        station.set_status(Status::Free);
-        return util::Iter::Continue;
-    });
-
-    LOG_IF(LogStations, "maquina vai usar ", s_list_size, " estacoes");
 }
 
 struct PinData {
