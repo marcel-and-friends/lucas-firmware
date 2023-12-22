@@ -12,6 +12,7 @@ void FirmwareUpdateHook::think() {
             });
 
         deactivate();
+        return;
     }
 
     while (SERIAL_IMPL.available()) {
