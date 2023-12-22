@@ -21,8 +21,8 @@ void interpret_gcode_from_host(std::span<char> buffer) {
 /* alguns comandos uteis
 ~ init ~
 #{"cmdInitializeStations":[true, true, true, true, true]}#
-#{"cmdSetBoilerTemperature":93}#
-#{"cmdInitializeStations":[true, true, true, true, true],"cmdSetBoilerTemperature":93}#
+#{"cmdSetBoilerTemperature":94}#
+#{"cmdInitializeStations":[true, true, true, true, true],"cmdSetBoilerTemperature":94}#
 
 ~ recipes ~
 #{"devScheduleStandardRecipe":1}#

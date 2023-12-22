@@ -45,10 +45,12 @@ void setup() {
 
 void tick() {
     if (CFG(MaintenanceMode)) {
-        // we need this for button press logs
+        // for button press logs
         Station::tick();
+
         if (Boiler::the().target_temperature())
             Boiler::the().tick();
+
         return;
     }
 
