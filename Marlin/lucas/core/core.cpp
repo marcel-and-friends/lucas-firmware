@@ -128,6 +128,9 @@ void calibrate(std::optional<s32> target_temperature) {
     if (should_reuse_flow_analysis_data and not CFG(ForceFlowAnalysis)) {
         LOG_IF(LogCalibration, "reutilizando dados de analise de fluxo");
         flow_controller.fetch_digital_signal_table_from_file();
+
+        // force the flow controller to inform the host that analysis is finished
+        flow_controller.update_status(Spout::FlowController::FlowAnalysisStatus::Done);
     } else {
         info::TemporaryCommandHook hook{ info::Command::RequestInfoCalibration, &Spout::FlowController::inform_flow_analysis_status };
         s_calibration_phase = CalibrationPhase::AnalysingFlowData;

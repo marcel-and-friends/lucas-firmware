@@ -73,6 +73,25 @@ public:
             the().inform_progress_to_host();
         }
 
+        void update_progress(float progress) {
+            m_analysis_progress = progress;
+            inform_progress_to_host();
+        };
+
+        enum class FlowAnalysisStatus {
+            Preparing = 0,
+            Finalizing,
+            Done,
+
+            Executing,
+            None
+        };
+
+        void update_status(FlowAnalysisStatus status) {
+            m_analysis_status = status;
+            inform_progress_to_host();
+        };
+
         void inform_progress_to_host() const;
 
         void set_abort_analysis(bool b) { m_abort_analysis = b; }
@@ -188,15 +207,6 @@ public:
         // 		- the cell for the flow '5.5 g/s' is located at 'table[0][5]'
         // 		- the cell for the flow '10.3 g/s' is located at 'table[5][3]'
         Table m_digital_signal_table;
-
-        enum class FlowAnalysisStatus {
-            Preparing = 0,
-            Finalizing,
-            Done,
-
-            Executing,
-            None
-        };
 
         FlowAnalysisStatus m_analysis_status = FlowAnalysisStatus::None;
 

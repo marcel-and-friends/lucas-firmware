@@ -210,17 +210,6 @@ void Spout::FlowController::analyse_and_store_flow_data() {
     constexpr auto ITERATION_STEP = 25;
     constexpr auto INITIAL_ITERATION_STEP = 200;
 
-    // accepts normalized values between 0.f and 1.f
-    const auto update_progress = [this](float progress) {
-        m_analysis_progress = progress;
-        inform_progress_to_host();
-    };
-
-    const auto update_status = [this](FlowAnalysisStatus status) {
-        m_analysis_status = status;
-        inform_progress_to_host();
-    };
-
     clean_digital_signal_table();
     update_status(FlowAnalysisStatus::Preparing);
     const auto beginning = millis();
