@@ -68,7 +68,14 @@ void Station::setup_pins(usize number_of_stations) {
 
 void Station::tick() {
     if (CFG(MaintenanceMode)) {
-        for (auto& station : s_list) {
+        // this can't be inlined on the for loop because it crashes the cpu. yes. crashes. the cpu. :)
+        size_t max = s_list_size ?: MAXIMUM_NUMBER_OF_STATIONS;
+        for (size_t i = 0; i < max; ++i) {
+            auto& station = s_list[i];
+            // this should never happen but better be safe than sorry
+            if (station.button() == -1)
+                continue;
+
             const auto button_being_held = util::is_button_held(station.button());
             const auto button_clicked = not button_being_held and
                                         station.m_button_held_timer.is_active();
