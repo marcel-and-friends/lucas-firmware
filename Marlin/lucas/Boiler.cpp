@@ -126,14 +126,18 @@ void Boiler::update_target_temperature(std::optional<s32> target) {
     if (target == m_target_temperature)
         return;
 
-    reset();
-
-    m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
-    thermalManager.setTargetHotend(m_target_temperature, 0);
+    if (target == 0) {
+        // when resetting the target temp we don't save it to the storage
+        m_target_temperature = 0;
+        thermalManager.disable_all_heaters();
+    } else {
+        m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
+        thermalManager.setTargetHotend(m_target_temperature, 0);
+    }
 
     m_state = temperature() < m_target_temperature ? State::Heating : State::Stabilizing;
-
     inform_temperature_to_host();
+    reset();
 
     LOG_IF(LogCalibration, "temperatura target setada - [target = ", m_target_temperature, "]");
 }
