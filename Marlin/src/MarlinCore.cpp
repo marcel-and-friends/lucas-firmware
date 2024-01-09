@@ -1236,6 +1236,11 @@ void setup() {
         C;                       \
     } while (0)
 
+    MYSERIAL1.setTx(PA9);
+    MYSERIAL1.setRx(PA10);
+    MYSERIAL1.setCts(NC);
+    MYSERIAL1.setRts(NC);
+
     MYSERIAL1.begin(BAUDRATE);
     millis_t serial_connect_timeout = millis() + 1000UL;
     while (!MYSERIAL1.connected() && PENDING(millis(), serial_connect_timeout)) { /*nada*/

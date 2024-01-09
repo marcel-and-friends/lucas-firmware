@@ -102,7 +102,7 @@
  *
  * :[-1, 0, 1, 2, 3, 4, 5, 6, 7]
  */
-#define SERIAL_PORT -1
+#define SERIAL_PORT 1
 
 /**
  * Serial Port Baud Rate
@@ -3465,7 +3465,7 @@
 #endif
 
 #if ENABLED(TFT_LVGL_UI)
-    #define MKS_WIFI_MODULE // MKS WiFi module
+// #define MKS_WIFI_MODULE // MKS WiFi module
 #endif
 
 /**
