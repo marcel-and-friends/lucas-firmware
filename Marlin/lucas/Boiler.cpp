@@ -92,7 +92,11 @@ void Boiler::inform_temperature_to_host() {
     info::send(
         info::Event::Boiler,
         [this](JsonObject o) {
-            o["reachingTargetTemp"] = m_reaching_target_temp ?: not is_in_coffee_making_temperature_range();
+            if (m_target_temperature)
+                o["reachingTargetTemp"] = m_reaching_target_temp ?: not is_in_coffee_making_temperature_range();
+            else
+                o["reachingTargetTemp"] = false;
+
             o["heating"] = temperature() < m_target_temperature;
             o["currentTemp"] = temperature();
         });
