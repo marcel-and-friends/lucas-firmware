@@ -16,8 +16,8 @@ public:
             return;
 
         for (usize i = 0; i < s_hooks_size; ++i)
-            if (std::invoke(callback), s_hooks[i])
-                == util::Iter::Break break;
+            if (std::invoke(callback, s_hooks[i]) == util::Iter::Break)
+                break;
     }
 
     char delimiter() const { return m_delimiter; }

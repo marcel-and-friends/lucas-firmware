@@ -53,8 +53,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
 
-            if (std::invoke(callback), info.recipe, i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe, i) == util::Iter::Break)
+                return;
         }
     };
 
@@ -67,8 +67,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe))
                 continue;
 
-            if (std::invoke(callback), info.recipe, i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe, i) == util::Iter::Break)
+                return;
         }
     };
 
@@ -80,8 +80,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
 
-            if (std::invoke(callback), info.recipe)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe) == util::Iter::Break)
+                return;
         }
     };
 
@@ -93,8 +93,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
 
-            if (std::invoke(callback), info.recipe)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe) == util::Iter::Break)
+                return;
         }
     };
 
@@ -107,8 +107,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
 
-            if (std::invoke(callback), info.recipe, i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe, i) == util::Iter::Break)
+                return;
         }
     };
 
@@ -121,8 +121,8 @@ public:
             if (not info.active or (exception and exception == &info.recipe) or not info.recipe.remaining_steps_are_mapped())
                 continue;
 
-            if (std::invoke(callback), info.recipe, i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, info.recipe, i) == util::Iter::Break)
+                return;
         }
     };
 

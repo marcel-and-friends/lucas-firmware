@@ -57,19 +57,19 @@ public:
         }
 
         for (usize i = m_current_step; i < m_steps_size; ++i)
-            if (std::invoke(callback), m_steps[i])
-                == util::Iter::Break return;
+            if (std::invoke(callback, m_steps[i]) == util::Iter::Break)
+                return;
     }
 
     void for_each_remaining_step(util::IterFn<Step&, usize> auto&& callback) {
         if (m_has_scalding_step and not scalded()) {
-            std::invoke(callback), m_steps.front(), 0;
+            std::invoke(callback, m_steps.front(), 0);
             return;
         }
 
         for (usize i = m_current_step; i < m_steps_size; ++i)
-            if (std::invoke(callback), m_steps[i], i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, m_steps[i], i) == util::Iter::Break)
+                return;
     }
 
     void for_each_remaining_step(util::IterFn<const Step&> auto&& callback) const {
@@ -79,19 +79,19 @@ public:
         }
 
         for (usize i = m_current_step; i < m_steps_size; ++i)
-            if (std::invoke(callback), m_steps[i])
-                == util::Iter::Break return;
+            if (std::invoke(callback, m_steps[i]) == util::Iter::Break)
+                return;
     }
 
     void for_each_remaining_step(util::IterFn<const Step&, usize> auto&& callback) const {
         if (m_has_scalding_step and not scalded()) {
-            std::invoke(callback), m_steps.front(), 0;
+            std::invoke(callback, m_steps.front(), 0);
             return;
         }
 
         for (usize i = m_current_step; i < m_steps_size; ++i)
-            if (std::invoke(callback), m_steps[i], i)
-                == util::Iter::Break return;
+            if (std::invoke(callback, m_steps[i], i) == util::Iter::Break)
+                return;
     }
 
 public:
