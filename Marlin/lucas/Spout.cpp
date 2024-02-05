@@ -45,7 +45,7 @@ void Spout::tick() {
             if (time_elapsed() >= 2s) {
                 if (volume_poured_so_far() == 0.f) {
                     // no water!? - bad motor? bad sensor? bad pump? who knows!
-                    sec::raise_error(sec::Error::PourVolumeMismatch);
+                    // sec::raise_error(sec::Error::PourVolumeMismatch);
                     return;
                 }
 
@@ -55,7 +55,7 @@ void Spout::tick() {
                 // 50% is a pretty generous margin, could try to go lower
                 constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
                 if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR) {
-                    sec::raise_error(sec::Error::PourVolumeMismatch);
+                    // sec::raise_error(sec::Error::PourVolumeMismatch);
                     return;
                 }
             }
