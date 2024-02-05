@@ -398,6 +398,11 @@ f32 Spout::FlowController::pulses_to_volume(u32 pulses) const {
     return pulses * m_pulse_weight;
 }
 
+void Spout::FlowController::firmware_upgrade_finished() {
+    storage::purge_entry(m_flow_analysis_storage_handle);
+    storage::purge_entry(m_target_temperature_on_last_analysis_handle);
+}
+
 void Spout::FlowController::clean_digital_signal_table() {
     for (auto& t : m_digital_signal_table)
         std::fill(t.begin(), t.end(), INVALID_DIGITAL_SIGNAL);

@@ -105,10 +105,12 @@ public:
 
         f32 pulses_to_volume(u32 pulses) const;
 
-        static inline auto MIN_ML_PER_PULSE = 0.54794520547f;
+        void firmware_upgrade_finished();
+
+        static inline auto MIN_ML_PER_PULSE = 0.549; // +9 -794520547f;
         static inline auto MAX_ML_PER_PULSE = 0.49497293116f;
 
-        static constexpr auto FLOW_MIN = 4;
+        static constexpr auto FLOW_MIN = 3;
         static constexpr auto FLOW_MAX = 16;
         static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
         static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;

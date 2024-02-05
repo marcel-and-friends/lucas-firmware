@@ -205,8 +205,10 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
         });
 
     // we're done
-    if (s_total_bytes_written == s_new_firmware_size)
+    if (s_total_bytes_written == s_new_firmware_size) {
+        Spout::FlowController::the().firmware_upgrade_finished();
         reset();
+    }
 }
 
 void prepare_for_firmware_update(usize size) {
