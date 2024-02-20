@@ -1,3 +1,1 @@
-- bugfix na fila de receitas baseado no vídeo que o marcel mandou
-- bugfix no log de aperto dos botões no modo manutenção
-- ajuste no tamanho do trilho do eixo x, para suportar a maquina de 5
+- adaptacao do driver e novo hardware em geral
