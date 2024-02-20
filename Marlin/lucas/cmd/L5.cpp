@@ -18,14 +18,14 @@ void L5() {
             analogWrite(Spout::Pin::SV, value);
             analogWriteResolution(8);
 
-            digitalWrite(Spout::Pin::BRK, HIGH);
+            digitalWrite(Spout::Pin::BRK, LOW);
             digitalWrite(Spout::Pin::EN, LOW);
         } else {
             analogWriteResolution(12);
             analogWrite(Spout::Pin::SV, LOW);
             analogWriteResolution(8);
 
-            digitalWrite(Spout::Pin::BRK, LOW);
+            digitalWrite(Spout::Pin::BRK, HIGH);
             digitalWrite(Spout::Pin::EN, LOW);
         }
 

@@ -126,7 +126,7 @@ void Spout::setup_pins() {
     pinMode(Pin::EN, OUTPUT);
     // enable is permanently on, the driver is controlled using only SV and BRK
     analogWrite(Pin::SV, LOW);
-    digitalWrite(Pin::BRK, HIGH);
+    digitalWrite(Pin::BRK, LOW);
     digitalWrite(Pin::EN, LOW);
 
     // flow sensor
@@ -147,7 +147,7 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     }
 
     m_digital_signal = v;
-    digitalWrite(Pin::BRK, m_digital_signal);
+    digitalWrite(Pin::BRK, !m_digital_signal);
 
     analogWriteResolution(12);
     analogWrite(Pin::SV, m_digital_signal);
