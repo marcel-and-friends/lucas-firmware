@@ -89,6 +89,7 @@ void Station::tick() {
     } else {
         for_each([](Station& station) {
             constexpr auto TIME_TO_CANCEL_RECIPE = 3s;
+            constexpr auto BUTTON_DEBOUNCE = 200ms;
 
             const auto button_being_held = util::is_button_held(station.button());
             const auto button_clicked = not button_being_held and
@@ -96,8 +97,7 @@ void Station::tick() {
                                         // check if the button has not just been released after canceling the recipe
                                         station.m_button_held_timer < TIME_TO_CANCEL_RECIPE;
 
-            // allow one button press per second, this avoids accidental double presses caused by bad electronics
-            if (button_clicked and station.m_last_button_press_timer >= 1s) {
+            if (button_clicked and station.m_last_button_press_timer >= BUTTON_DEBOUNCE) {
                 station.m_last_button_press_timer.restart();
                 switch (station.status()) {
                 case Status::Free:
