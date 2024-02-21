@@ -87,6 +87,10 @@ void raise_error(Error reason) {
 
     storage::purge_entry(s_storage_handle);
 
+    if (reason == Error::WaterLevelAlarm)
+        // wait a bit before we go back to our old temperature to give some time for water to fill the boiler properly
+        util::maintenance_idle_for(2min);
+
     // if we reach this point that means the error has been dealt with somehow
 
     update_and_inform_active_error(Error::Invalid);

@@ -72,6 +72,14 @@ inline void idle_until(Fn<bool> auto&& callback, core::Filter filters = core::Fi
     idle_while(std::not_fn(callback)), filters;
 }
 
+inline void maintenance_idle_for(const auto duration) {
+    const auto old = CFG(MaintenanceMode);
+
+    CFG(MaintenanceMode) = true;
+    idle_for(duration);
+    CFG(MaintenanceMode) = old;
+}
+
 inline void maintenance_idle_while(Fn<bool> auto&& callback) {
     const auto old = CFG(MaintenanceMode);
 
