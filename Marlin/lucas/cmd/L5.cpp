@@ -13,22 +13,7 @@ void L5() {
     auto value = parser.intval('V');
     switch (test_type) {
     case 0: {
-        if (status) {
-            analogWriteResolution(12);
-            analogWrite(Spout::Pin::SV, value);
-            analogWriteResolution(8);
-
-            digitalWrite(Spout::Pin::BRK, LOW);
-            digitalWrite(Spout::Pin::EN, LOW);
-        } else {
-            analogWriteResolution(12);
-            analogWrite(Spout::Pin::SV, LOW);
-            analogWriteResolution(8);
-
-            digitalWrite(Spout::Pin::BRK, HIGH);
-            digitalWrite(Spout::Pin::EN, LOW);
-        }
-
+        Spout::the().send_digital_signal_to_driver(status ? value : 0);
         LOG("DESPEJO(", Spout::Pin::SV, ", ", Spout::Pin::BRK, ", ", Spout::Pin::EN, "): ", status ? "iniciou" : "terminou");
     } break;
     case 1: {

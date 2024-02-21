@@ -223,9 +223,9 @@ public:
         f32 m_pulse_weight = 0.f;
     };
 
-private:
     void send_digital_signal_to_driver(DigitalSignal);
 
+private:
     void begin_pour(millis_t duration);
 
     void fill_hose(float desired_volume = 0.f);
