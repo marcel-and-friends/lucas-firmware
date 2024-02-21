@@ -107,11 +107,11 @@ public:
 
         void firmware_upgrade_finished();
 
-        static inline auto MIN_ML_PER_PULSE = 0.549; // +9 -794520547f;
-        static inline auto MAX_ML_PER_PULSE = 0.49497293116f;
+        static inline auto MIN_ML_PER_PULSE = 0.555; // approximation
+        static inline auto MAX_ML_PER_PULSE = 0.475; // approximation
 
-        static constexpr auto FLOW_MIN = 3;
-        static constexpr auto FLOW_MAX = 16;
+        static constexpr auto FLOW_MIN = 2;
+        static constexpr auto FLOW_MAX = 13;
         static constexpr auto FLOW_RANGE = FLOW_MAX - FLOW_MIN;
         static constexpr auto NUMBER_OF_CELLS = FLOW_RANGE * 10;
         // TODO: turn this into a single-dimensional array
