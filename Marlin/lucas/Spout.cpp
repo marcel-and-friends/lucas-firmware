@@ -69,7 +69,7 @@ void Spout::tick() {
         } else {
             // BRK is realeased after a little bit to not stress the motor too hard
             if (m_end_pour_timer >= 2s and digitalRead(Pin::BRK) == LOW)
-                digitalWrite(Pin::BRK, HIGH); // fly high 🕊️
+                digitalWrite(Pin::BRK, LOW); // fly high 🕊️
         }
     }
 }
@@ -127,7 +127,8 @@ void Spout::setup_pins() {
     // enable is permanently on, the driver is controlled using only SV and BRK
     analogWrite(Pin::SV, LOW);
     digitalWrite(Pin::BRK, LOW);
-    digitalWrite(Pin::EN, LOW);
+    // start disabled
+    digitalWrite(Pin::EN, HIGH);
 
     // flow sensor
     pinMode(Pin::FlowSensor, INPUT);
@@ -147,6 +148,7 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     }
 
     m_digital_signal = v;
+    digitalWrite(Pin::EN, !m_digital_signal);
     digitalWrite(Pin::BRK, !m_digital_signal);
 
     analogWriteResolution(12);
