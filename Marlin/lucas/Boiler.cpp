@@ -59,6 +59,11 @@ void Boiler::tick() {
             wait_for_boiler_to_fill();
     }
 
+    if (is_alarm_triggered()) {
+        sec::raise_error(sec::Error::WaterLevelAlarm);
+        return;
+    }
+
     if (not CFG(GigaMode)) {
         // control_temperature();
         // security_checks();
@@ -178,11 +183,6 @@ void Boiler::control_temperature() {
 }
 
 void Boiler::security_checks() {
-    if (is_alarm_triggered()) {
-        sec::raise_error(sec::Error::WaterLevelAlarm);
-        return;
-    }
-
     constexpr auto MAXIMUM_TEMPERATURE = 105.f;
     if (temperature() >= MAXIMUM_TEMPERATURE) {
         sec::raise_error(sec::Error::MaxTemperatureReached);
