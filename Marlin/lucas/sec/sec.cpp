@@ -82,7 +82,11 @@ void raise_error(Error reason) {
                 : [] { return true; };
         // clang-format on
 
-        util::maintenance_idle_while(idle_while);
+        util::maintenance_idle_while(idle_while, [] {
+            every(5s) {
+                tone(BEEPER_PIN, 8000, 1000);
+            }
+        });
     }
 
     storage::purge_entry(s_storage_handle);

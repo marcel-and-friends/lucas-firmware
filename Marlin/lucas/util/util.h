@@ -39,6 +39,11 @@ bool is_button_held(pin_t pin);
 
 float normalize(float v, float min, float max);
 
+template<millis_t INTERVAL>
+bool elapsed(millis_t last) {
+    return millis() - last >= INTERVAL;
+}
+
 void idle_for(const auto duration, core::Filter filtros = core::Filter::None) {
     core::TemporaryFilter f{ filtros };
     const auto ms = chrono::duration_cast<chrono::milliseconds>(duration).count();
@@ -57,19 +62,26 @@ void idle_for(const auto duration, Fn<void> auto&& callback, core::Filter filtro
     }
 }
 
-template<millis_t INTERVAL>
-bool elapsed(millis_t last) {
-    return millis() - last >= INTERVAL;
-}
-
-inline void idle_while(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
+inline void idle_while(Fn<bool> auto&& condition, core::Filter filters = core::Filter::None) {
     core::TemporaryFilter f{ filters };
-    while (std::invoke(callback))
+    while (std::invoke(condition))
         idle();
 }
 
+inline void idle_while(Fn<bool> auto&& condition, Fn<void> auto&& callback, core::Filter filters = core::Filter::None) {
+    core::TemporaryFilter f{ filters };
+    while (std::invoke(condition)) {
+        idle();
+        std::invoke(callback);
+    }
+}
+
 inline void idle_until(Fn<bool> auto&& callback, core::Filter filters = core::Filter::None) {
-    idle_while(std::not_fn(callback)), filters;
+    idle_while(std::not_fn(callback), filters);
+}
+
+inline void idle_until(Fn<bool> auto&& condition, Fn<void> auto&& callback, core::Filter filters = core::Filter::None) {
+    idle_while(std::not_fn(condition), callback, filters);
 }
 
 inline void maintenance_idle_for(const auto duration) {
@@ -80,16 +92,28 @@ inline void maintenance_idle_for(const auto duration) {
     CFG(MaintenanceMode) = old;
 }
 
-inline void maintenance_idle_while(Fn<bool> auto&& callback) {
+inline void maintenance_idle_while(Fn<bool> auto&& condition) {
     const auto old = CFG(MaintenanceMode);
 
     CFG(MaintenanceMode) = true;
-    idle_while(callback);
+    idle_while(condition);
     CFG(MaintenanceMode) = old;
 }
 
-inline void maintenance_idle_until(Fn<bool> auto&& callback) {
-    maintenance_idle_while(std::not_fn(callback));
+inline void maintenance_idle_while(Fn<bool> auto&& condition, Fn<void> auto&& callback) {
+    const auto old = CFG(MaintenanceMode);
+
+    CFG(MaintenanceMode) = true;
+    idle_while(condition, callback);
+    CFG(MaintenanceMode) = old;
+}
+
+inline void maintenance_idle_until(Fn<bool> auto&& condition) {
+    maintenance_idle_while(std::not_fn(condition));
+}
+
+inline void maintenance_idle_until(Fn<bool> auto&& condition, Fn<void> auto&& callback) {
+    maintenance_idle_while(std::not_fn(condition), callback);
 }
 
 template<typename T>
