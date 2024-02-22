@@ -59,15 +59,8 @@ void Boiler::tick() {
             wait_for_boiler_to_fill();
     }
 
-    if (is_alarm_triggered()) {
-        sec::raise_error(sec::Error::WaterLevelAlarm);
-        return;
-    }
-
-    if (not CFG(GigaMode)) {
-        // control_temperature();
-        // security_checks();
-    }
+    if (not CFG(GigaMode))
+        security_checks();
 
     if (m_target_temperature) {
         every(5s) {
@@ -141,7 +134,8 @@ void Boiler::update_target_temperature(std::optional<s32> target) {
         thermalManager.disable_all_heaters();
     } else {
         m_target_temperature = storage::create_or_update_entry(m_storage_handle, target, 94);
-        thermalManager.setTargetHotend(m_target_temperature, 0);
+        if (not CFG(GigaMode))
+            thermalManager.setTargetHotend(m_target_temperature, 0);
     }
 
     m_state = temperature() < m_target_temperature ? State::Heating : State::Stabilizing;
@@ -183,44 +177,8 @@ void Boiler::control_temperature() {
 }
 
 void Boiler::security_checks() {
-    constexpr auto MAXIMUM_TEMPERATURE = 105.f;
-    if (temperature() >= MAXIMUM_TEMPERATURE) {
-        sec::raise_error(sec::Error::MaxTemperatureReached);
-        return;
-    }
-
-    if (not m_target_temperature)
-        return;
-
-    if (not is_in_coffee_making_temperature_range()) {
-        if (m_state == State::Heating) {
-            if (not m_heating_check_timer.is_active()) {
-                m_last_checked_heating_temperature = temperature();
-                m_heating_check_timer.start();
-            }
-
-            if (m_heating_check_timer >= 2min) {
-                if (temperature() - m_last_checked_heating_temperature < 0.5f) {
-                    sec::raise_error(sec::Error::TemperatureNotChanging);
-                    return;
-                }
-
-                m_last_checked_heating_temperature = temperature();
-                m_heating_check_timer.restart();
-            }
-        } else {
-            m_last_checked_heating_temperature = 0.f;
-            m_heating_check_timer.stop();
-        }
-    } else {
-        constexpr auto MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET = 5.f;
-        const auto in_target_range = std::abs(m_target_temperature - temperature()) <= MAX_TEMPERATURE_RANGE_AFTER_REACHING_TARGET;
-        m_outside_target_range_timer.toggle_based_on(not in_target_range);
-        if (m_outside_target_range_timer >= 5min) {
-            sec::raise_error(sec::Error::TemperatureOutOfRange);
-            return;
-        }
-    }
+    if (is_alarm_triggered())
+        sec::raise_error(sec::Error::WaterLevelAlarm);
 }
 
 void Boiler::control_resistance(f32 force) {
