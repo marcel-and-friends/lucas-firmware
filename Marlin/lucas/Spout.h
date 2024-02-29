@@ -107,8 +107,8 @@ public:
 
         void firmware_upgrade_finished();
 
-        static inline auto MIN_ML_PER_PULSE = 0.555; // approximation
-        static inline auto MAX_ML_PER_PULSE = 0.475; // approximation
+        static inline auto MIN_ML_PER_PULSE = 0.535;
+        static inline auto MAX_ML_PER_PULSE = 0.51;
 
         static constexpr auto FLOW_MIN = 2;
         static constexpr auto FLOW_MAX = 13;
