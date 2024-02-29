@@ -177,7 +177,9 @@ void Boiler::control_temperature() {
 }
 
 void Boiler::security_checks() {
-    if (is_alarm_triggered())
+    static auto alarm_triggered_timer = util::Timer::started();
+    alarm_triggered_timer.toggle_based_on(is_alarm_triggered());
+    if (alarm_triggered_timer >= 500ms)
         sec::raise_error(sec::Error::WaterLevelAlarm);
 }
 
