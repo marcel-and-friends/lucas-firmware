@@ -1,1 +1,0 @@
-- adaptacao do driver e novo hardware em geral
