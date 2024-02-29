@@ -2302,7 +2302,7 @@ celsius_float_t Temperature::analog_to_celsius_hotend(const raw_adc_t raw, const
     auto temp = [&] -> celsius_float_t {
         SCAN_THERMISTOR_TABLE((*tt), heater_ttbllen_map[e]);
     }();
-    return temp - 1.1f;
+    return temp - 2.75f;
 
     #endif
 
