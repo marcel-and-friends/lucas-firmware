@@ -180,11 +180,11 @@ static void reset() {
     NVIC_SystemReset();
 }
 
-static void firmware_update_failed() {
+static void firmware_update_failed(int error_code) {
     info::send(
         info::Event::Firmware,
-        [](JsonObject o) {
-            o["updateFailedCode"] = 0;
+        [error_code](JsonObject o) {
+            o["updateFailedCode"] = error_code;
         });
 
     storage::sd::Card::the().delete_file(FIRMWARE_FILENAME);
@@ -193,7 +193,7 @@ static void firmware_update_failed() {
 
 static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
     if (not s_firmware_file->write_binary(buffer)) {
-        firmware_update_failed();
+        firmware_update_failed(0);
         return;
     }
 
@@ -215,11 +215,11 @@ void prepare_for_firmware_update(usize size) {
     s_new_firmware_size = size;
     s_firmware_file = storage::sd::Card::the().open_file(FIRMWARE_FILENAME, O_WRITE | O_CREAT | O_TRUNC | O_SYNC);
     if (not s_firmware_file) {
-        firmware_update_failed();
+        firmware_update_failed(0);
         return;
     }
 
-    serial::FirmwareUpdateHook::the().activate(&add_buffer_to_new_firmware_file, s_new_firmware_size);
+    serial::FirmwareUpdateHook::the().activate(&add_buffer_to_new_firmware_file, &firmware_update_failed, s_new_firmware_size);
     // TODO: purge all storage entries
 }
 }

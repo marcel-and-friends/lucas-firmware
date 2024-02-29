@@ -7,9 +7,12 @@
 namespace lucas::serial {
 class FirmwareUpdateHook : public Hook, public util::Singleton<FirmwareUpdateHook> {
 public:
-    void activate(Hook::Callback callback, usize bytes_to_receive) {
+    using OnError = void (*)(int error_code);
+
+    void activate(Hook::Callback callback, OnError on_error_callback, usize bytes_to_receive) {
         m_active = true;
         m_callback = callback;
+        m_on_error_callback = on_error_callback;
         m_bytes_to_receive = bytes_to_receive;
         m_bytes_received = 0;
     }
@@ -17,6 +20,7 @@ public:
     void deactivate() {
         m_active = false;
         m_callback = nullptr;
+        m_on_error_callback = nullptr;
         m_bytes_to_receive = 0;
         m_bytes_received = 0;
         m_receive_timer.stop();
@@ -30,6 +34,8 @@ public:
 
 private:
     bool m_active = false;
+
+    OnError m_on_error_callback = nullptr;
 
     usize m_bytes_to_receive = 0;
 

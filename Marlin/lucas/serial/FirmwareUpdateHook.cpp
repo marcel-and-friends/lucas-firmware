@@ -4,14 +4,9 @@
 
 namespace lucas::serial {
 void FirmwareUpdateHook::think() {
-    if (m_receive_timer >= 1s) {
-        info::send(
-            info::Event::Firmware,
-            [](JsonObject o) {
-                o["updateFailedCode"] = 1;
-            });
-
-        deactivate();
+    if (m_receive_timer >= 5s) {
+        if (m_on_error_callback)
+            m_on_error_callback(1);
         return;
     }
 
