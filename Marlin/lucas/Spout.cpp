@@ -27,7 +27,7 @@ void Spout::tick() {
         if (not m_total_desired_volume or time_elapsed() <= 1s)
             return;
 
-        constexpr auto CORRECTION_INTERVAL = 500ms;
+        constexpr auto CORRECTION_INTERVAL = 1s;
         if (m_correction_timer >= CORRECTION_INTERVAL) {
             m_correction_timer.restart();
 
@@ -40,26 +40,6 @@ void Spout::tick() {
             const auto elapsed_seconds = time_elapsed().count() / 1000.f;
             const auto duration_seconds = m_pour_duration.count() / 1000.f;
 
-            // when we've corrected at least once already, meaning the motor acceleration curve has been, theoretically, accounted-for
-            // we can stat to track down discrepancies on every correction interval by comparing it to the ideal volume we should be at
-            if (time_elapsed() >= 2s) {
-                if (volume_poured_so_far() == 0.f) {
-                    // no water!? - bad motor? bad sensor? bad pump? who knows!
-                    // sec::raise_error(sec::Error::PourVolumeMismatch);
-                    return;
-                }
-
-                const auto ideal_flow = m_total_desired_volume / duration_seconds;
-                const auto expected_volume = ideal_flow * elapsed_seconds;
-                const auto ratio = volume_poured_so_far() / expected_volume;
-                // 50% is a pretty generous margin, could try to go lower
-                constexpr auto POUR_ACCEPTABLE_MARGIN_OF_ERROR = 0.5f;
-                if (std::abs(ratio - 1.f) >= POUR_ACCEPTABLE_MARGIN_OF_ERROR) {
-                    // sec::raise_error(sec::Error::PourVolumeMismatch);
-                    return;
-                }
-            }
-
             // calculate the ideal flow and fetch our best guess for it
             const auto ideal_flow = (m_total_desired_volume - volume_poured_so_far()) / (duration_seconds - elapsed_seconds);
 
@@ -68,7 +48,7 @@ void Spout::tick() {
             send_digital_signal_to_driver(best_digital_signal);
         } else {
             // BRK is realeased after a little bit to not stress the motor too hard
-            if (m_end_pour_timer >= 2s and digitalRead(Pin::BRK) == LOW)
+            if (m_end_pour_timer >= 2s)
                 digitalWrite(Pin::BRK, LOW); // fly high 🕊️
         }
     }
