@@ -403,29 +403,52 @@ void RecipeQueue::try_heating_hose_after_inactivity() {
     if (core::calibration_phase() != core::CalibrationPhase::Done)
         return;
 
-    if (m_inactivity_timer >= 10min) {
-        info::send(
-            info::Event::Other,
-            [](JsonObject o) {
-                o["heatingHose"] = true;
-            });
+    enum class State {
+        Waiting,
+        Pouring
+    };
 
-        core::TemporaryFilter f{
-            core::Filter::RecipeQueue,
-            core::Filter::Station
-        };
-        m_heating_hose_after_inactivity = true;
-        m_inactivity_timer.restart();
+    static State s_state = State::Waiting;
 
-        LOG_IF(LogQueue, "aquecendo mangueira apos inatividade");
+    constexpr auto POUR_DURATION = 1min;
+    constexpr auto POUR_VOLUME = 10.f * chrono::duration_cast<chrono::seconds>(POUR_DURATION).count();
+    constexpr auto INACTIVITY_THRESHOLD = 5min;
 
-        constexpr auto POUR_DURATION = 20s;
-        constexpr float POUR_VOLUME = 10.f * POUR_DURATION.count();
+    switch (s_state) {
+    case State::Waiting:
+        if (m_inactivity_timer >= INACTIVITY_THRESHOLD) {
+            info::send(
+                info::Event::Other,
+                [](JsonObject o) {
+                    o["heatingHose"] = true;
+                });
 
-        MotionController::the().home();
-        MotionController::the().travel_to_sewer();
+            core::TemporaryFilter f{ core::Filter::RecipeQueue, core::Filter::Station };
+            m_heating_hose_after_inactivity = true;
+            m_inactivity_timer.restart();
 
-        Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME);
+            LOG_IF(LogQueue, "aquecendo mangueira apos inatividade");
+
+            MotionController::the().home();
+            MotionController::the().travel_to_sewer();
+
+            Spout::the().pour_with_desired_volume(POUR_DURATION, POUR_VOLUME);
+
+            s_state = State::Pouring;
+        }
+        break;
+    case State::Pouring:
+        if (m_heating_hose_after_inactivity) {
+            if (m_inactivity_timer >= POUR_DURATION) {
+                LOG_IF(LogQueue, "mangueira aquecida");
+                m_inactivity_timer.restart();
+                s_state = State::Waiting;
+            }
+        } else {
+            m_inactivity_timer.restart();
+            s_state = State::Waiting;
+            break;
+        }
     }
 }
 
