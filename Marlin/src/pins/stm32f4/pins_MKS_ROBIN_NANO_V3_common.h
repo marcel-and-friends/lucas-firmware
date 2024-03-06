@@ -56,14 +56,14 @@
 //
 #define X_DIAG_PIN PA15
 #define Y_DIAG_PIN PD2
-#define Z_DIAG_PIN PC8
-#define E0_DIAG_PIN PC4
-#define E1_DIAG_PIN PE7
+// #define Z_DIAG_PIN PC8
+// #define E0_DIAG_PIN PC4
+// #define E1_DIAG_PIN PE7
 
 #define X_STOP_PIN X_DIAG_PIN
 #define Y_STOP_PIN Y_DIAG_PIN
-#define Z_MIN_PIN Z_DIAG_PIN
-#define Z_MAX_PIN E0_DIAG_PIN
+// #define Z_MIN_PIN Z_DIAG_PIN
+// #define Z_MAX_PIN E0_DIAG_PIN
 
 //
 // Steppers
@@ -76,17 +76,17 @@
 #define Y_STEP_PIN PE0
 #define Y_DIR_PIN PB9
 
-#define Z_ENABLE_PIN PB8
-#define Z_STEP_PIN PB5
-#define Z_DIR_PIN PB4
+// #define Z_ENABLE_PIN PB8
+// #define Z_STEP_PIN PB5
+// #define Z_DIR_PIN PB4
 
 #define E0_ENABLE_PIN PB3
 #define E0_STEP_PIN PD6
 #define E0_DIR_PIN PD3
 
-#define E1_ENABLE_PIN PA3
-#define E1_STEP_PIN PD15
-#define E1_DIR_PIN PA1
+// #define E1_ENABLE_PIN PA3
+// #define E1_STEP_PIN PD15
+// #define E1_DIR_PIN PA1
 
 #if HAS_TMC_UART
     //

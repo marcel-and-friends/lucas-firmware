@@ -58,7 +58,7 @@ void printer_state_polling() {
             // save the position
             uiCfg.current_x_position_bak = current_position.x;
             uiCfg.current_y_position_bak = current_position.y;
-            uiCfg.current_z_position_bak = current_position.z;
+            uiCfg.current_z_position_bak = 0;
 
             if (gCfgItems.pausePosZ != (float)-1) {
                 sprintf_P(public_buf_l, PSTR("G91\nG1 Z%s\nG90"), dtostrf(gCfgItems.pausePosZ, 1, 1, str_1));

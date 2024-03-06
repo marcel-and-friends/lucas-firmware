@@ -172,7 +172,7 @@
  */
 #define X_DRIVER_TYPE TMC2209
 #define Y_DRIVER_TYPE TMC2209
-#define Z_DRIVER_TYPE A4988
+// #define Z_DRIVER_TYPE A4988
 // #define X2_DRIVER_TYPE A4988
 // #define Y2_DRIVER_TYPE A4988
 // #define Z2_DRIVER_TYPE A4988
@@ -1324,7 +1324,7 @@
  * E2...]]
  */
 #define DEFAULT_AXIS_STEPS_PER_UNIT \
-    { 22, 12, 400, 93 }
+    { 22, 12, 93 }
 
 /**
  * Default Max Feed Rate (linear=mm/s, rotational=°/s)
@@ -1333,7 +1333,7 @@
  * E2...]]
  */
 #define DEFAULT_MAX_FEEDRATE \
-    { 50000, 50000, 50000, 10 }
+    { 50000, 50000, 10 }
 
 // #define LIMITED_MAX_FR_EDITING        // Limit edit via M203 or LCD to
 // DEFAULT_MAX_FEEDRATE * 2
@@ -1348,7 +1348,7 @@
  * M201 X, Y, Z [, I [, J [, K...]]], E0 [, E1[, E2...]]
  */
 #define DEFAULT_MAX_ACCELERATION \
-    { 10000, 1000, 200, 100 }
+    { 10000, 1000, 100 }
 
 // #define LIMITED_MAX_ACCEL_EDITING     // Limit edit via M201 or LCD to
 // DEFAULT_MAX_ACCELERATION * 2
@@ -2376,7 +2376,7 @@
 
 // Homing speeds (linear=mm/min, rotational=°/min)
 #define HOMING_FEEDRATE_MM_M \
-    { (50 * 60), (50 * 60), (4 * 60) }
+    { (50 * 60), (50 * 60) }
 
 // Validate that endstops are triggered on homing moves
 #define VALIDATE_HOMING_ENDSTOPS
