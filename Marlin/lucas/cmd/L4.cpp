@@ -9,6 +9,7 @@
 namespace lucas::cmd {
 void L4() {
     bool updated = false;
+    bool updated_maintenance_mode = false;
     for (auto& option : cfg::options()) {
         if (option.id == cfg::Option::ID_DEFAULT)
             continue;
@@ -19,11 +20,20 @@ void L4() {
                 option.active = value;
                 LOG("option \'", AS_CHAR(option.id), "\' was ", option.active ? "" : "un", "set");
                 updated = true;
+
+                if (option.id == cfg::options()[usize(cfg::Options::MaintenanceMode)].id)
+                    updated_maintenance_mode = true;
             }
         }
     }
 
     if (updated)
         cfg::save_options();
+
+    if (updated_maintenance_mode) {
+        SERIAL_IMPL.flush();
+        noInterrupts();
+        NVIC_SystemReset();
+    }
 }
 }
