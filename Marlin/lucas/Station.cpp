@@ -52,8 +52,8 @@ void Station::setup_pins(usize number_of_stations) {
         PinData{.button_pin = PA1,  .led_pin = PD15, .powerled_pin = PD13},
         PinData{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14},
         PinData{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6 },
-        PinData{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11},
-        PinData{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13}
+        PinData{ .button_pin = PB4, .led_pin = -1,   .powerled_pin = PD11},
+        PinData{ .button_pin = PD4, .led_pin = -1,   .powerled_pin = PE13}
     };
 
     for (usize i = 0; i < number_of_stations; i++) {

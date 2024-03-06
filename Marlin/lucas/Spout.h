@@ -13,9 +13,9 @@ class Spout : public util::Singleton<Spout> {
 public:
     enum Pin {
         SV = PA5,
-        EN = PA6,
-        BRK = PE8,
-        FlowSensor = Z_MIN_PIN
+        EN = PB5,
+        BRK = PB8,
+        FlowSensor = PC8
     };
 
     void tick();
