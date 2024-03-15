@@ -490,15 +490,18 @@ void RecipeQueue::send_queue_info(JsonArrayConst stations) const {
 
                 const auto& recipe = m_queue[index].recipe;
                 const auto tick = millis();
+
                 auto obj = arr.createNestedObject();
                 obj["index"] = station.index();
                 obj["status"] = s32(station.status());
 
-                // os campos seguintes só aparecem para receitas em execução
+                // this makes the id get sent even when the station is `Ready`
+                if (s32(station.status()) > s32(Station::Status::Free))
+                    obj["recipeId"] = recipe.id();
+
+                // the remaining fields are only sent for active recipes
                 if (not m_queue[index].active)
                     continue;
-
-                obj["recipeId"] = recipe.id();
 
                 const auto& first_step = recipe.first_step();
                 if (tick_has_happened(first_step.starting_tick, tick))
