@@ -24,6 +24,8 @@ public:
         m_bytes_to_receive = 0;
         m_bytes_received = 0;
         m_receive_timer.stop();
+        reset();
+        memset(m_buffer, 0, sizeof(m_buffer));
     }
 
     bool active() const { return m_active; }
