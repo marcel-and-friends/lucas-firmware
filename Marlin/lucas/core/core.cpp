@@ -112,6 +112,8 @@ void calibrate(std::optional<s32> target_temperature) {
         flow_controller.set_abort_analysis(true);
         s_scheduled_calibration_temperature = target_temperature;
         return;
+    default:
+        break;
     }
 
     LOG_IF(LogCalibration, "iniciando nivelamento");
@@ -206,7 +208,9 @@ static void add_buffer_to_new_firmware_file(std::span<char> buffer) {
 
     // we're done
     if (s_total_bytes_written == s_new_firmware_size) {
-        Spout::FlowController::the().firmware_upgrade_finished();
+        if (not CFG(MaintenanceMode))
+            Spout::FlowController::the().firmware_upgrade_finished();
+
         reset();
     }
 }
