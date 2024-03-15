@@ -11,6 +11,10 @@
 #include <src/module/planner.h>
 
 namespace lucas {
+// where "ON" means that the motor spins
+constexpr auto EN_ON_STATE = LOW;
+constexpr auto BRK_ON_STATE = LOW;
+
 void Spout::tick() {
     if (m_pouring) {
         const auto time_elapsed = [this] {
@@ -46,10 +50,13 @@ void Spout::tick() {
             // fetch the digital signal and send it!
             const auto best_digital_signal = FlowController::the().hit_me_with_your_best_shot(ideal_flow);
             send_digital_signal_to_driver(best_digital_signal);
-        } else {
-            // BRK is realeased after a little bit to not stress the motor too hard
-            if (m_end_pour_timer >= 2s)
-                digitalWrite(Pin::BRK, LOW); // fly high 🕊️
+        }
+    } else {
+        if (m_end_pour_timer >= 1s) {
+            digitalWrite(Pin::BRK, BRK_ON_STATE);
+            delay(50);
+            digitalWrite(Pin::EN, !EN_ON_STATE);
+            m_end_pour_timer.stop();
         }
     }
 }
@@ -106,8 +113,8 @@ void Spout::setup_pins() {
     pinMode(Pin::EN, OUTPUT);
     // enable is permanently on, the driver is controlled using only SV and BRK
     analogWrite(Pin::SV, LOW);
-    digitalWrite(Pin::BRK, LOW);
-    digitalWrite(Pin::EN, HIGH);
+
+    digitalWrite(Pin::EN, !EN_ON_STATE);
 
     // flow sensor
     pinMode(Pin::FlowSensor, INPUT);
@@ -127,9 +134,9 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
     }
 
     m_digital_signal = v;
-    digitalWrite(Pin::BRK, m_digital_signal);
-    delay(5);
 
+    digitalWrite(Pin::EN, EN_ON_STATE);
+    digitalWrite(Pin::BRK, v ? BRK_ON_STATE : !BRK_ON_STATE);
     analogWriteResolution(12);
     analogWrite(Pin::SV, m_digital_signal);
     analogWriteResolution(8);

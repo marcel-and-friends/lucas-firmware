@@ -13,8 +13,8 @@ class Spout : public util::Singleton<Spout> {
 public:
     enum Pin {
         SV = PA5,
-        EN = PB5,
-        BRK = PB8,
+        EN = PA6,
+        BRK = PE8,
         FlowSensor = PC8
     };
 
