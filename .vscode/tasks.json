@@ -11,7 +11,7 @@
       },
       "options": {
         "env": {
-          "PATH": "/Users/opalateste/.platformio/penv/bin/:${env:PATH}"
+          "PATH": "/Users/sol/.platformio/penv/bin/:${env:PATH}"
         }
       },
       "presentation": {
@@ -51,7 +51,7 @@
         "command": "cp",
         "args": [
           ".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
-          "/Users/opalateste/src/build-lucas_tester-Qt_6_4_3_for_macOS-Release/LucasTester.app/Contents/MacOS"
+          "/Users/sol/src/build-lucas_tester-Qt_6_4_3_for_macOS-Release/LucasTester.app/Contents/MacOS"
         ]
       },
       "problemMatcher": []
