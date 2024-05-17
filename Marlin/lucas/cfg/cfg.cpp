@@ -21,7 +21,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [LogTemperatureForTesting] = { .id = Option::ID_DEFAULT, .active = false},
 
     [GigaMode] = { .id = 'M', .active = false},
-    [MaintenanceMode] = { .id = 'K', .active = false},
+    [MaintenanceMode] = { .id = 'K', .active = true},
 
     [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
     [ForceFlowAnalysis] = { .id = 'X', .active = false },
