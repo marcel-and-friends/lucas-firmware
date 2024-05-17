@@ -12,7 +12,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [LogCalibration] = { .id = 'N', .active = true },
     [LogStations] = { .id = 'E', .active = true },
 
-    [LogSerial] = { .id = 'S', .active = false},
+    [LogSerial] = { .id = 'S', .active = true},
     [LogWifi] = { .id = 'W', .active = false},
     [LogGcode] = { .id = 'G', .active = false},
     [LogLn] = { .id = 'L', .active = false},
@@ -21,7 +21,7 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [LogTemperatureForTesting] = { .id = Option::ID_DEFAULT, .active = false},
 
     [GigaMode] = { .id = 'M', .active = false},
-    [MaintenanceMode] = { .id = 'K', .active = false},
+    [MaintenanceMode] = { .id = 'K', .active = true},
 
     [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
     [ForceFlowAnalysis] = { .id = 'X', .active = false },
