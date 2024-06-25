@@ -12,33 +12,36 @@ JsonObjectConst Recipe::standard() {
     static StaticJsonDocument<BUFFER_SIZE> doc;
 
     static char json[] = R"({
-  "id": 61680,
-  "finalizationTime": 60000,
-  "scald": {
-    "duration": 6000,
-    "gcode": "L0 D9 N3 R1 T6000 G80"
-  },
-  "attacks": [
-    {
-      "duration": 6000,
-      "gcode": "L0 D7 N3 R1 T6000 G60",
-      "interval": 24000
+  "station": 0,
+  "recipe": {
+    "id": 61680,
+    "finalizationTime": 60000,
+    "scald": {
+        "duration": 6000,
+        "gcode": "L0 D9 N3 R1 T6000 G80"
     },
-    {
-      "duration": 9000,
-      "gcode": "L0 D7 N5 R1 T9000 G90",
-      "interval": 30000
-    },
-    {
-      "duration": 10000,
-      "gcode": "L0 D7 N5 R1 T10000 G100",
-      "interval": 35000
-    },
-    {
-      "duration": 9000,
-      "gcode": "L0 D7 N5 R1 T9000 G100"
+    "attacks": [
+        {
+        "duration": 6000,
+        "gcode": "L0 D7 N3 R1 T6000 G60",
+        "interval": 24000
+        },
+        {
+        "duration": 9000,
+        "gcode": "L0 D7 N5 R1 T9000 G90",
+        "interval": 30000
+        },
+        {
+        "duration": 10000,
+        "gcode": "L0 D7 N5 R1 T10000 G100",
+        "interval": 35000
+        },
+        {
+        "duration": 9000,
+        "gcode": "L0 D7 N5 R1 T9000 G100"
+        }
+    ]
     }
-  ]
 })";
 
     static bool once = false;

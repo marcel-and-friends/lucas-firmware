@@ -54,7 +54,6 @@ void Spout::tick() {
     } else {
         if (m_end_pour_timer >= 1s) {
             digitalWrite(Pin::BRK, BRK_ON_STATE);
-            delay(50);
             digitalWrite(Pin::EN, !EN_ON_STATE);
             m_end_pour_timer.stop();
         }
@@ -115,6 +114,7 @@ void Spout::setup_pins() {
     analogWrite(Pin::SV, LOW);
 
     digitalWrite(Pin::EN, !EN_ON_STATE);
+    digitalWrite(Pin::BRK, BRK_ON_STATE);
 
     // flow sensor
     pinMode(Pin::FlowSensor, INPUT);
@@ -145,7 +145,7 @@ void Spout::send_digital_signal_to_driver(DigitalSignal v) {
 }
 
 void Spout::fill_hose(float desired_volume) {
-    constexpr auto FALLBACK_SIGNAL = 2200; // radomly picked this
+    constexpr auto FALLBACK_SIGNAL = 1500; // radomly picked this
     constexpr auto TIME_TO_FILL_HOSE = 20s;
 
     MotionController::the().travel_to_sewer();
