@@ -183,6 +183,9 @@ static void reset() {
 }
 
 static void firmware_update_failed(int error_code) {
+    s_new_firmware_size = 0;
+    s_total_bytes_written = 0;
+
     info::send(
         info::Event::Firmware,
         [error_code](JsonObject o) {
