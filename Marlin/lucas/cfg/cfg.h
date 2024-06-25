@@ -29,7 +29,6 @@ enum Options {
     GigaMode,
     MaintenanceMode,
 
-    SetTargetTemperatureOnCalibration,
     ForceFlowAnalysis,
 
     Count

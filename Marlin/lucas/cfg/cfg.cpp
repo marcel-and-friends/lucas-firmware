@@ -23,7 +23,6 @@ constexpr auto DEFAULT_OPTIONS = std::to_array<Option>({
     [GigaMode] = { .id = 'M', .active = false},
     [MaintenanceMode] = { .id = 'K', .active = false},
 
-    [SetTargetTemperatureOnCalibration] = { .id = 'T', .active = true },
     [ForceFlowAnalysis] = { .id = 'X', .active = false },
 });
 // clang-format on

@@ -118,7 +118,7 @@ void calibrate(std::optional<s32> target_temperature) {
 
     LOG_IF(LogCalibration, "iniciando nivelamento");
 
-    if (CFG(SetTargetTemperatureOnCalibration)) {
+    {
         info::TemporaryCommandHook hook{ info::Command::RequestInfoCalibration, &Boiler::inform_temperature_status };
         s_calibration_phase = CalibrationPhase::ReachingTargetTemperature;
 
