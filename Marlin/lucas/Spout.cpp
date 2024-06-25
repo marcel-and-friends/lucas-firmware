@@ -13,7 +13,7 @@
 namespace lucas {
 // where "ON" means that the motor spins
 constexpr auto EN_ON_STATE = LOW;
-constexpr auto BRK_ON_STATE = LOW;
+constexpr auto BRK_ON_STATE = HIGH;
 
 void Spout::tick() {
     if (m_pouring) {
