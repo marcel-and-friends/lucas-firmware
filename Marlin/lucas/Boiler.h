@@ -15,8 +15,6 @@ public:
 
     void setup();
 
-    void setup_pins();
-
     void tick();
 
     float temperature() const;

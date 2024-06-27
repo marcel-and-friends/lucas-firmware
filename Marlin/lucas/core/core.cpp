@@ -25,8 +25,8 @@ void setup() {
     MotionController::the().setup();
 
     if (CFG(MaintenanceMode)) {
+        Boiler::the().setup();
         Spout::the().setup_pins();
-        Boiler::the().setup_pins();
         Station::setup_pins(5);
         return;
     }
