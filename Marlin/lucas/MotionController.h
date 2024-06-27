@@ -31,9 +31,11 @@ public:
 
     void invalidate_location() { m_current_location = INVALID_LOCATION; }
 
+    void toggle_motors_stress_test();
+
     static inline float MS_PER_MM = 12.41f;
-    static constexpr float DEFAULT_STEPS_PER_MM_X = 45.0f;
-    static constexpr float DEFAULT_STEPS_PER_MM_Y = 25.0f;
+    static constexpr float DEFAULT_STEPS_PER_MM_X = 22.0f;
+    static constexpr float DEFAULT_STEPS_PER_MM_Y = 8.5f;
     static constexpr float ANGLE_FIX = 1.2f;
 
 private:
@@ -41,5 +43,7 @@ private:
     static constexpr auto SEWER_LOCATION = Station::MAXIMUM_NUMBER_OF_STATIONS + 1;
 
     usize m_current_location = INVALID_LOCATION;
+
+    bool m_motor_stress_test = false;
 };
 }

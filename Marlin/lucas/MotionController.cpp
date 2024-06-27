@@ -80,4 +80,37 @@ void MotionController::change_max_acceleration(f32 accel) const {
     planner.set_max_acceleration(Y_AXIS, accel);
     planner.settings.travel_acceleration = planner.settings.acceleration = planner.settings.retract_acceleration = accel;
 }
+
+void MotionController::toggle_motors_stress_test() {
+    m_motor_stress_test = not m_motor_stress_test;
+    while (m_motor_stress_test) {
+        for (usize station = 0; station < 3; station++) {
+            if (not m_motor_stress_test) {
+                // Turn off all
+                for (usize i = 0; i < 3; i++) {
+                    digitalWrite(Station::list().at(i).led(), LOW);
+                    digitalWrite(Station::list().at(i).powerled(), HIGH);
+                }
+                return;
+            }
+
+            auto previous_station = station == 0 ? 2 : station - 1;
+
+            travel_to_station(station);
+
+            // Turn off previous
+            digitalWrite(Station::list().at(previous_station).led(), LOW);
+            digitalWrite(Station::list().at(previous_station).powerled(), HIGH);
+
+            // Turn off current
+            digitalWrite(Station::list().at(station).led(), HIGH);
+            digitalWrite(Station::list().at(station).powerled(), LOW);
+
+            cmd::execute("L0 D8 R1 N4");
+        }
+
+        // Home after finished with the round
+        cmd::execute("G28");
+    }
+}
 }
