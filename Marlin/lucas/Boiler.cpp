@@ -45,18 +45,24 @@ static void wait_for_boiler_to_fill() {
 }
 
 void Boiler::tick() {
-    if (m_should_wait_for_boiler_to_fill) {
-        m_should_wait_for_boiler_to_fill = false;
-        if (is_alarm_triggered())
-            wait_for_boiler_to_fill();
-    }
-
-    if (not CFG(GigaMode))
-        security_checks();
-
-    if (m_target_temperature) {
+    if (CFG(MaintenanceMode)) {
         every(5s) {
-            inform_temperature_to_host();
+            LOG("ALARME: ", is_alarm_triggered());
+        }
+    } else {
+        if (m_should_wait_for_boiler_to_fill) {
+            m_should_wait_for_boiler_to_fill = false;
+            if (is_alarm_triggered())
+                wait_for_boiler_to_fill();
+        }
+
+        if (not CFG(GigaMode))
+            security_checks();
+
+        if (m_target_temperature) {
+            every(5s) {
+                inform_temperature_to_host();
+            }
         }
     }
 }

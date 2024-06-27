@@ -47,10 +47,7 @@ void tick() {
     if (CFG(MaintenanceMode)) {
         // for button press logs
         Station::tick();
-
-        if (Boiler::the().target_temperature())
-            Boiler::the().tick();
-
+        Boiler::the().tick();
         return;
     }
 
