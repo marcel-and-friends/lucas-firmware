@@ -815,10 +815,12 @@
     #define MPC_STEADYSTATE \
         0.5f // (K/s) Temperature change rate for steady state logic to be enforced.
 
-    #define MPC_TUNING_POS           \
-        {                            \
-            X_CENTER, Y_CENTER, 1.0f \
-        }                          // (mm) M306 Autotuning position, ideally bed center at first layer height.
+    #define MPC_TUNING_POS \
+        {                  \
+            X_CENTER,      \
+            Y_CENTER,      \
+            1.0f           \
+        } // (mm) M306 Autotuning position, ideally bed center at first layer height.
     #define MPC_TUNING_END_Z 10.0f // (mm) M306 Autotuning final Z position.
 #endif
 
@@ -1655,7 +1657,7 @@
     #define Z_PROBE_ALLEN_KEY_DEPLOY_2_FEEDRATE (XY_PROBE_FEEDRATE) / 10
 
     #define Z_PROBE_ALLEN_KEY_DEPLOY_3 \
-        { 0.0, (DELTA_PRINTABLE_RADIUS)*0.75, 100.0 }
+        { 0.0, (DELTA_PRINTABLE_RADIUS) * 0.75, 100.0 }
     #define Z_PROBE_ALLEN_KEY_DEPLOY_3_FEEDRATE XY_PROBE_FEEDRATE
 
     #define Z_PROBE_ALLEN_KEY_STOW_1 \
@@ -1886,7 +1888,7 @@
 
 // Invert the stepper direction. Change (or reverse the motor connector) if an
 // axis goes the wrong way.
-#define INVERT_X_DIR true
+#define INVERT_X_DIR false
 #define INVERT_Y_DIR true
 #define INVERT_Z_DIR false
 // #define INVERT_I_DIR false
