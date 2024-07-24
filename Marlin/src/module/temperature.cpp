@@ -1770,7 +1770,7 @@ void Temperature::manage_heated_chamber(const millis_t& ms) {
             #elif CHAMBER_FAN_MODE == 2
         fan_chamber_pwm = (CHAMBER_FAN_BASE) + (CHAMBER_FAN_FACTOR)*ABS(temp_chamber.celsius - temp_chamber.target);
         if (temp_chamber.soft_pwm_amount)
-            fan_chamber_pwm += (CHAMBER_FAN_FACTOR)*2;
+            fan_chamber_pwm += (CHAMBER_FAN_FACTOR) * 2;
             #elif CHAMBER_FAN_MODE == 3
         fan_chamber_pwm = CHAMBER_FAN_BASE + _MAX((CHAMBER_FAN_FACTOR) * (temp_chamber.celsius - temp_chamber.target), 0);
             #endif
@@ -2030,8 +2030,8 @@ void Temperature::task() {
     UNUSED(ms);
 }
 
-#define TEMP_AD595(RAW) ((RAW)*5.0 * 100.0 / float(HAL_ADC_RANGE) / (OVERSAMPLENR) * (TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET)
-#define TEMP_AD8495(RAW) ((RAW)*6.6 * 100.0 / float(HAL_ADC_RANGE) / (OVERSAMPLENR) * (TEMP_SENSOR_AD8495_GAIN) + TEMP_SENSOR_AD8495_OFFSET)
+#define TEMP_AD595(RAW) ((RAW) * 5.0 * 100.0 / float(HAL_ADC_RANGE) / (OVERSAMPLENR) * (TEMP_SENSOR_AD595_GAIN) + TEMP_SENSOR_AD595_OFFSET)
+#define TEMP_AD8495(RAW) ((RAW) * 6.6 * 100.0 / float(HAL_ADC_RANGE) / (OVERSAMPLENR) * (TEMP_SENSOR_AD8495_GAIN) + TEMP_SENSOR_AD8495_OFFSET)
 
 /**
  * Bisect search for the range of the 'raw' value, then interpolate
@@ -2067,46 +2067,46 @@ user_thermistor_t Temperature::user_thermistor[USER_THERMISTORS]; // Initialized
 void Temperature::reset_user_thermistors() {
     user_thermistor_t default_user_thermistor[USER_THERMISTORS] = {
     #if TEMP_SENSOR_0_IS_CUSTOM
-        {true,  HOTEND0_SH_C_COEFF,   0, HOTEND0_PULLUP_RESISTOR_OHMS,   HOTEND0_RESISTANCE_25C_OHMS,   0, 0, HOTEND0_BETA,   0},
+        { true, HOTEND0_SH_C_COEFF,   0, HOTEND0_PULLUP_RESISTOR_OHMS,   HOTEND0_RESISTANCE_25C_OHMS,   0, 0, HOTEND0_BETA,   0 },
     #endif
     #if TEMP_SENSOR_1_IS_CUSTOM
-        { true, HOTEND1_SH_C_COEFF,   0, HOTEND1_PULLUP_RESISTOR_OHMS,   HOTEND1_RESISTANCE_25C_OHMS,   0, 0, HOTEND1_BETA,   0},
+        { true, HOTEND1_SH_C_COEFF,   0, HOTEND1_PULLUP_RESISTOR_OHMS,   HOTEND1_RESISTANCE_25C_OHMS,   0, 0, HOTEND1_BETA,   0 },
     #endif
     #if TEMP_SENSOR_2_IS_CUSTOM
-        { true, HOTEND2_SH_C_COEFF,   0, HOTEND2_PULLUP_RESISTOR_OHMS,   HOTEND2_RESISTANCE_25C_OHMS,   0, 0, HOTEND2_BETA,   0},
+        { true, HOTEND2_SH_C_COEFF,   0, HOTEND2_PULLUP_RESISTOR_OHMS,   HOTEND2_RESISTANCE_25C_OHMS,   0, 0, HOTEND2_BETA,   0 },
     #endif
     #if TEMP_SENSOR_3_IS_CUSTOM
-        { true, HOTEND3_SH_C_COEFF,   0, HOTEND3_PULLUP_RESISTOR_OHMS,   HOTEND3_RESISTANCE_25C_OHMS,   0, 0, HOTEND3_BETA,   0},
+        { true, HOTEND3_SH_C_COEFF,   0, HOTEND3_PULLUP_RESISTOR_OHMS,   HOTEND3_RESISTANCE_25C_OHMS,   0, 0, HOTEND3_BETA,   0 },
     #endif
     #if TEMP_SENSOR_4_IS_CUSTOM
-        { true, HOTEND4_SH_C_COEFF,   0, HOTEND4_PULLUP_RESISTOR_OHMS,   HOTEND4_RESISTANCE_25C_OHMS,   0, 0, HOTEND4_BETA,   0},
+        { true, HOTEND4_SH_C_COEFF,   0, HOTEND4_PULLUP_RESISTOR_OHMS,   HOTEND4_RESISTANCE_25C_OHMS,   0, 0, HOTEND4_BETA,   0 },
     #endif
     #if TEMP_SENSOR_5_IS_CUSTOM
-        { true, HOTEND5_SH_C_COEFF,   0, HOTEND5_PULLUP_RESISTOR_OHMS,   HOTEND5_RESISTANCE_25C_OHMS,   0, 0, HOTEND5_BETA,   0},
+        { true, HOTEND5_SH_C_COEFF,   0, HOTEND5_PULLUP_RESISTOR_OHMS,   HOTEND5_RESISTANCE_25C_OHMS,   0, 0, HOTEND5_BETA,   0 },
     #endif
     #if TEMP_SENSOR_6_IS_CUSTOM
-        { true, HOTEND6_SH_C_COEFF,   0, HOTEND6_PULLUP_RESISTOR_OHMS,   HOTEND6_RESISTANCE_25C_OHMS,   0, 0, HOTEND6_BETA,   0},
+        { true, HOTEND6_SH_C_COEFF,   0, HOTEND6_PULLUP_RESISTOR_OHMS,   HOTEND6_RESISTANCE_25C_OHMS,   0, 0, HOTEND6_BETA,   0 },
     #endif
     #if TEMP_SENSOR_7_IS_CUSTOM
-        { true, HOTEND7_SH_C_COEFF,   0, HOTEND7_PULLUP_RESISTOR_OHMS,   HOTEND7_RESISTANCE_25C_OHMS,   0, 0, HOTEND7_BETA,   0},
+        { true, HOTEND7_SH_C_COEFF,   0, HOTEND7_PULLUP_RESISTOR_OHMS,   HOTEND7_RESISTANCE_25C_OHMS,   0, 0, HOTEND7_BETA,   0 },
     #endif
     #if TEMP_SENSOR_BED_IS_CUSTOM
-        { true, BED_SH_C_COEFF,       0, BED_PULLUP_RESISTOR_OHMS,       BED_RESISTANCE_25C_OHMS,       0, 0, BED_BETA,       0},
+        { true, BED_SH_C_COEFF,       0, BED_PULLUP_RESISTOR_OHMS,       BED_RESISTANCE_25C_OHMS,       0, 0, BED_BETA,       0 },
     #endif
     #if TEMP_SENSOR_CHAMBER_IS_CUSTOM
-        { true, CHAMBER_SH_C_COEFF,   0, CHAMBER_PULLUP_RESISTOR_OHMS,   CHAMBER_RESISTANCE_25C_OHMS,   0, 0, CHAMBER_BETA,   0},
+        { true, CHAMBER_SH_C_COEFF,   0, CHAMBER_PULLUP_RESISTOR_OHMS,   CHAMBER_RESISTANCE_25C_OHMS,   0, 0, CHAMBER_BETA,   0 },
     #endif
     #if TEMP_SENSOR_COOLER_IS_CUSTOM
-        { true, COOLER_SH_C_COEFF,    0, COOLER_PULLUP_RESISTOR_OHMS,    COOLER_RESISTANCE_25C_OHMS,    0, 0, COOLER_BETA,    0},
+        { true, COOLER_SH_C_COEFF,    0, COOLER_PULLUP_RESISTOR_OHMS,    COOLER_RESISTANCE_25C_OHMS,    0, 0, COOLER_BETA,    0 },
     #endif
     #if TEMP_SENSOR_PROBE_IS_CUSTOM
-        { true, PROBE_SH_C_COEFF,     0, PROBE_PULLUP_RESISTOR_OHMS,     PROBE_RESISTANCE_25C_OHMS,     0, 0, PROBE_BETA,     0},
+        { true, PROBE_SH_C_COEFF,     0, PROBE_PULLUP_RESISTOR_OHMS,     PROBE_RESISTANCE_25C_OHMS,     0, 0, PROBE_BETA,     0 },
     #endif
     #if TEMP_SENSOR_BOARD_IS_CUSTOM
-        { true, BOARD_SH_C_COEFF,     0, BOARD_PULLUP_RESISTOR_OHMS,     BOARD_RESISTANCE_25C_OHMS,     0, 0, BOARD_BETA,     0},
+        { true, BOARD_SH_C_COEFF,     0, BOARD_PULLUP_RESISTOR_OHMS,     BOARD_RESISTANCE_25C_OHMS,     0, 0, BOARD_BETA,     0 },
     #endif
     #if TEMP_SENSOR_REDUNDANT_IS_CUSTOM
-        { true, REDUNDANT_SH_C_COEFF, 0, REDUNDANT_PULLUP_RESISTOR_OHMS, REDUNDANT_RESISTANCE_25C_OHMS, 0, 0, REDUNDANT_BETA, 0},
+        { true, REDUNDANT_SH_C_COEFF, 0, REDUNDANT_PULLUP_RESISTOR_OHMS, REDUNDANT_RESISTANCE_25C_OHMS, 0, 0, REDUNDANT_BETA, 0 },
     #endif
     };
     COPY(user_thermistor, default_user_thermistor);
@@ -2302,7 +2302,7 @@ celsius_float_t Temperature::analog_to_celsius_hotend(const raw_adc_t raw, const
     auto temp = [&] -> celsius_float_t {
         SCAN_THERMISTOR_TABLE((*tt), heater_ttbllen_map[e]);
     }();
-    return temp - 2.75f;
+    return temp + 2.0f;
 
     #endif
 
@@ -2500,7 +2500,7 @@ void Temperature::updateTemperaturesFromRawValues() {
 
     HOTEND_LOOP() {
         const raw_adc_t r = temp_hotend[e].getraw();
-        const bool neg = temp_dir[e]<0, pos = temp_dir[e]> 0;
+        const bool neg = temp_dir[e] < 0, pos = temp_dir[e] > 0;
         if ((neg && r < temp_range[e].raw_max) || (pos && r > temp_range[e].raw_max))
             max_temp_error((heater_id_t)e);
 

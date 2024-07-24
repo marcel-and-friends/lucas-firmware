@@ -51,7 +51,7 @@
         "command": "cp",
         "args": [
           ".pio/build/mks_robin_nano_v3_1/Robin_nano_v3.bin",
-          "/Users/sol/src/lucas_tester/build/LucasTesterEsp.app/Contents/MacOS"
+          "/Users/sol/src/lucas_tester/build/LucasTester.app/Contents/MacOS"
         ]
       },
       "problemMatcher": []

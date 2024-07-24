@@ -35,7 +35,7 @@ public:
 
     static inline float MS_PER_MM = 12.41f;
     static constexpr float DEFAULT_STEPS_PER_MM_X = 22.0f;
-    static constexpr float DEFAULT_STEPS_PER_MM_Y = 8.5f;
+    static constexpr float DEFAULT_STEPS_PER_MM_Y = 10.0f;
     static constexpr float ANGLE_FIX = 1.2f;
 
 private:

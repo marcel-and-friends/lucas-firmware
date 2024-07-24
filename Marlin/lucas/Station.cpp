@@ -49,9 +49,9 @@ struct PinData {
 
 void Station::setup_pins(usize number_of_stations) {
     constexpr auto PIN_DATA = std::array{
-        PinData{ .button_pin = PA1, .led_pin = PD15, .powerled_pin = PD13 },
+        PinData{ .button_pin = PA1, .led_pin = PD15, .powerled_pin = PC6  },
         PinData{ .button_pin = PA3, .led_pin = PD8,  .powerled_pin = PE14 },
-        PinData{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PC6  },
+        PinData{ .button_pin = PD3, .led_pin = PD9,  .powerled_pin = PD13 },
         PinData{ .button_pin = PB4, .led_pin = PB5,  .powerled_pin = PD11 },
         PinData{ .button_pin = PD4, .led_pin = PB8,  .powerled_pin = PE13 }
     };
@@ -137,7 +137,7 @@ void Station::update_leds() {
 }
 
 float Station::absolute_position(usize index) {
-    const auto first_station_abs_pos = 85.f / MotionController::the().step_ratio_x();
+    const auto first_station_abs_pos = 95.f / MotionController::the().step_ratio_x();
     const auto distance_between_each_station = 160.f / MotionController::the().step_ratio_x();
     return first_station_abs_pos + index * distance_between_each_station;
 }

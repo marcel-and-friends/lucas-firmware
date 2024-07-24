@@ -195,7 +195,7 @@ void Spout::FlowController::setup() {
 }
 
 void Spout::FlowController::analyse_and_store_flow_data() {
-    constexpr auto ITERATION_STEP = 25;
+    constexpr auto ITERATION_STEP = 100;
     constexpr auto INITIAL_ITERATION_STEP = 200;
 
     clean_digital_signal_table();

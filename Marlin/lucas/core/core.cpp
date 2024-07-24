@@ -45,9 +45,12 @@ void setup() {
 
 void tick() {
     if (CFG(MaintenanceMode)) {
-        // for button press logs
+        // For button press logs
         Station::tick();
+        // For the "Aquecer Água" button
         Boiler::the().tick();
+        // To test pouring manually through the `L2` command
+        Spout::the().tick();
         return;
     }
 

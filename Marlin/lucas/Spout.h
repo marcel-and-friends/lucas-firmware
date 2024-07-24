@@ -1,6 +1,7 @@
 #pragma once
 
 #include <lucas/util/util.h>
+#include <lucas/sec/sec.h>
 #include <lucas/core/core.h>
 #include <lucas/storage/storage.h>
 #include <lucas/lucas.h>
@@ -159,7 +160,7 @@ public:
                 update_flow_hint_for_pulse_calculation(average_flow);
 
                 if (digital_signal >= 2000 and pulses == 0) {
-                    m_abort_analysis = true;
+                    sec::raise_error(sec::Error::PourVolumeMismatch);
                     return;
                 }
 
